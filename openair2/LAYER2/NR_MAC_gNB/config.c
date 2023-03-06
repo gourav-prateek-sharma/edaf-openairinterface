@@ -495,7 +495,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   // Carrier configuration
   struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
   int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                          *frequencyInfoDL->frequencyBandList.list.array[0],
+                                          *frequencyInfoDL->frequencyBandList.list.array[0] > 256 ? FR2 : FR1,
                                           frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.dl_bandwidth.value =
        get_supported_bw_mhz(*frequencyInfoDL->frequencyBandList.list.array[0] > 256 ? FR2 : FR1, bw_index);
@@ -525,7 +525,7 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
   }
   struct NR_FrequencyInfoUL *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
   bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                      *frequencyInfoUL->frequencyBandList->list.array[0],
+                                      *frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1,
                                       frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.uplink_bandwidth.value =
        get_supported_bw_mhz(*frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1, bw_index);
@@ -762,8 +762,8 @@ static void config_common(gNB_MAC_INST *nrmac, nr_pdsch_AntennaPorts_t pdsch_Ant
       num_ssb++;
     }
     cfg->num_tlv++;
-   }
-   for (int i = 0; i < 32; i++) {
+  }
+  for (int i = 0; i < 32; i++) {
     cfg->ssb_table.ssb_beam_id_list[32 + i].beam_id.tl.tag = NFAPI_NR_CONFIG_BEAM_ID_TAG;
     if ((cfg->ssb_table.ssb_mask_list[1].ssb_mask.value >> (31 - i)) & 1) {
       cfg->ssb_table.ssb_beam_id_list[32 + i].beam_id.value = num_ssb;

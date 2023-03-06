@@ -60,7 +60,7 @@ Furthermore, the gNB and UE support
    - Single and multiple DMRS symbols
    - PTRS support
    - Support for 1, 2 and 4 TX antennas
-   - Support for up to 2 layers (currently limited to DMRS configuration type 2)
+   - Support for up to 2 layers
    - Support for 256 QAM
 *  NR-CSIRS Generation of sequence at PHY
 *  NR-PUSCH (including Segmentation, LDPC encoding, rate matching, scrambling, modulation, RB mapping, etc).

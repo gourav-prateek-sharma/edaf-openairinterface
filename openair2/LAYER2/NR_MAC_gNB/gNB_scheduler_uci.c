@@ -761,12 +761,12 @@ static int evaluate_ri_report(uint8_t *payload,
                               NR_UE_sched_ctrl_t *sched_ctrl)
 {
   uint8_t ri_index = pickandreverse_bits(payload, ri_bitlen, cumul_bits);
-  int count=0;
-  for (int i=0; i<8; i++) {
-     if ((ri_restriction>>i)&0x01) {
+  int count = 0;
+  for (int i = 0; i < 8; i++) {
+     if ((ri_restriction >> i) & 0x01) {
        if(count == ri_index) {
          sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.ri = i;
-         LOG_D(MAC,"CSI Reported Rank %d\n", i+1);
+         LOG_D(MAC,"CSI Reported Rank %d\n", i + 1);
          return i;
        }
        count++;
@@ -821,8 +821,8 @@ static uint8_t evaluate_pmi_report(uint8_t *payload,
   //in case of 2 port CSI configuration x1 is empty and the information bits are in x2
   int temp_pmi = pickandreverse_bits(payload, tot_bitlen, cumul_bits);
 
-  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1 = temp_pmi&((1<<x1_bitlen)-1);
-  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2 = (temp_pmi>>x1_bitlen)&((1<<x2_bitlen)-1);
+  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1 = temp_pmi & ((1 << x1_bitlen) - 1);
+  sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2 = (temp_pmi >> x1_bitlen) & ((1 << x2_bitlen) - 1);
   LOG_D(MAC,"PMI Report: X1 %d X2 %d\n",
         sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x1,
         sched_ctrl->CSI_report.cri_ri_li_pmi_cqi_report.pmi_x2);
