@@ -528,10 +528,13 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     __attribute__((aligned(32))) int32_t rxdataF_comp[dlsch[0].Nl][ue->frame_parms.nb_antennas_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT];
     memset(rxdataF_comp, 0, sizeof(rxdataF_comp));
 
+    uint32_t nvar = 0;
+
     for (int m = dlschCfg->start_symbol; m < (dlschCfg->start_symbol + dlschCfg->number_symbols); m++) {
       if (dlschCfg->dlDmrsSymbPos & (1 << m)) {
         for (int nl = 0; nl < dlsch0->Nl; nl++) { //for MIMO Config: it shall loop over no_layers
           LOG_D(PHY,"PDSCH Channel estimation layer %d, slot %d, symbol %d\n", nl, nr_slot_rx, m);
+          uint32_t nvar_tmp = 0;
           nr_pdsch_channel_estimation(ue,
                                       proc,
                                       nl,
@@ -547,7 +550,9 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                                       pdsch_est_size,
                                       pdsch_dl_ch_estimates,
                                       ue->frame_parms.samples_per_slot_wCP,
-                                      rxdataF);
+                                      rxdataF,
+                                      &nvar_tmp);
+          nvar += nvar_tmp;
 #if 0
           ///LOG_M: the channel estimation
           int nr_frame_rx = proc->frame_rx;
@@ -561,6 +566,9 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
         }
       }
     }
+
+    nvar /= (dlschCfg->number_symbols * dlsch0->Nl * ue->frame_parms.nb_antennas_rx);
+
     nr_ue_measurement_procedures(2, ue, proc, &dlsch[0], pdsch_est_size, pdsch_dl_ch_estimates);
 
     if (ue->chest_time == 1) { // averaging time domain channel estimates
@@ -618,7 +626,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                       rxdataF_comp,
                       ptrs_phase_per_slot,
                       ptrs_re_per_slot,
-                      G)
+                      G,
+                      nvar)
           < 0)
         return -1;
 
