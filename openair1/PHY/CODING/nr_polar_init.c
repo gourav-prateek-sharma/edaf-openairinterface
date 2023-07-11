@@ -32,6 +32,7 @@
 
 #include "PHY/CODING/nrPolar_tools/nr_polar_defs.h"
 #include "PHY/NR_TRANSPORT/nr_dci.h"
+#include "nrPolar_tools/nr_polar_psbch_defs.h"
 
 #define PolarKey ((messageType<<24)|(messageLength<<8)|aggregation_level)
 static t_nrPolar_params * PolarList=NULL;
@@ -191,7 +192,19 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, ui
     newPolarInitNode->payloadBits = messageLength;
     newPolarInitNode->crcCorrectionBits = NR_POLAR_PUCCH_CRC_ERROR_CORRECTION_BITS;
     //LOG_D(PHY,"New polar node, encoderLength %d, aggregation_level %d\n",newPolarInitNode->encoderLength,aggregation_level);
-
+  } else if (messageType == SL_NR_POLAR_PSBCH_MESSAGE_TYPE) { //PSBCH
+    newPolarInitNode->n_max = SL_NR_POLAR_PSBCH_N_MAX;
+    newPolarInitNode->i_il = SL_NR_POLAR_PSBCH_I_IL;
+    newPolarInitNode->i_seg = SL_NR_POLAR_PSBCH_I_SEG;
+    newPolarInitNode->n_pc = SL_NR_POLAR_PSBCH_N_PC;
+    newPolarInitNode->n_pc_wm = SL_NR_POLAR_PSBCH_N_PC_WM;
+    newPolarInitNode->i_bil = SL_NR_POLAR_PSBCH_I_BIL;
+    newPolarInitNode->crcParityBits = SL_NR_POLAR_PSBCH_CRC_PARITY_BITS;
+    newPolarInitNode->payloadBits = SL_NR_POLAR_PSBCH_PAYLOAD_BITS;
+    newPolarInitNode->encoderLength = SL_NR_POLAR_PSBCH_E_NORMAL_CP + 2;
+    newPolarInitNode->crcCorrectionBits = SL_NR_POLAR_PSBCH_CRC_ERROR_CORRECTION_BITS;
+    newPolarInitNode->crc_generator_matrix = crc24c_generator_matrix(newPolarInitNode->payloadBits);//G_P
+    LOG_D(PHY,"SIDELINK: Initializing polar parameters for PSBCH (K %d, E %d)\n",newPolarInitNode->payloadBits,newPolarInitNode->encoderLength);
   } else {
     AssertFatal(1 == 0, "[nr_polar_init] Incorrect Message Type(%d)", messageType);
   }

@@ -30,7 +30,10 @@
 /*!\brief This function generates the NR Gold sequence (38-211, Sec 5.2.1) for the PBCH DMRS.
 @param PHY_VARS_NR_UE* ue structure provides configuration, frame parameters and the pointers to the 32 bits sequence storage tables
  */
-void nr_pbch_dmrs_rx(const int dmrss, const unsigned int *nr_gold_pbch, c16_t *output);
+void nr_pbch_dmrs_rx(int dmrss,
+                     unsigned int *nr_gold_pbch,
+                     c16_t *output,
+                     bool sidelink);
 
 /*!\brief This function generates the NR Gold sequence (38-211, Sec 5.2.1) for the PDCCH DMRS.
 @param PHY_VARS_NR_UE* ue structure provides configuration, frame parameters and the pointers to the 32 bits sequence storage tables
@@ -66,5 +69,11 @@ void nr_init_pusch_dmrs(PHY_VARS_NR_UE* ue,
 
 void nr_init_csi_rs(const NR_DL_FRAME_PARMS *fp, uint32_t ***csi_rs, uint32_t Nid);
 void init_nr_gold_prs(PHY_VARS_NR_UE* ue);
-
+void sl_generate_pss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint8_t n_sl_id2, uint16_t scaling);
+void sl_generate_pss_ifft_samples(sl_nr_ue_phy_params_t *sl_ue_params, SL_NR_UE_INIT_PARAMS_t *sl_init_params);
+void sl_generate_sss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint16_t slss_id, uint16_t scaling);
+void sl_init_psbch_dmrs_gold_sequences(PHY_VARS_NR_UE *UE);
+void sl_generate_psbch_dmrs_qpsk_sequences(PHY_VARS_NR_UE *UE,
+                                           struct complex16 *modulated_dmrs_sym,
+                                           uint16_t slss_id);
 #endif

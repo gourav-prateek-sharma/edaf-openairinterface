@@ -45,7 +45,6 @@
 //#include "PHY_INTERFACE/defs.h"
 
 #define PBCH_A 24
-#define PBCH_MAX_RE_PER_SYMBOL (20*12)
 #define PBCH_MAX_RE (PBCH_MAX_RE_PER_SYMBOL*4)
 #define print_shorts(s,x) printf("%s : %d,%d,%d,%d,%d,%d,%d,%d\n",s,((int16_t*)x)[0],((int16_t*)x)[1],((int16_t*)x)[2],((int16_t*)x)[3],((int16_t*)x)[4],((int16_t*)x)[5],((int16_t*)x)[6],((int16_t*)x)[7])
 
@@ -230,20 +229,19 @@ int nr_pbch_channel_level(struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER
   return(avg2);
 }
 
-static void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
-					 struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
-					 int nb_re,
-					 struct complex16 rxdataF_comp[][PBCH_MAX_RE_PER_SYMBOL],
-					 NR_DL_FRAME_PARMS *frame_parms,
-					 uint8_t output_shift) {
+void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER_SYMBOL],
+                                  struct complex16 dl_ch_estimates_ext[][PBCH_MAX_RE_PER_SYMBOL],
+                                  int nb_re,
+                                  struct complex16 rxdataF_comp[][PBCH_MAX_RE_PER_SYMBOL],
+                                  NR_DL_FRAME_PARMS *frame_parms,
+                                  uint8_t output_shift)
+{
   for (int aarx=0; aarx<frame_parms->nb_antennas_rx; aarx++) {
     simde__m128i *dl_ch128          = (simde__m128i *)dl_ch_estimates_ext[aarx];
     simde__m128i *rxdataF128        = (simde__m128i *)rxdataF_ext[aarx];
     simde__m128i *rxdataF_comp128   = (simde__m128i *)rxdataF_comp[aarx];
 
-    for (int re=0; re<nb_re; re+=12) {
-      *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
-      *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
+    for (int re=0; re<nb_re; re+=4) {
       *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
     }
   }
@@ -272,7 +270,7 @@ void nr_pbch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
   simde_m_empty();
 }
 
-static void nr_pbch_unscrambling(int16_t *demod_pbch_e,
+void nr_pbch_unscrambling(int16_t *demod_pbch_e,
                                  uint16_t Nid,
                                  uint8_t nushift,
                                  uint16_t M,
@@ -334,7 +332,7 @@ static void nr_pbch_unscrambling(int16_t *demod_pbch_e,
   }
 }
 
-static void nr_pbch_quantize(int16_t *pbch_llr8,
+void nr_pbch_quantize(int16_t *pbch_llr8,
                              int16_t *pbch_llr,
                              uint16_t len) {
   for (int i=0; i<len; i++) {

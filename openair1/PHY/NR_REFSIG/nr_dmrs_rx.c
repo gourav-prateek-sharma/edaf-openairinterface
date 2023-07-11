@@ -202,22 +202,32 @@ int nr_pdcch_dmrs_rx(PHY_VARS_NR_UE *ue,
   return(0);
 }
 
-void nr_pbch_dmrs_rx(const int symbol, const unsigned int *nr_gold_pbch, c16_t *output)
+void nr_pbch_dmrs_rx(int symbol,
+                     unsigned int *nr_gold_pbch,
+                     c16_t *output,
+                     bool sidelink)
 {
   int m,m0,m1;
   uint8_t idx=0;
-  AssertFatal(symbol>=0 && symbol <3,"illegal symbol %d\n",symbol);
-  if (symbol == 0) {
-    m0=0;
-    m1=60;
-  }
-  else if (symbol == 1) {
-    m0=60;
-    m1=84;
-  }
-  else {
-    m0=84;
-    m1=144;
+  if (sidelink) {
+    AssertFatal(symbol== 0 || (symbol>=5 && symbol <=12),"illegal symbol %d\n",symbol);
+    m0 = (symbol) ? (symbol - 4) * 33 : 0;
+    m1 = (symbol) ? (symbol - 3) * 33 : 33;
+
+  } else {
+    AssertFatal(symbol>=0 && symbol <3,"illegal symbol %d\n",symbol);
+    if (symbol == 0) {
+      m0=0;
+      m1=60;
+    }
+    else if (symbol == 1) {
+      m0=60;
+      m1=84;
+    }
+    else {
+      m0=84;
+      m1=144;
+    }
   }
   //    printf("Generating pilots symbol %d, m0 %d, m1 %d\n",symbol,m0,m1);
   /// QPSK modulation

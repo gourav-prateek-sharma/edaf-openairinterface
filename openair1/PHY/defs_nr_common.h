@@ -96,6 +96,8 @@
 
 #define MAX_DELAY_COMP 20
 
+#define PBCH_MAX_RE_PER_SYMBOL (20*12)
+
 typedef enum {
   NR_MU_0=0,
   NR_MU_1,
@@ -168,8 +170,6 @@ struct NR_DL_FRAME_PARMS {
   /// Frame type (0 FDD, 1 TDD)
   frame_type_t frame_type;
   uint8_t tdd_config;
-  /// Sidelink Cell ID
-  uint16_t Nid_SL;
   /// Cell ID
   uint16_t Nid_cell;
   /// subcarrier spacing (15,30,60,120)
