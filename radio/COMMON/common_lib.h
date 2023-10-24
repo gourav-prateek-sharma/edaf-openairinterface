@@ -384,6 +384,22 @@ typedef struct fhstate_s {
   int active;
 } fhstate_t;
 
+#define WRITE_QUEUE_SZ 20
+typedef struct {
+  bool initDone;
+  pthread_mutex_t mutex_write;
+  pthread_mutex_t mutex_store;
+  openair0_timestamp nextTS;
+  struct {
+    bool active;
+    openair0_timestamp timestamp;
+    void *txp[NB_ANTENNAS_TX];
+    int nsamps;
+    int nbAnt;
+    int flags;
+  } queue[WRITE_QUEUE_SZ];
+} re_order_t;
+
 /*!\brief structure holds the parameters to configure USRP devices */
 struct openair0_device_t {
   /*!tx write thread*/
@@ -586,6 +602,7 @@ struct openair0_device_t {
   /* \brief timing statistics for TX fronthaul (ethernet)
    */
   time_stats_t tx_fhaul;
+  re_order_t reOrder;
 };
 
 /* type of device init function, implemented in shared lib */
@@ -654,6 +671,7 @@ extern int read_recplayconfig(recplay_conf_t **recplay_conf, recplay_state_t **r
 /*! \brief store recorded iqs from memory to file. */
 extern void iqrecorder_end(openair0_device *device);
 
+int openair0_write_reorder(openair0_device *device, openair0_timestamp timestamp, void **txp, int nsamps, int nbAnt, int flags);
 
 #include <unistd.h>
 #ifndef gettid
