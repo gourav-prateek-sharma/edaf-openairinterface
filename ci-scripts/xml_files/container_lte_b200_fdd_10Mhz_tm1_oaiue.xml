@@ -137,8 +137,8 @@
         <iperf_args>-u -b 10M -t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>single-ue</iperf_profile>
-        <direction>IPERF3</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
     <testCase id="040616">
@@ -147,8 +147,8 @@
         <iperf_args>-t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>single-ue</iperf_profile>
-        <direction>IPERF3</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
     <testCase id="040651">
@@ -157,8 +157,8 @@
         <iperf_args>-u -b 10M -t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>single-ue</iperf_profile>
-        <direction>IPERF3</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
     <testCase id="040654">
@@ -167,8 +167,8 @@
         <iperf_args>-t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>balanced</iperf_profile>
-        <direction>IPERF3</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
 </testCaseList>
