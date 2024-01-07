@@ -1026,7 +1026,6 @@ class Containerize():
 					cnt = 100
 					status = True
 					logging.info('\u001B[1m Deploying OAI object Pass\u001B[0m')
-					time.sleep(10)
 		else:
 			# containers are unhealthy, so we won't start. However, logs are stored at the end
 			# in UndeployObject so we here store the logs of the unhealthy container to report it
