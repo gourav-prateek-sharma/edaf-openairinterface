@@ -339,6 +339,18 @@ rfsim4g_enb_nos1:
   CmdPrefix: docker exec rfsim4g-oai-enb
   IF: oaitun_enb1
 
+rfsim4g_enb_fembms:
+  Host: localhost
+  NetworkScript: docker exec rfsim4g-oai-enb ip a show dev oaitun_enm1
+  CmdPrefix: docker exec rfsim4g-oai-enb
+  IF: oaitun_enm1
+
+rfsim4g_ue_fembms:
+  Host: localhost
+  NetworkScript: docker exec rfsim4g-oai-lte-ue0 ip a show dev oaitun_uem1
+  CmdPrefix: docker exec rfsim4g-oai-lte-ue0
+  IF: oaitun_uem1
+
 l2sim5g_ue:
   Host: localhost
   AttachScript: docker start l2sim-oai-nr-ue0
