@@ -498,7 +498,6 @@ target_link_libraries(shlib_loader PRIVATE CONFIG_LIB)
 ##########################################################
 
 add_boolean_option(ENABLE_LDPC_T2 OFF "Build support for LDPC Offload to T2 library" OFF)
-set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/x86_64-linux-gnu/pkgconfig")
 if (ENABLE_LDPC_T2)
   pkg_check_modules(LIBDPDK_T2 REQUIRED libdpdk=20.11.9)
   find_library(PMD_T2 NAMES rte_baseband_accl_ldpc HINTS ${LIBDPDK_T2_LIBRARY_DIRS})
