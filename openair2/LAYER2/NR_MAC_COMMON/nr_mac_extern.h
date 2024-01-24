@@ -39,8 +39,6 @@
 
 extern const uint8_t nr_slots_per_frame[5];
 
-extern dci_pdu_rel15_t *def_dci_pdu_rel15;
-
 /* Scheduler */
 extern RAN_CONTEXT_t RC;
 extern uint8_t nfapi_mode;

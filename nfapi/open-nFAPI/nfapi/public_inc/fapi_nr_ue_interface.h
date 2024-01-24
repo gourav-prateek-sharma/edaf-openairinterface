@@ -55,6 +55,12 @@ typedef enum {
  RLM_in_sync = 2
 } rlm_t;
 
+typedef enum {
+  NFAPI_NR_FORMAT_0_0_AND_1_0,
+  NFAPI_NR_FORMAT_0_1_AND_1_1,
+} nfapi_nr_dci_formats_e;
+
+
 typedef struct {
   uint32_t rsrp;
   int rsrp_dBm;
@@ -94,7 +100,7 @@ typedef struct {
 
 typedef struct {
   uint16_t rnti;
-  uint8_t dci_format;
+  nfapi_nr_dci_formats_e dci_format;
   uint8_t coreset_type;
   int ss_type;
   // n_CCE index of first CCE for PDCCH reception
@@ -427,7 +433,7 @@ typedef struct {
   // needs to monitor only upto 2 DCI lengths for a given search space.
   uint8_t num_dci_options;  // Num DCIs the UE actually needs to decode (1 or 2)
   uint8_t dci_length_options[2];
-  uint8_t dci_format_options[2];
+  nfapi_nr_dci_formats_e dci_format_options[2];
   uint8_t ss_type_options[2];
 } fapi_nr_dl_config_dci_dl_pdu_rel15_t;
 
