@@ -1056,7 +1056,6 @@ void nr_pdcp_config_set_security(ue_id_t ue_id,
   ciphering_algorithm = security_modeP & 0x0f;
   rb->set_security(rb, integrity_algorithm, (char *)kRRCint_pP,
                    ciphering_algorithm, (char *)kRRCenc_pP);
-  rb->security_mode_completed = false;
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }

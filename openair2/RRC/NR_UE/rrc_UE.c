@@ -1073,7 +1073,8 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
   log_dump(NR_RRC, ue_rrc->kgnb, 32, LOG_DUMP_CHAR, "driving kRRCenc, kRRCint and kUPenc from KgNB=");
 
   if (securityMode != 0xff) {
-    uint8_t security_mode = ue_rrc->cipheringAlgorithm | (ue_rrc->integrityProtAlgorithm << 4);
+    /* for SecurityModeComplete, ciphering is not activated yet, only integrity */
+    uint8_t security_mode = ue_rrc->integrityProtAlgorithm << 4;
     // configure lower layers to apply SRB integrity protection and ciphering
     for (int i = 1; i < NR_NUM_SRB; i++) {
       if (ue_rrc->Srb[i] == RB_ESTABLISHED)
@@ -1119,6 +1120,17 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
           "securityModeCommand->criticalExtensions.present (%d) != "
           "NR_SecurityModeCommand__criticalExtensions_PR_securityModeCommand\n",
           securityModeCommand->criticalExtensions.present);
+
+  if (securityMode != 0xff) {
+    /* after encoding SecurityModeComplete we activate both ciphering and integrity */
+    uint8_t security_mode = ue_rrc->cipheringAlgorithm | (ue_rrc->integrityProtAlgorithm << 4);
+    // configure lower layers to apply SRB integrity protection and ciphering
+    for (int i = 1; i < NR_NUM_SRB; i++) {
+      if (ue_rrc->Srb[i] == RB_ESTABLISHED)
+        /* pass NULL to keep current keys */
+        nr_pdcp_config_set_security(ue_rrc->ue_id, i, security_mode, NULL, NULL, NULL);
+    }
+  }
 }
 
 static void handle_meas_reporting_remove(rrcPerNB_t *rrc, int id, NR_UE_Timers_Constants_t *timers)
