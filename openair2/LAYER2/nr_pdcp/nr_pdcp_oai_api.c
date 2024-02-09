@@ -784,6 +784,9 @@ srb_found:
     NR_RRC_DCCH_DATA_IND(message_p).dcch_index = srb_id;
     NR_RRC_DCCH_DATA_IND(message_p).sdu_p = rrc_buffer_p;
     NR_RRC_DCCH_DATA_IND(message_p).sdu_size = size;
+    NR_RRC_DCCH_DATA_IND(message_p).mac = mac;
+    NR_RRC_DCCH_DATA_IND(message_p).header = header;
+    NR_RRC_DCCH_DATA_IND(message_p).count = count;
     ue_id_t ue_id = ue->ue_id;
     itti_send_msg_to_task(TASK_RRC_NRUE, ue_id, message_p);
   }

@@ -96,6 +96,10 @@ typedef struct NRRrcDcchDataInd_s {
   uint16_t     rnti;
   uint8_t      module_id;
   uint8_t      gNB_index; // LG: needed in UE
+  /* these three variables are needed for RRC to check integrity of the PDCP SDU */
+  uint32_t     mac;
+  uint32_t     header;
+  uint32_t     count;
 } NRRrcDcchDataInd;
 
 typedef struct RrcPcchDataReq_s {
