@@ -24,7 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, char *buffer, int size)
+nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, char *buffer, int size,
+                               uint32_t mac, uint32_t header)
 {
   nr_pdcp_sdu_t *ret = calloc(1, sizeof(nr_pdcp_sdu_t));
   if (ret == NULL)
@@ -35,6 +36,8 @@ nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, char *buffer, int size)
     exit(1);
   memcpy(ret->buffer, buffer, size);
   ret->size = size;
+  ret->mac = mac;
+  ret->header = header;
   return ret;
 }
 

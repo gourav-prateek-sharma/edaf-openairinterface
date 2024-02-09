@@ -28,10 +28,20 @@ typedef struct nr_pdcp_sdu_t {
   uint32_t             count;
   char                 *buffer;
   int                  size;
+  uint32_t             mac;
+  /* 'header' is decomposed into two parts: higher byte is the size of the
+   * header (2 or 3 bytes), then the next two or three bytes are the header
+   * so the size is: (header >> 24) & 0xff
+   * and first byte of header is: (header >> 16) & 0xff
+   * second byte of header is: (header >> 8) & 0xff
+   * and if there is a third, it is: header & 0xff
+   */
+  uint32_t             header;
   struct nr_pdcp_sdu_t *next;
 } nr_pdcp_sdu_t;
 
-nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, char *buffer, int size);
+nr_pdcp_sdu_t *nr_pdcp_new_sdu(uint32_t count, char *buffer, int size,
+                               uint32_t mac, uint32_t header);
 nr_pdcp_sdu_t *nr_pdcp_sdu_list_add(nr_pdcp_sdu_t *l, nr_pdcp_sdu_t *sdu);
 int nr_pdcp_sdu_in_list(nr_pdcp_sdu_t *l, uint32_t count);
 void nr_pdcp_free_sdu(nr_pdcp_sdu_t *sdu);

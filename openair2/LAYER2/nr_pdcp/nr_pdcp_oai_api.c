@@ -658,7 +658,8 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
 }
 
 static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
-                            char *buf, int size)
+                            char *buf, int size,
+                            uint32_t mac, uint32_t header, uint32_t count)
 {
   nr_pdcp_ue_t *ue = _ue;
   int rb_id;
@@ -741,7 +742,8 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
 }
 
 static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
-                            char *buf, int size)
+                            char *buf, int size,
+                            uint32_t mac, uint32_t header, uint32_t count)
 {
   nr_pdcp_ue_t *ue = _ue;
   int srb_id;
