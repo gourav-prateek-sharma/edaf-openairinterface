@@ -1062,6 +1062,36 @@ void nr_pdcp_config_set_security(ue_id_t ue_id,
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
+bool nr_pdcp_check_integrity_srb(ue_id_t ue_id,
+                                 int srb_id,
+                                 const uint8_t *msg,
+                                 int msg_size,
+                                 uint32_t mac,
+                                 uint32_t header,
+                                 uint32_t count)
+{
+  nr_pdcp_ue_t *ue;
+  nr_pdcp_entity_t *rb;
+
+  nr_pdcp_manager_lock(nr_pdcp_ue_manager);
+
+  ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
+
+  rb = nr_pdcp_get_rb(ue, srb_id, true);
+
+  if (rb == NULL) {
+    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %d)\n", ue_id, srb_id);
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return false;
+  }
+
+  bool ret = rb->check_integrity(rb, msg, msg_size, mac, header, count);
+
+  nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+
+  return ret;
+}
+
 bool nr_pdcp_data_req_srb(ue_id_t ue_id,
                           const rb_id_t rb_id,
                           const mui_t muiP,

@@ -296,6 +296,38 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   return header_size + size + integrity_size;
 }
 
+static bool nr_pdcp_entity_check_integrity(struct nr_pdcp_entity_t *entity,
+                                           const uint8_t *buffer,
+                                           int buffer_size,
+                                           uint32_t mac,
+                                           uint32_t header,
+                                           uint32_t count)
+{
+  if (!entity->has_integrity)
+    return false;
+
+  int header_size = (header >> 24) & 0xff;
+
+  uint8_t b[buffer_size + header_size];
+
+  b[0] = (header >> 16) & 0xff;
+  b[1] = (header >> 8) & 0xff;
+  if (header_size == 3)
+    b[2] = header & 0xff;
+  memcpy(b + header_size, buffer, buffer_size);
+
+  unsigned char integrity[4];
+  entity->integrity(entity->integrity_context, integrity,
+                    b, buffer_size + header_size,
+                    entity->rb_id, count, entity->is_gnb ? 0 : 1);
+  uint32_t nmac = (uint32_t)integrity[0]
+                | ((uint32_t)integrity[1] << 8)
+                | ((uint32_t)integrity[2] << 16)
+                | ((uint32_t)integrity[3] << 24);
+
+  return nmac == mac;
+}
+
 /* may be called several times, take care to clean previous settings */
 static void nr_pdcp_entity_set_security(nr_pdcp_entity_t *entity,
                                         int integrity_algorithm,
@@ -568,10 +600,11 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
 
   ret->type = type;
 
-  ret->recv_pdu     = nr_pdcp_entity_recv_pdu;
-  ret->process_sdu  = nr_pdcp_entity_process_sdu;
-  ret->set_security = nr_pdcp_entity_set_security;
-  ret->set_time     = nr_pdcp_entity_set_time;
+  ret->recv_pdu        = nr_pdcp_entity_recv_pdu;
+  ret->process_sdu     = nr_pdcp_entity_process_sdu;
+  ret->set_security    = nr_pdcp_entity_set_security;
+  ret->check_integrity = nr_pdcp_entity_check_integrity;
+  ret->set_time        = nr_pdcp_entity_set_time;
 
   ret->delete_entity = nr_pdcp_entity_delete;
   ret->release_entity = nr_pdcp_entity_release;

@@ -104,6 +104,13 @@ typedef struct nr_pdcp_entity_t {
                        int ciphering_algorithm,
                        char *ciphering_key);
 
+  /* check_integrity is used by RRC */
+  bool (*check_integrity)(struct nr_pdcp_entity_t *entity,
+                          const uint8_t *buffer, int buffer_length,
+                          uint32_t mac,
+                          uint32_t header,
+                          uint32_t count);
+
   void (*set_time)(struct nr_pdcp_entity_t *entity, uint64_t now);
 
   /* callbacks provided to the PDCP module */
