@@ -111,7 +111,6 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     }
   }
 
-  // if there is no system info or no SIB1 and we run in SA mode, we cannot handle it
   const f1ap_gnb_du_system_info_t *sys_info = req->cell[0].sys_info;
   NR_BCCH_BCH_Message_t *mib = NULL;
   NR_SIB1_t *sib1 = NULL;
