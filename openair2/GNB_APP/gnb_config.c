@@ -1104,6 +1104,35 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
   return 1;
 }
 
+static f1ap_tdd_info_t read_tdd_config(const NR_ServingCellConfigCommon_t *scc)
+{
+  const NR_FrequencyInfoDL_t *dl = scc->downlinkConfigCommon->frequencyInfoDL;
+  f1ap_tdd_info_t tdd = {
+      .freqinfo.arfcn = dl->absoluteFrequencyPointA,
+      .freqinfo.band = *dl->frequencyBandList.list.array[0],
+      .tbw.scs = dl->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+      .tbw.nrb = dl->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
+  };
+  return tdd;
+}
+
+static f1ap_fdd_info_t read_fdd_config(const NR_ServingCellConfigCommon_t *scc)
+{
+  const NR_FrequencyInfoDL_t *dl = scc->downlinkConfigCommon->frequencyInfoDL;
+  const NR_FrequencyInfoUL_t *ul = scc->uplinkConfigCommon->frequencyInfoUL;
+  f1ap_fdd_info_t fdd = {
+      .dl_freqinfo.arfcn = dl->absoluteFrequencyPointA,
+      .ul_freqinfo.arfcn = *ul->absoluteFrequencyPointA,
+      .dl_tbw.scs = dl->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+      .ul_tbw.scs = ul->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+      .dl_tbw.nrb = dl->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
+      .ul_tbw.nrb = ul->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
+      .dl_freqinfo.band = *dl->frequencyBandList.list.array[0],
+      .ul_freqinfo.band = *ul->frequencyBandList->list.array[0],
+  };
+  return fdd;
+}
+
 static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
                                          const char *name,
                                          const f1ap_served_cell_info_t *info,
@@ -1129,27 +1158,14 @@ static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
         req->cell[0].info.nr_cellid);
 
   req->cell[0].info.nr_pci = *scc->physCellId;
-  struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
   if (scc->tdd_UL_DL_ConfigurationCommon) {
     LOG_I(GNB_APP, "ngran_DU: Configuring Cell %d for TDD\n", 0);
     req->cell[0].info.mode = F1AP_MODE_TDD;
-    f1ap_tdd_info_t *tdd = &req->cell[0].info.tdd;
-    tdd->freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
-    tdd->tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-    tdd->tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-    tdd->freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
+    req->cell[0].info.tdd = read_tdd_config(scc);
   } else {
     LOG_I(GNB_APP, "ngran_DU: Configuring Cell %d for FDD\n", 0);
     req->cell[0].info.mode = F1AP_MODE_FDD;
-    f1ap_fdd_info_t *fdd = &req->cell[0].info.fdd;
-    fdd->dl_freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
-    fdd->ul_freqinfo.arfcn = *scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
-    fdd->dl_tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-    fdd->ul_tbw.scs = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-    fdd->dl_tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-    fdd->ul_tbw.nrb = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-    fdd->dl_freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
-    fdd->ul_freqinfo.band = *scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[0];
+    req->cell[0].info.fdd = read_fdd_config(scc);
   }
 
   req->cell[0].info.measurement_timing_information = "0";
