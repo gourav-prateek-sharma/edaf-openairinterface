@@ -1181,7 +1181,8 @@ static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
     sys_info->mib = calloc(buf_len, sizeof(*sys_info->mib));
     DevAssert(sys_info->mib != NULL);
     DevAssert(mib != NULL);
-    sys_info->mib_length = encode_MIB_NR(mib, 0, sys_info->mib, buf_len);
+    // encode only the mib message itself
+    sys_info->mib_length = encode_MIB_NR_setup(mib->message.choice.mib, 0, sys_info->mib, buf_len);
     DevAssert(sys_info->mib_length == buf_len);
 
     DevAssert(sib1 != NULL);
