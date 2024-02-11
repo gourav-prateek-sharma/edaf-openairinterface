@@ -46,7 +46,11 @@ static void f1_setup_failure_f1ap(sctp_assoc_t assoc_id, const f1ap_setup_failur
 
 static void gnb_du_configuration_update_ack_f1ap(sctp_assoc_t assoc_id, const f1ap_gnb_du_configuration_update_acknowledge_t *ack)
 {
-  AssertFatal(false, "%s() not implemented\n", __func__);
+  MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE);
+  msg->ittiMsgHeader.originInstance = assoc_id;
+  f1ap_gnb_du_configuration_update_acknowledge_t *f1ap_msg = &F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(msg);
+  *f1ap_msg = *ack;
+  itti_send_msg_to_task(TASK_CU_F1, 0, msg);
 }
 
 static void ue_context_setup_request_f1ap(sctp_assoc_t assoc_id, const f1ap_ue_context_setup_t *req)
