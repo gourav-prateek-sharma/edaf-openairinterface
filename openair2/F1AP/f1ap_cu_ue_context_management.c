@@ -285,7 +285,7 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
   for (int i=0;   i<1;  i++) {
     asn1cSequenceAdd(ie7->value.choice.Candidate_SpCell_List.list,F1AP_Candidate_SpCell_ItemIEs_t, candidate_spCell_item_ies);
     candidate_spCell_item_ies->id            = F1AP_ProtocolIE_ID_id_Candidate_SpCell_Item; // 91
-    candidate_spCell_item_ies->criticality   = F1AP_Criticality_reject;
+    candidate_spCell_item_ies->criticality = F1AP_Criticality_ignore;
     candidate_spCell_item_ies->value.present = F1AP_Candidate_SpCell_ItemIEs__value_PR_Candidate_SpCell_Item;
     /* 7.1 Candidate_SpCell_Item */
     F1AP_Candidate_SpCell_Item_t *candidate_spCell_item=
@@ -375,7 +375,7 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
     for (int i=0; i<f1ap_ue_context_setup_req->srbs_to_be_setup_length; i++) {
       asn1cSequenceAdd(ie11->value.choice.SRBs_ToBeSetup_List.list, F1AP_SRBs_ToBeSetup_ItemIEs_t, srbs_toBeSetup_item_ies);
       srbs_toBeSetup_item_ies->id            = F1AP_ProtocolIE_ID_id_SRBs_ToBeSetup_Item; // 73
-      srbs_toBeSetup_item_ies->criticality   = F1AP_Criticality_ignore;
+      srbs_toBeSetup_item_ies->criticality = F1AP_Criticality_reject;
       srbs_toBeSetup_item_ies->value.present = F1AP_SRBs_ToBeSetup_ItemIEs__value_PR_SRBs_ToBeSetup_Item;
       /* 11.1 SRBs_ToBeSetup_Item */
       F1AP_SRBs_ToBeSetup_Item_t *srbs_toBeSetup_item=&srbs_toBeSetup_item_ies->value.choice.SRBs_ToBeSetup_Item;
@@ -539,7 +539,7 @@ int CU_send_UE_CONTEXT_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_ue_context_setu
   if(f1ap_ue_context_setup_req->rrc_container_length > 0) {
     asn1cSequenceAdd(out->protocolIEs.list, F1AP_UEContextSetupRequestIEs_t, ie14);
     ie14->id                             = F1AP_ProtocolIE_ID_id_RRCContainer;
-    ie14->criticality                    = F1AP_Criticality_reject;
+    ie14->criticality = F1AP_Criticality_ignore;
     ie14->value.present                  = F1AP_UEContextSetupRequestIEs__value_PR_RRCContainer;
     OCTET_STRING_fromBuf(&ie14->value.choice.RRCContainer, (const char *)f1ap_ue_context_setup_req->rrc_container,
                          f1ap_ue_context_setup_req->rrc_container_length);
