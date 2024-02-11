@@ -274,5 +274,18 @@ void dump_du_info(const gNB_RRC_INST *rrc, FILE *f)
     }
     const f1ap_served_cell_info_t *info = &sr->cell[0].info;
     fprintf(f, ": nrCellID %ld, PCI %d\n", info->nr_cellid, info->nr_pci);
+
+    if (info->mode == F1AP_MODE_TDD) {
+      const f1ap_nr_frequency_info_t *fi = &info->tdd.freqinfo;
+      const f1ap_transmission_bandwidth_t *tb = &info->tdd.tbw;
+      fprintf(f, "    TDD: band %d ARFCN %d SCS %d (kHz) PRB %d\n", fi->band, fi->arfcn, 15 * (1 << tb->scs), tb->nrb);
+    } else {
+      const f1ap_nr_frequency_info_t *dfi = &info->fdd.dl_freqinfo;
+      const f1ap_transmission_bandwidth_t *dtb = &info->fdd.dl_tbw;
+      fprintf(f, "    FDD: DL band %d ARFCN %d SCS %d (kHz) PRB %d\n", dfi->band, dfi->arfcn, 15 * (1 << dtb->scs), dtb->nrb);
+      const f1ap_nr_frequency_info_t *ufi = &info->fdd.ul_freqinfo;
+      const f1ap_transmission_bandwidth_t *utb = &info->fdd.ul_tbw;
+      fprintf(f, "         UL band %d ARFCN %d SCS %d (kHz) PRB %d\n", ufi->band, ufi->arfcn, 15 * (1 << utb->scs), utb->nrb);
+    }
   }
 }
