@@ -44,6 +44,11 @@ static void f1_setup_failure_f1ap(sctp_assoc_t assoc_id, const f1ap_setup_failur
   itti_send_msg_to_task(TASK_CU_F1, 0, msg);
 }
 
+static void gnb_du_configuration_update_ack_f1ap(sctp_assoc_t assoc_id, const f1ap_gnb_du_configuration_update_acknowledge_t *ack)
+{
+  AssertFatal(false, "%s() not implemented\n", __func__);
+}
+
 static void ue_context_setup_request_f1ap(sctp_assoc_t assoc_id, const f1ap_ue_context_setup_t *req)
 {
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_UE_CONTEXT_SETUP_REQ);
@@ -208,6 +213,7 @@ void mac_rrc_dl_f1ap_init(nr_mac_rrc_dl_if_t *mac_rrc)
 {
   mac_rrc->f1_setup_response = f1_setup_response_f1ap;
   mac_rrc->f1_setup_failure = f1_setup_failure_f1ap;
+  mac_rrc->gnb_du_configuration_update_acknowledge = gnb_du_configuration_update_ack_f1ap;
   mac_rrc->ue_context_setup_request = ue_context_setup_request_f1ap;
   mac_rrc->ue_context_modification_request = ue_context_modification_request_f1ap;
   mac_rrc->ue_context_modification_confirm = ue_context_modification_confirm_f1ap;
