@@ -98,6 +98,11 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
   itti_send_msg_to_task(TASK_DU_F1, 0, msg);
 }
 
+static void gnb_du_configuration_update_f1ap(const f1ap_gnb_du_configuration_update_t *upd)
+{
+  AssertFatal(false, "%s() not implemented\n", __func__);
+}
+
 static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, const f1ap_ue_context_setup_t *resp)
 {
   DevAssert(req->drbs_to_be_setup_length == resp->drbs_to_be_setup_length);
@@ -237,6 +242,7 @@ static void initial_ul_rrc_message_transfer_f1ap(module_id_t module_id, const f1
 void mac_rrc_ul_f1ap_init(struct nr_mac_rrc_ul_if_s *mac_rrc)
 {
   mac_rrc->f1_setup_request = f1_setup_request_f1ap;
+  mac_rrc->gnb_du_configuration_update = gnb_du_configuration_update_f1ap;
   mac_rrc->ue_context_setup_response = ue_context_setup_response_f1ap;
   mac_rrc->ue_context_modification_response = ue_context_modification_response_f1ap;
   mac_rrc->ue_context_modification_required = ue_context_modification_required_f1ap;

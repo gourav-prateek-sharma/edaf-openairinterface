@@ -39,7 +39,7 @@ static void f1_setup_failure_direct(sctp_assoc_t assoc_id, const f1ap_setup_fail
 static void gnb_du_configuration_update_ack_direct(sctp_assoc_t assoc_id, const f1ap_gnb_du_configuration_update_acknowledge_t *ack)
 {
   AssertFatal(assoc_id == -1, "illegal assoc_id %d\n", assoc_id);
-  AssertFatal(false, "%s() not implemented\n", __func__);
+  gnb_du_configuration_update_acknowledge(ack);
 }
 
 static void ue_context_setup_request_direct(sctp_assoc_t assoc_id, const f1ap_ue_context_setup_t *req)
