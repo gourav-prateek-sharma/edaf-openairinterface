@@ -100,7 +100,35 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
 
 static void gnb_du_configuration_update_f1ap(const f1ap_gnb_du_configuration_update_t *upd)
 {
-  AssertFatal(false, "%s() not implemented\n", __func__);
+  MessageDef *msg = itti_alloc_new_message(TASK_MAC_GNB, 0, F1AP_GNB_DU_CONFIGURATION_UPDATE);
+  f1ap_gnb_du_configuration_update_t *f1_upd = &F1AP_GNB_DU_CONFIGURATION_UPDATE(msg);
+  f1_upd->transaction_id = upd->transaction_id;
+  AssertFatal(upd->num_cells_to_add == 0, "gNB-DU config update: cells to add not supported\n");
+  f1_upd->num_cells_to_modify = upd->num_cells_to_modify;
+  for (int n = 0; n < upd->num_cells_to_modify; ++n) {
+    f1_upd->cell_to_modify[n].old_plmn = upd->cell_to_modify[n].old_plmn;
+    f1_upd->cell_to_modify[n].old_nr_cellid = upd->cell_to_modify[n].old_nr_cellid;
+    f1_upd->cell_to_modify[n].info = upd->cell_to_modify[n].info;
+    if (upd->cell_to_modify[n].sys_info) {
+      f1ap_gnb_du_system_info_t *orig_sys_info = upd->cell_to_modify[n].sys_info;
+      f1ap_gnb_du_system_info_t *copy_sys_info = calloc(1, sizeof(*copy_sys_info));
+      f1_upd->cell_to_modify[n].sys_info = copy_sys_info;
+
+      copy_sys_info->mib = calloc(orig_sys_info->mib_length, sizeof(uint8_t));
+      AssertFatal(copy_sys_info->mib != NULL, "out of memory\n");
+      memcpy(copy_sys_info->mib, orig_sys_info->mib, orig_sys_info->mib_length);
+      copy_sys_info->mib_length = orig_sys_info->mib_length;
+
+      if (orig_sys_info->sib1_length > 0) {
+        copy_sys_info->sib1 = calloc(orig_sys_info->sib1_length, sizeof(uint8_t));
+        AssertFatal(copy_sys_info->sib1 != NULL, "out of memory\n");
+        memcpy(copy_sys_info->sib1, orig_sys_info->sib1, orig_sys_info->sib1_length);
+        copy_sys_info->sib1_length = orig_sys_info->sib1_length;
+      }
+    }
+  }
+  AssertFatal(upd->num_cells_to_delete == 0, "gNB-DU config update: cells to add not supported\n");
+  itti_send_msg_to_task(TASK_DU_F1, 0, msg);
 }
 
 static void ue_context_setup_response_f1ap(const f1ap_ue_context_setup_t *req, const f1ap_ue_context_setup_t *resp)
