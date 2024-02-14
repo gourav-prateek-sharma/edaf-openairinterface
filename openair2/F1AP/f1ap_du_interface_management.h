@@ -50,7 +50,7 @@ int DU_handle_ERROR_INDICATION(instance_t instance, sctp_assoc_t assoc_id, uint3
 /*
  * F1 Setup
  */
-int DU_send_F1_SETUP_REQUEST(sctp_assoc_t assoc_id, f1ap_setup_req_t *setup_req);
+int DU_send_F1_SETUP_REQUEST(sctp_assoc_t assoc_id, const f1ap_setup_req_t *setup_req);
 
 int DU_handle_F1_SETUP_RESPONSE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu);
 
