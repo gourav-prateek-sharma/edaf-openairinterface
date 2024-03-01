@@ -2707,3 +2707,94 @@ int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint
 
   return 0;
 }
+
+/* F1AP UE Context Management Procedures */
+
+//-----------------------------------------------------------------------------
+void rrc_gNB_generate_UeContextSetupRequest(const gNB_RRC_INST *rrc,
+                                            rrc_gNB_ue_context_t *const ue_context_pP,
+                                            int n_drbs,
+                                            const f1ap_drb_to_be_setup_t *drbs)
+//-----------------------------------------------------------------------------
+{
+  gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+  AssertFatal(!ue_p->f1_ue_context_active, "logic error: ue context already active\n");
+
+  AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
+
+  cu_to_du_rrc_information_t cu2du = {0};
+  cu_to_du_rrc_information_t *cu2du_p = NULL;
+  if (ue_p->ue_cap_buffer.len > 0 && ue_p->ue_cap_buffer.buf != NULL) {
+    cu2du_p = &cu2du;
+    cu2du.uE_CapabilityRAT_ContainerList = ue_p->ue_cap_buffer.buf;
+    cu2du.uE_CapabilityRAT_ContainerList_length = ue_p->ue_cap_buffer.len;
+  }
+
+  int nb_srb = 1;
+  f1ap_srb_to_be_setup_t srbs[1] = {{.srb_id = 2, .lcid = 2}};
+  activate_srb(ue_p, 2);
+
+  /* the callback will fill the UE context setup request and forward it */
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
+  RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  f1ap_ue_context_setup_t ue_context_setup_req = {
+      .gNB_CU_ue_id = ue_p->rrc_ue_id,
+      .gNB_DU_ue_id = ue_data.secondary_ue,
+      .plmn.mcc = rrc->configuration.mcc[0],
+      .plmn.mnc = rrc->configuration.mnc[0],
+      .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+      .nr_cellid = rrc->nr_cellid,
+      .servCellId = 0, /* TODO: correct value? */
+      .srbs_to_be_setup_length = nb_srb,
+      .srbs_to_be_setup = srbs,
+      .drbs_to_be_setup_length = n_drbs,
+      .drbs_to_be_setup = (f1ap_drb_to_be_setup_t *)drbs,
+      .cu_to_du_rrc_information = cu2du_p,
+  };
+
+  rrc->mac_rrc.ue_context_setup_request(ue_data.du_assoc_id, &ue_context_setup_req);
+  LOG_I(RRC, "UE %d trigger UE context setup request with %d DRBs\n", ue_p->rrc_ue_id, n_drbs);
+}
+
+//-----------------------------------------------------------------------------
+void rrc_gNB_generate_UeContextModificationRequest(const gNB_RRC_INST *rrc,
+                                                   rrc_gNB_ue_context_t *const ue_context_pP,
+                                                   int n_drbs,
+                                                   const f1ap_drb_to_be_setup_t *drbs,
+                                                   int n_rel_drbs,
+                                                   const f1ap_drb_to_be_released_t *rel_drbs)
+//-----------------------------------------------------------------------------
+{
+  gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
+  AssertFatal(ue_p->f1_ue_context_active, "logic error: calling ue context modification when context not established\n");
+  AssertFatal(ue_p->Srb[1].Active && ue_p->Srb[2].Active, "SRBs should already be active\n");
+
+  AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
+
+  cu_to_du_rrc_information_t cu2du = {0};
+  cu_to_du_rrc_information_t *cu2du_p = NULL;
+  if (ue_p->ue_cap_buffer.len > 0 && ue_p->ue_cap_buffer.buf != NULL) {
+    cu2du_p = &cu2du;
+    cu2du.uE_CapabilityRAT_ContainerList = ue_p->ue_cap_buffer.buf;
+    cu2du.uE_CapabilityRAT_ContainerList_length = ue_p->ue_cap_buffer.len;
+  }
+
+  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
+  RETURN_IF_INVALID_ASSOC_ID(ue_data);
+  f1ap_ue_context_modif_req_t ue_context_modif_req = {
+      .gNB_CU_ue_id = ue_p->rrc_ue_id,
+      .gNB_DU_ue_id = ue_data.secondary_ue,
+      .plmn.mcc = rrc->configuration.mcc[0],
+      .plmn.mnc = rrc->configuration.mnc[0],
+      .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
+      .nr_cellid = rrc->nr_cellid,
+      .servCellId = 0, /* TODO: correct value? */
+      .drbs_to_be_setup_length = n_drbs,
+      .drbs_to_be_setup = (f1ap_drb_to_be_setup_t *)drbs,
+      .drbs_to_be_released_length = n_rel_drbs,
+      .drbs_to_be_released = (f1ap_drb_to_be_released_t *)rel_drbs,
+      .cu_to_du_rrc_information = cu2du_p,
+  };
+  rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+  LOG_I(RRC, "UE %d trigger UE context modification request with %d DRBs\n", ue_p->rrc_ue_id, n_drbs);
+}

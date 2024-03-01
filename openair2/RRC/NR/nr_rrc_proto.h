@@ -169,4 +169,19 @@ int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib, uint3
 
 void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue_p, uint8_t srb_id, const uint8_t* buffer, int size);
 /** @}*/
+
+/* UE Management Procedures */
+
+void rrc_gNB_generate_UeContextSetupRequest(const gNB_RRC_INST *rrc,
+                                            rrc_gNB_ue_context_t *const ue_context_pP,
+                                            int n_drbs,
+                                            const f1ap_drb_to_be_setup_t *drbs);
+
+void rrc_gNB_generate_UeContextModificationRequest(const gNB_RRC_INST *rrc,
+                                                   rrc_gNB_ue_context_t *const ue_context_pP,
+                                                   int n_drbs,
+                                                   const f1ap_drb_to_be_setup_t *drbs,
+                                                   int n_rel_drbs,
+                                                   const f1ap_drb_to_be_released_t *rel_drbs);
+
 #endif
