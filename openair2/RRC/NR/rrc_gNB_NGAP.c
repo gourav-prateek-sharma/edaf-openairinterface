@@ -494,9 +494,10 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
   nr_rrc_pdcp_config_security(&ctxt, ue_context_p, 0);
 
   uint8_t nb_pdusessions_tosetup = req->nb_of_pdusessions;
-  /* if there are PDU sessions to setup, first send them to the CU-UP, then
-   * send the UE Context setup with Security commend. Else go to the security
-   * command directly. */
+  /* if there are PDU sessions to setup, first send them to the CU-UP.
+   * Once the E1 bearer are activated, the CUCP will trigger the context
+   * setup. */
+  AssertFatal(nb_pdusessions_tosetup == 0, "no UE context setup request, so can't setup PDU sessions\n");
   if (nb_pdusessions_tosetup > 0) {
     trigger_bearer_setup(RC.nrrrc[instance],
                          UE,
@@ -504,7 +505,7 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
                          req->pdusession_param,
                          /*req->ueAggMaxBitRateDownlink*/ 0);
   } else {
-    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p, 0, NULL);
+    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p);
   }
 
   return 0;

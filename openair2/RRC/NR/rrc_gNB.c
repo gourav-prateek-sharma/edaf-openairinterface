@@ -2105,11 +2105,9 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
   }
 
   if (!UE->as_security_active) {
-    /* no AS security active, need to send UE context setup req with security
-     * command (and the bearers) */
+    /* no AS security active, need to activate security before data*/
     protocol_ctxt_t ctxt = {.rntiMaybeUEid = UE->rrc_ue_id};
-    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p, nb_drb, drbs);
-    return;
+    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p);
   }
 
   /* Gather UE capability if present */
@@ -2470,81 +2468,31 @@ void *rrc_gnb_task(void *args_p) {
   }
 }
 
-typedef struct deliver_ue_ctxt_setup_data_t {
-  gNB_RRC_INST *rrc;
-  f1ap_ue_context_setup_t *setup_req;
-  sctp_assoc_t assoc_id;
-} deliver_ue_ctxt_setup_data_t;
-static void rrc_deliver_ue_ctxt_setup_req(void *deliver_pdu_data, ue_id_t ue_id, int srb_id, char *buf, int size, int sdu_id)
-{
-  DevAssert(deliver_pdu_data != NULL);
-  deliver_ue_ctxt_setup_data_t *data = deliver_pdu_data;
-  data->setup_req->rrc_container = (uint8_t*)buf;
-  data->setup_req->rrc_container_length = size;
-  data->rrc->mac_rrc.ue_context_setup_request(data->assoc_id, data->setup_req);
-}
-
 //-----------------------------------------------------------------------------
-void
-rrc_gNB_generate_SecurityModeCommand(
-  const protocol_ctxt_t *const ctxt_pP,
-  rrc_gNB_ue_context_t  *const ue_context_pP,
-  int n_drbs,
-  const f1ap_drb_to_be_setup_t *drbs
-)
+void rrc_gNB_generate_SecurityModeCommand(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *const ue_context_pP)
 //-----------------------------------------------------------------------------
 {
-  uint8_t                             buffer[100];
-  uint8_t                             size;
+  uint8_t buffer[100];
+  uint8_t size;
   gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
   AssertFatal(!ue_p->as_security_active, "logic error: security already active\n");
 
-  T(T_ENB_RRC_SECURITY_MODE_COMMAND, T_INT(ctxt_pP->module_id), T_INT(ctxt_pP->frame), T_INT(ctxt_pP->subframe), T_INT(ctxt_pP->rntiMaybeUEid));
+  T(T_ENB_RRC_SECURITY_MODE_COMMAND,
+    T_INT(ctxt_pP->module_id),
+    T_INT(ctxt_pP->frame),
+    T_INT(ctxt_pP->subframe),
+    T_INT(ctxt_pP->rntiMaybeUEid));
   NR_IntegrityProtAlgorithm_t integrity_algorithm = (NR_IntegrityProtAlgorithm_t)ue_p->integrity_algorithm;
-  size = do_NR_SecurityModeCommand(ctxt_pP, buffer, rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id), ue_p->ciphering_algorithm, integrity_algorithm);
-  LOG_DUMPMSG(NR_RRC,DEBUG_RRC,(char *)buffer,size,"[MSG] RRC Security Mode Command\n");
+  size = do_NR_SecurityModeCommand(ctxt_pP,
+                                   buffer,
+                                   rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id),
+                                   ue_p->ciphering_algorithm,
+                                   integrity_algorithm);
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, (char *)buffer, size, "[MSG] RRC Security Mode Command\n");
   LOG_I(NR_RRC, "UE %u Logical Channel DL-DCCH, Generate SecurityModeCommand (bytes %d)\n", ue_p->rrc_ue_id, size);
 
   gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
-  AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
-
-  cu_to_du_rrc_information_t cu2du = {0};
-  cu_to_du_rrc_information_t *cu2du_p = NULL;
-  if (ue_p->ue_cap_buffer.len > 0 && ue_p->ue_cap_buffer.buf != NULL) {
-    cu2du_p = &cu2du;
-    cu2du.uE_CapabilityRAT_ContainerList = ue_p->ue_cap_buffer.buf;
-    cu2du.uE_CapabilityRAT_ContainerList_length = ue_p->ue_cap_buffer.len;
-  }
-
-  int nb_srb = 0;
-  f1ap_srb_to_be_setup_t srb_buf[1] = {0};
-  f1ap_srb_to_be_setup_t *srbs = 0;
-  if (n_drbs > 0) {
-    nb_srb = 1;
-    srb_buf[0].srb_id = 2;
-    srb_buf[0].lcid = 2;
-    srbs = srb_buf;
-  }
-
-  /* the callback will fill the UE context setup request and forward it */
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
-  RETURN_IF_INVALID_ASSOC_ID(ue_data);
-  f1ap_ue_context_setup_t ue_context_setup_req = {
-      .gNB_CU_ue_id = ue_p->rrc_ue_id,
-      .gNB_DU_ue_id = ue_data.secondary_ue,
-      .plmn.mcc = rrc->configuration.mcc[0],
-      .plmn.mnc = rrc->configuration.mnc[0],
-      .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
-      .nr_cellid = rrc->nr_cellid,
-      .servCellId = 0, /* TODO: correct value? */
-      .srbs_to_be_setup_length = nb_srb,
-      .srbs_to_be_setup = srbs,
-      .drbs_to_be_setup_length = n_drbs,
-      .drbs_to_be_setup = (f1ap_drb_to_be_setup_t *) drbs,
-      .cu_to_du_rrc_information = cu2du_p,
-  };
-  deliver_ue_ctxt_setup_data_t data = {.rrc = rrc, .setup_req = &ue_context_setup_req, .assoc_id = ue_data.du_assoc_id };
-  nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_setup_req, &data);
+  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
 }
 
 void
