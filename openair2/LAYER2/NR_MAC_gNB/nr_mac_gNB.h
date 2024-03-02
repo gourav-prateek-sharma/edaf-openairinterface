@@ -116,9 +116,8 @@ typedef enum {
   nrRA_Msg2 = 1,
   nrRA_WAIT_Msg3 = 2,
   nrRA_Msg3_retransmission = 3,
-  nrRA_Msg3_dcch_dtch = 4,
-  nrRA_Msg4 = 5,
-  nrRA_WAIT_Msg4_ACK = 6
+  nrRA_Msg4 = 4,
+  nrRA_WAIT_Msg4_ACK = 5,
 } RA_gNB_state_t;
 static const char *const nrra_text[] =
     {"IDLE", "Msg2", "WAIT_Msg3", "Msg3_retransmission", "Msg3_dcch_dtch", "Msg4", "WAIT_Msg4_ACK"};
