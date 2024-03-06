@@ -60,6 +60,40 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 #-----------------------------------------------------------
+# Helper functions used here and in other classes
+#-----------------------------------------------------------
+def Iperf_ComputeModifiedBW(idx, ue_num, profile, args):
+	result = re.search('-b\s*(?P<iperf_bandwidth>[0-9\.]+)(?P<unit>[KMG])', str(args))
+	if result is None:
+		raise Exception('Iperf bandwidth not found or in incorrect format!')
+	iperf_bandwidth = result.group('iperf_bandwidth')
+	if profile == 'balanced':
+		iperf_bandwidth_new = float(iperf_bandwidth)/ue_num
+	if profile == 'single-ue':
+		iperf_bandwidth_new = float(iperf_bandwidth)
+	if profile == 'unbalanced':
+		# residual is 2% of max bw
+		residualBW = float(iperf_bandwidth) / 50
+		if idx == 0:
+			iperf_bandwidth_new = float(iperf_bandwidth) - ((ue_num - 1) * residualBW)
+		else:
+			iperf_bandwidth_new = residualBW
+	iperf_bandwidth_str = result.group(0)
+	iperf_bandwidth_unit = result.group(2)
+	iperf_bandwidth_str_new = f"-b {'%.2f' % iperf_bandwidth_new}{iperf_bandwidth_unit}"
+	result = re.sub(iperf_bandwidth_str, iperf_bandwidth_str_new, str(args))
+	if result is None:
+		raise Exception('Calculate Iperf bandwidth failed!')
+	return result
+
+def Iperf_ComputeTime(args):
+	result = re.search('-t\s*(?P<iperf_time>\d+)', str(args))
+	if result is None:
+		raise Exception('Iperf time not found!')
+	return int(result.group('iperf_time'))
+
+
+#-----------------------------------------------------------
 # OaiCiTest Class Definition
 #-----------------------------------------------------------
 class OaiCiTest():
@@ -604,38 +638,6 @@ class OaiCiTest():
 		else:
 			HTML.CreateHtmlTestRowQueue(self.ping_args, 'KO', messages)
 			self.AutoTerminateUEandeNB(HTML,RAN,EPC,CONTAINERS)
-
-	def Iperf_ComputeTime(self):
-		result = re.search('-t (?P<iperf_time>\d+)', str(self.iperf_args))
-		if result is None:
-			logging.debug('\u001B[1;37;41m Iperf time Not Found! \u001B[0m')
-			sys.exit(1)
-		return result.group('iperf_time')
-
-	def Iperf_ComputeModifiedBW(self, idx, ue_num):
-		result = re.search('-b (?P<iperf_bandwidth>[0-9\.]+)[KMG]', str(self.iperf_args))
-		if result is None:
-			logging.error('\u001B[1;37;41m Iperf bandwidth Not Found! \u001B[0m')
-			sys.exit(1)
-		iperf_bandwidth = result.group('iperf_bandwidth')
-		if self.iperf_profile == 'balanced':
-			iperf_bandwidth_new = float(iperf_bandwidth)/ue_num
-		if self.iperf_profile == 'single-ue':
-			iperf_bandwidth_new = float(iperf_bandwidth)
-		if self.iperf_profile == 'unbalanced':
-			# residual is 2% of max bw
-			residualBW = float(iperf_bandwidth) / 50
-			if idx == 0:
-				iperf_bandwidth_new = float(iperf_bandwidth) - ((ue_num - 1) * residualBW)
-			else:
-				iperf_bandwidth_new = residualBW
-		iperf_bandwidth_str = f'-b {iperf_bandwidth}'
-		iperf_bandwidth_str_new = f"-b {'%.2f' % iperf_bandwidth_new}"
-		result = re.sub(iperf_bandwidth_str, iperf_bandwidth_str_new, str(self.iperf_args))
-		if result is None:
-			logging.error('\u001B[1;37;41m Calculate Iperf bandwidth Failed! \u001B[0m')
-			sys.exit(1)
-		return result
 
 	def Iperf_analyzeV2TCPOutput(self, SSH, filename):
 
