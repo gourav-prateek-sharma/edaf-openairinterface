@@ -689,8 +689,7 @@ void polar_encoder_fast(uint64_t *A,
 #endif
 
   uint64_t D[8];
-//  nr_polar_uxG(D, u, polarParams->G_N_tab, polarParams->N);
-  nr_polar_uxG2((uint8_t*)D, (uint8_t*)u, polarParams->N);
+  nr_polar_uxG((uint8_t *)u, polarParams->N, (uint8_t *)D);
 
 #ifdef POLAR_CODING_DEBUG
   printf("d: ");

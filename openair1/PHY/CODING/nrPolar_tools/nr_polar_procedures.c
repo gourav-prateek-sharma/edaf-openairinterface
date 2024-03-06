@@ -138,8 +138,8 @@ void encode_packed_byte(uint8_t* in_out)
 static
 void polar_encode_bits(uint8_t* in_out, size_t N)
 {
-  int num_bytes_per_block = N >> 3;
-  for(int i = 0; i < num_bytes_per_block; ++i){
+  size_t const num_bytes_per_block = N >> 3;
+  for(size_t i = 0; i < num_bytes_per_block; ++i){
     encode_packed_byte(&in_out[i]);
   }
 }
@@ -156,12 +156,12 @@ uint32_t log2_floor(uint32_t x)
 static
 void polar_encode_bytes(uint8_t* in_out, size_t N)
 {
-  int brnch_sz = 1;
-  int n_brnch = N >> 4;
+  size_t brnch_sz = 1;
+  size_t n_brnch = N >> 4;
   size_t const blck_pwr = log2_floor(N); 
-  for (int stage = 3; stage < blck_pwr; ++stage) {
-    for (int brnch = 0; brnch < n_brnch; ++brnch) {
-        for(int byte = 0; byte < brnch_sz; ++byte){
+  for (size_t stage = 3; stage < blck_pwr; ++stage) {
+    for (size_t brnch = 0; brnch < n_brnch; ++brnch) {
+        for(size_t byte = 0; byte < brnch_sz; ++byte){
           size_t const dst = 2*brnch_sz*brnch + byte;
           in_out[dst] ^= in_out[dst + brnch_sz];
         }
@@ -171,7 +171,7 @@ void polar_encode_bytes(uint8_t* in_out, size_t N)
   }
 }
 
-void nr_polar_uxG2(uint8_t* D2, uint8_t const* u, size_t N)
+void nr_polar_uxG(uint8_t const *u, size_t N, uint8_t *D2)
 {
   uint8_t tmp[N/8];
   for(int i = 0; i < N/8; ++i)
@@ -184,23 +184,6 @@ void nr_polar_uxG2(uint8_t* D2, uint8_t const* u, size_t N)
   polar_encode_bits(D2, N);
   // Xor the remaining tree levels. Use bytes for it
   polar_encode_bytes(D2, N);
-}
-
-void nr_polar_uxG(uint64_t *D, const uint64_t *u, const fourDimArray_t *G_N_tab, uint16_t N)
-{
-  const int N64 = N / 64;
-  cast2Darray(g_n, uint64_t, G_N_tab);
-  for (int n = 0; n < N; n++) {
-    const uint64_t *Gn = g_n[N - 1 - n];
-
-    int n_ones = 0;
-    for (int a = 0; a < N64; a++)
-      n_ones += count_bits_set(u[a] & Gn[a]);
-
-    int n1 = n / 64;
-    int n2 = n - (n1 * 64);
-    D[n1] |= ((uint64_t)n_ones & 1) << n2;
-  }
 }
 
 void nr_polar_bit_insertion(uint8_t *input,
