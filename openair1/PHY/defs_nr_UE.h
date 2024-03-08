@@ -314,7 +314,6 @@ typedef struct NR_UE_SSB {
   uint32_t metric; // metric to order SSB hypothesis
   uint32_t c_re;
   uint32_t c_im;
-  struct NR_UE_SSB *next_ssb;
 } NR_UE_SSB;
 
 typedef struct UE_NR_SCAN_INFO_s {
