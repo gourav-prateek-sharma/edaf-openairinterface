@@ -92,15 +92,15 @@ void nr_ue_measurements(PHY_VARS_NR_UE *ue,
               int,
               ue->measurements.rx_spatial_power,
               NUMBER_OF_CONNECTED_gNB_MAX,
-              cmax(frame_parms->nb_antenna_ports_gNB,1),
-              cmax(frame_parms->nb_antennas_rx,1),
+              cmax(frame_parms->nb_antenna_ports_gNB, 1),
+              cmax(frame_parms->nb_antennas_rx, 1),
               false);
   allocCast3D(rx_spatial_power_dB,
               unsigned short,
               ue->measurements.rx_spatial_power_dB,
               NUMBER_OF_CONNECTED_gNB_MAX,
-              cmax(frame_parms->nb_antenna_ports_gNB,1),
-	      cmax(frame_parms->nb_antennas_rx,1),
+              cmax(frame_parms->nb_antenna_ports_gNB, 1),
+              cmax(frame_parms->nb_antennas_rx, 1),
               false);
 
   // signal measurements
