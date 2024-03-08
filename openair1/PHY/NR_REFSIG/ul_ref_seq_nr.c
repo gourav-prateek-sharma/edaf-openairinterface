@@ -202,10 +202,11 @@ void generate_lowpapr_typ1_refsig_sequences(unsigned int scaling)
 {
   /* prevent multiple calls, relevant when both UE & gNB initialize this */
   static bool already_called = false;
-  if (already_called) return;
+  if (already_called)
+    return;
   already_called = true;
 
-	unsigned int u,Msc_RS;
+  unsigned int u, Msc_RS;
   unsigned int v = 0; // sequence hopping and group hopping are not supported yet
 
   for (Msc_RS=0; Msc_RS <= INDEX_SB_LESS_32; Msc_RS++) {  	

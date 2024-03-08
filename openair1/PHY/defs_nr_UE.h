@@ -311,9 +311,7 @@ typedef struct {
 typedef struct NR_UE_SSB {
   uint8_t i_ssb;   // i_ssb between 0 and 7 (it corresponds to ssb_index only for Lmax=4,8)
   uint8_t n_hf;    // n_hf = 0,1 for Lmax =4 or n_hf = 0 for Lmax =8,64
-  uint32_t metric; // metric to order SSB hypothesis
-  uint32_t c_re;
-  uint32_t c_im;
+  c32_t c;
 } NR_UE_SSB;
 
 typedef struct UE_NR_SCAN_INFO_s {

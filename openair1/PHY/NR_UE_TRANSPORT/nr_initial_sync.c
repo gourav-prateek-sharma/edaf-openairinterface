@@ -74,14 +74,11 @@ int nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
       for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
         nr_pbch_dmrs_correlation(ue, proc, i, i - pbch_initial_symbol, current_ssb, rxdataF);
       stop_meas(&ue->dlsch_channel_estimation_stats);
-
-      current_ssb->metric = current_ssb->c_re * current_ssb->c_re + current_ssb->c_im * current_ssb->c_im;
       current_ssb++;
     }
   }
 
-  NR_UE_SSB *temp_ptr=best_ssb;
-  while (ret!=0 && temp_ptr != NULL) {
+  for (NR_UE_SSB *temp_ptr = best_ssb; ret != 0 && temp_ptr < best_ssb + N_L * N_hf; temp_ptr++) {
     start_meas(&ue->dlsch_channel_estimation_stats);
     // computing channel estimation for selected best ssb
     const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
@@ -107,8 +104,6 @@ int nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
                    1,
                    1);
     }
-
-    temp_ptr++;
   }
 
   if (ret == 0) {

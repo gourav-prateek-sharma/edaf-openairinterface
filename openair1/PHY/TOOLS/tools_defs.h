@@ -309,6 +309,25 @@ The function implemented is : \f$\mathbf{y} = y + \alpha\mathbf{x}\f$
 */
   void multadd_real_vector_complex_scalar(const int16_t *x, const int16_t *alpha, int16_t *y, uint32_t N);
 
+  // Same with correct types
+  static inline void multaddRealVectorComplexScalar(const c16_t *in, const c16_t alpha, c16_t *out, uint32_t N)
+  {
+    // do 8 multiplications at a time
+    simd_q15_t *x_128 = (simd_q15_t *)in, *y_128 = (simd_q15_t *)out;
+
+    //  printf("alpha = %d,%d\n",alpha[0],alpha[1]);
+    const simd_q15_t alpha_r_128 = set1_int16(alpha.r);
+    const simd_q15_t alpha_i_128 = set1_int16(alpha.i);
+    for (unsigned int i = 0; i < N >> 3; i++) {
+      const simd_q15_t yr = mulhi_s1_int16(alpha_r_128, x_128[i]);
+      const simd_q15_t yi = mulhi_s1_int16(alpha_i_128, x_128[i]);
+      const simd_q15_t tmp = simde_mm_loadu_si128(y_128);
+      simde_mm_storeu_si128(y_128++, simde_mm_adds_epi16(tmp, simde_mm_unpacklo_epi16(yr, yi)));
+      const simd_q15_t tmp2 = simde_mm_loadu_si128(y_128);
+      simde_mm_storeu_si128(y_128++, simde_mm_adds_epi16(tmp2, simde_mm_unpackhi_epi16(yr, yi)));
+    }
+  }
+
 static __attribute__((always_inline)) inline void multadd_real_four_symbols_vector_complex_scalar(const int16_t *x,
                                                                                            c16_t *alpha,
                                                                                            c16_t *y)
