@@ -140,7 +140,8 @@ typedef struct f1ap_served_cell_info_t {
     f1ap_tdd_info_t tdd;
   };
 
-  char *measurement_timing_information;
+  uint8_t *measurement_timing_config;
+  int measurement_timing_config_len;
 } f1ap_served_cell_info_t;
 
 typedef struct f1ap_gnb_du_system_info_t {

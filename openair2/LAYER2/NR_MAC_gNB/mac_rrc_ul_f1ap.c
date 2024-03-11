@@ -69,8 +69,14 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
       AssertFatal(f1ap_setup->cell[n].info.tac != NULL, "out of memory\n");
       *f1ap_setup->cell[n].info.tac = *req->cell[n].info.tac;
     }
-    if (req->cell[n].info.measurement_timing_information)
-      f1ap_setup->cell[n].info.measurement_timing_information = strdup(req->cell[n].info.measurement_timing_information);
+    if (req->cell[n].info.measurement_timing_config_len > 0) {
+      f1ap_setup->cell[n].info.measurement_timing_config = calloc(req->cell[n].info.measurement_timing_config_len, sizeof(uint8_t));
+      AssertFatal(f1ap_setup->cell[n].info.measurement_timing_config != NULL, "out of memory\n");
+      memcpy(f1ap_setup->cell[n].info.measurement_timing_config,
+             req->cell[n].info.measurement_timing_config,
+             req->cell[n].info.measurement_timing_config_len);
+      f1ap_setup->cell[n].info.measurement_timing_config_len = req->cell[n].info.measurement_timing_config_len;
+    }
 
     if (req->cell[n].sys_info) {
       f1ap_gnb_du_system_info_t *orig_sys_info = req->cell[n].sys_info;

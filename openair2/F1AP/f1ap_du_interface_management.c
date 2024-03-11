@@ -196,10 +196,9 @@ static F1AP_Served_Cell_Information_t encode_served_cell_info(const f1ap_served_
   }
 
   /* - measurementTimingConfiguration */
-  char *measurementTimingConfiguration = c->measurement_timing_information;
   OCTET_STRING_fromBuf(&scell_info.measurementTimingConfiguration,
-                       measurementTimingConfiguration,
-                       strlen(measurementTimingConfiguration));
+                       (const char *)c->measurement_timing_config,
+                       c->measurement_timing_config_len);
 
   return scell_info;
 }

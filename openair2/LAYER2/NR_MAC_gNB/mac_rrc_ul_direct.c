@@ -39,8 +39,14 @@ static void f1_setup_request_direct(const f1ap_setup_req_t *req)
       AssertFatal(f1ap_msg->cell[n].info.tac != NULL, "out of memory\n");
       *f1ap_msg->cell[n].info.tac = *req->cell[n].info.tac;
     }
-    if (req->cell[n].info.measurement_timing_information)
-      f1ap_msg->cell[n].info.measurement_timing_information = strdup(req->cell[n].info.measurement_timing_information);
+    if (req->cell[n].info.measurement_timing_config_len > 0) {
+      f1ap_msg->cell[n].info.measurement_timing_config = calloc(req->cell[n].info.measurement_timing_config_len, sizeof(uint8_t));
+      AssertFatal(f1ap_msg->cell[n].info.measurement_timing_config != NULL, "out of memory\n");
+      memcpy(f1ap_msg->cell[n].info.measurement_timing_config,
+             req->cell[n].info.measurement_timing_config,
+             req->cell[n].info.measurement_timing_config_len);
+      f1ap_msg->cell[n].info.measurement_timing_config_len = req->cell[n].info.measurement_timing_config_len;
+    }
 
     if (req->cell[n].sys_info) {
       f1ap_gnb_du_system_info_t *orig_sys_info = req->cell[n].sys_info;
@@ -85,9 +91,15 @@ static void gnb_du_configuration_update_direct(const f1ap_gnb_du_configuration_u
       AssertFatal(f1ap_msg->cell_to_modify[n].info.tac != NULL, "out of memory\n");
       *f1ap_msg->cell_to_modify[n].info.tac = *upd->cell_to_modify[n].info.tac;
     }
-    if (upd->cell_to_modify[n].info.measurement_timing_information)
-      f1ap_msg->cell_to_modify[n].info.measurement_timing_information =
-          strdup(upd->cell_to_modify[n].info.measurement_timing_information);
+    if (upd->cell_to_modify[n].info.measurement_timing_config_len > 0) {
+      f1ap_msg->cell_to_modify[n].info.measurement_timing_config =
+          calloc(upd->cell_to_modify[n].info.measurement_timing_config_len, sizeof(uint8_t));
+      AssertFatal(f1ap_msg->cell_to_modify[n].info.measurement_timing_config != NULL, "out of memory\n");
+      memcpy(f1ap_msg->cell_to_modify[n].info.measurement_timing_config,
+             upd->cell_to_modify[n].info.measurement_timing_config,
+             upd->cell_to_modify[n].info.measurement_timing_config_len);
+      f1ap_msg->cell_to_modify[n].info.measurement_timing_config_len = upd->cell_to_modify[n].info.measurement_timing_config_len;
+    }
 
     if (upd->cell_to_modify[n].sys_info) {
       f1ap_gnb_du_system_info_t *orig_sys_info = upd->cell_to_modify[n].sys_info;

@@ -62,6 +62,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_EstablishmentCause.h"
+#include "NR_MeasurementTimingConfiguration.h"
 
 //-------------------
 
@@ -382,6 +383,7 @@ typedef struct nr_rrc_du_container_t {
   f1ap_setup_req_t *setup_req;
   NR_MIB_t *mib;
   NR_SIB1_t *sib1;
+  NR_MeasurementTimingConfiguration_t *mtc;
 } nr_rrc_du_container_t;
 
 typedef struct nr_rrc_cuup_container_t {

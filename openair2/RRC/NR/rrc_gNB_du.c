@@ -80,6 +80,30 @@ static bool extract_sys_info(const f1ap_gnb_du_system_info_t *sys_info, NR_MIB_t
   return true;
 }
 
+static NR_MeasurementTimingConfiguration_t *extract_mtc(uint8_t *buf, int buf_len)
+{
+  NR_MeasurementTimingConfiguration_t *mtc = NULL;
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_MeasurementTimingConfiguration, (void **)&mtc, buf, buf_len);
+  if (dec_rval.code != RC_OK) {
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+    return NULL;
+  }
+  /* verify that it has the format we need */
+  if (mtc->criticalExtensions.present != NR_MeasurementTimingConfiguration__criticalExtensions_PR_c1
+      || mtc->criticalExtensions.choice.c1 == NULL
+      || mtc->criticalExtensions.choice.c1->present != NR_MeasurementTimingConfiguration__criticalExtensions__c1_PR_measTimingConf
+      || mtc->criticalExtensions.choice.c1->choice.measTimingConf == NULL
+      || mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming == NULL
+      || mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming->list.count == 0) {
+    LOG_E(RRC, "error: measurementTimingConfiguration does not have expected format (at least one measTiming entry\n");
+    if (LOG_DEBUGFLAG(DEBUG_ASN1))
+      xer_fprint(stdout, &asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+    return NULL;
+  }
+  return mtc;
+}
+
 void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
 {
   AssertFatal(assoc_id != 0, "illegal assoc_id == 0: should be -1 (monolithic) or >0 (split)\n");
@@ -142,6 +166,15 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     }
   }
 
+  NR_MeasurementTimingConfiguration_t *mtc =
+      extract_mtc(cell_info->measurement_timing_config, cell_info->measurement_timing_config_len);
+  if (!mtc) {
+    LOG_W(RRC, "cannot decode MeasurementTimingConfiguration of DU ID %ld, rejecting\n", req->gNB_DU_id);
+    f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
+    rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
+    return;
+  }
+
   const f1ap_gnb_du_system_info_t *sys_info = req->cell[0].sys_info;
   NR_MIB_t *mib = NULL;
   NR_SIB1_t *sib1 = NULL;
@@ -151,6 +184,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
       LOG_W(RRC, "rejecting DU ID %ld\n", req->gNB_DU_id);
       f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
       rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
+      ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
       return;
     }
   }
@@ -171,6 +205,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   // MIB can be null and configured later via DU Configuration Update
   du->mib = mib;
   du->sib1 = sib1;
+  du->mtc = mtc;
   RB_INSERT(rrc_du_tree, &rrc->dus, du);
   rrc->num_dus++;
 
@@ -234,6 +269,16 @@ static void update_cell_info(nr_rrc_du_container_t *du, const f1ap_served_cell_i
     ci->tdd = new_ci->tdd;
   else
     ci->fdd = new_ci->fdd;
+
+  NR_MeasurementTimingConfiguration_t *new_mtc =
+      extract_mtc(new_ci->measurement_timing_config, new_ci->measurement_timing_config_len);
+  if (new_mtc != NULL) {
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, du->mtc);
+    du->mtc = new_mtc;
+  } else {
+    LOG_E(RRC, "error decoding MeasurementTimingConfiguration during cell update, ignoring new config\n");
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, new_mtc);
+  }
 }
 
 void rrc_gNB_process_f1_du_configuration_update(f1ap_gnb_du_configuration_update_t *conf_up, sctp_assoc_t assoc_id)
@@ -321,6 +366,7 @@ void rrc_CU_process_f1_lost_connection(gNB_RRC_INST *rrc, f1ap_lost_connection_t
   LOG_I(RRC, "releasing DU ID %ld (%s) on assoc_id %d\n", req->gNB_DU_id, req->gNB_DU_name, assoc_id);
   ASN_STRUCT_FREE(asn_DEF_NR_MIB, du->mib);
   ASN_STRUCT_FREE(asn_DEF_NR_SIB1, du->sib1);
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, du->mtc);
   /* TODO: free setup request */
   nr_rrc_du_container_t *removed = RB_REMOVE(rrc_du_tree, &rrc->dus, du);
   DevAssert(removed != NULL);

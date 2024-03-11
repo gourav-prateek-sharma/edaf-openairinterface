@@ -82,6 +82,7 @@
 #include "NR_RateMatchPatternLTE-CRS.h"
 #include "NR_SearchSpace.h"
 #include "NR_ControlResourceSet.h"
+#include "NR_MeasurementTimingConfiguration.h"
 #include "NR_EUTRA-MBSFN-SubframeConfig.h"
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -1168,7 +1169,16 @@ static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
     req->cell[0].info.fdd = read_fdd_config(scc);
   }
 
-  req->cell[0].info.measurement_timing_information = "0";
+  NR_MeasurementTimingConfiguration_t *mtc = get_new_MeasurementTimingConfiguration(scc);
+  uint8_t buf[1024];
+  int len = encode_MeasurementTimingConfiguration(mtc, buf, sizeof(buf));
+  DevAssert(len <= sizeof(buf));
+  free_MeasurementTimingConfiguration(mtc);
+  uint8_t *mtc_buf = calloc(len, sizeof(*mtc_buf));
+  AssertFatal(mtc_buf != NULL, "out of memory\n");
+  memcpy(mtc_buf, buf, len);
+  req->cell[0].info.measurement_timing_config = mtc_buf;
+  req->cell[0].info.measurement_timing_config_len = len;
 
   if (get_softmodem_params()->sa) {
     // in NSA we don't transmit SIB1, so cannot fill DU system information

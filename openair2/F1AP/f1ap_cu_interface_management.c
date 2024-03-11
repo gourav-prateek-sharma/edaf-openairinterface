@@ -67,6 +67,14 @@ int CU_send_ERROR_INDICATION(sctp_assoc_t assoc_id, F1AP_ErrorIndication_t *Erro
   AssertFatal(1==0,"Not implemented yet\n");
 }
 
+static uint8_t *cp_octet_string(const OCTET_STRING_t *os, int *len)
+{
+  uint8_t *buf = calloc(os->size, sizeof(*buf));
+  AssertFatal(buf != NULL, "out of memory\n");
+  memcpy(buf, os->buf, os->size);
+  *len = os->size;
+  return buf;
+}
 
 /*
     F1 Setup
@@ -186,6 +194,11 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint3
     } else {
       AssertFatal(false, "unknown NR Mode info %d\n", servedCellInformation->nR_Mode_Info.present);
     }
+
+    /* MeasurementConfig */
+    if (servedCellInformation->measurementTimingConfiguration.size > 0)
+      req->cell[i].info.measurement_timing_config =
+          cp_octet_string(&servedCellInformation->measurementTimingConfiguration, &req->cell[i].info.measurement_timing_config_len);
 
     struct F1AP_GNB_DU_System_Information * DUsi=served_cells_item->gNB_DU_System_Information;
     if (DUsi != NULL) {
@@ -537,6 +550,12 @@ int CU_handle_gNB_DU_CONFIGURATION_UPDATE(instance_t instance, sctp_assoc_t asso
         AssertFatal(false, "unknown NR Mode info %d\n", servedCellInformation->nR_Mode_Info.present);
       }
 
+      /* MeasurementConfig */
+      if (servedCellInformation->measurementTimingConfiguration.size > 0)
+        req->cell_to_add[i].info.measurement_timing_config =
+            cp_octet_string(&servedCellInformation->measurementTimingConfiguration,
+                            &req->cell_to_add[i].info.measurement_timing_config_len);
+
       struct F1AP_GNB_DU_System_Information *DUsi = served_cells_item->gNB_DU_System_Information;
       // System Information
       req->cell_to_add[i].sys_info = calloc(1, sizeof(*req->cell_to_add[i].sys_info));
@@ -648,7 +667,12 @@ int CU_handle_gNB_DU_CONFIGURATION_UPDATE(instance_t instance, sctp_assoc_t asso
       } else {
         AssertFatal(false, "unknown NR Mode info %d\n", servedCellInformation->nR_Mode_Info.present);
       }
-      // TODO: Measurement Config
+
+      /* MeasurementConfig */
+      if (servedCellInformation->measurementTimingConfiguration.size > 0)
+        req->cell_to_modify[i].info.measurement_timing_config =
+            cp_octet_string(&servedCellInformation->measurementTimingConfiguration,
+                            &req->cell_to_modify[i].info.measurement_timing_config_len);
 
       /*gNB DU SYSTEM INFORMATION */
       struct F1AP_GNB_DU_System_Information *DUsi = served_cells_item->gNB_DU_System_Information;
