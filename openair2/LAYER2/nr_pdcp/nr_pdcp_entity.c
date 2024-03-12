@@ -56,6 +56,11 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   int              rx_deliv_sn;
   uint32_t         rx_deliv_hfn;
 
+  if (entity->entity_suspended) {
+    LOG_W(PDCP, "PDCP entity %d is suspended. Quit RX procedure.\n", entity->rb_id);
+    return;
+  }
+
   if (size < 1) {
     LOG_E(PDCP, "bad PDU received (size = %d)\n", size);
     return;
@@ -201,6 +206,12 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   char    *buf = pdu_buffer;
   DevAssert(nr_max_pdcp_pdu_size(size) <= pdu_max_size);
   int      dc_bit;
+
+  if (entity->entity_suspended) {
+    LOG_W(PDCP, "PDCP entity %d is suspended. Quit SDU processing.\n", entity->rb_id);
+    return -1;
+  }
+
   entity->stats.rxsdu_pkts++;
   entity->stats.rxsdu_bytes += size;
 
@@ -410,6 +421,7 @@ static void nr_pdcp_entity_suspend(nr_pdcp_entity_t *entity)
   }
   entity->rx_next = 0;
   entity->rx_deliv = 0;
+  entity->entity_suspended = true;
 }
 
 static void free_rx_list(nr_pdcp_entity_t *entity)
@@ -437,6 +449,9 @@ static void nr_pdcp_entity_reestablish_drb_am(nr_pdcp_entity_t *entity)
 
   /* receiving entity procedures */
   /* todo: deal with ciphering/integrity algos and keys */
+
+  /* Flag PDCP entity as re-established */
+  entity->entity_suspended = false;
 }
 
 static void nr_pdcp_entity_reestablish_drb_um(nr_pdcp_entity_t *entity)
@@ -455,6 +470,9 @@ static void nr_pdcp_entity_reestablish_drb_um(nr_pdcp_entity_t *entity)
   entity->rx_next = 0;
   entity->rx_deliv = 0;
   /* todo: deal with ciphering/integrity algos and keys */
+
+  /* Flag PDCP entity as re-established */
+  entity->entity_suspended = false;
 }
 
 static void nr_pdcp_entity_reestablish_srb(nr_pdcp_entity_t *entity)
@@ -471,6 +489,9 @@ static void nr_pdcp_entity_reestablish_srb(nr_pdcp_entity_t *entity)
   entity->rx_next = 0;
   entity->rx_deliv = 0;
   /* todo: deal with ciphering/integrity algos and keys */
+
+  /* Flag PDCP entity as re-established */
+  entity->entity_suspended = false;
 }
 
 static void nr_pdcp_entity_release(nr_pdcp_entity_t *entity)
