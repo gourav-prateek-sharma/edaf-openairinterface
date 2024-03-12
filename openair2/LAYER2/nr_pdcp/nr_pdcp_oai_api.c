@@ -817,10 +817,19 @@ void add_srb(int is_gnb,
   if (nr_pdcp_get_rb(ue, srb_id, true) != NULL) {
     LOG_E(PDCP, "warning SRB %d already exist for UE ID %ld, do nothing\n", srb_id, UEid);
   } else {
-    pdcp_srb = new_nr_pdcp_entity(NR_PDCP_SRB, is_gnb, srb_id,
-                                  0, false, false, // sdap parameters
-                                  deliver_sdu_srb, ue, NULL, ue,
-                                  12, t_Reordering, -1,
+    pdcp_srb = new_nr_pdcp_entity(NR_PDCP_SRB,
+                                  is_gnb,
+                                  srb_id,
+                                  0,      // PDU session ID (not relevant)
+                                  false,  // has SDAP RX (not relevant)
+                                  false,  // has SDAP TX (not relevant)
+                                  deliver_sdu_srb,
+                                  ue,
+                                  NULL,
+                                  ue,
+                                  SHORT_SN_SIZE,
+                                  t_Reordering,
+                                  -1,
                                   ciphering_algorithm,
                                   integrity_algorithm,
                                   ciphering_key,
@@ -1075,7 +1084,7 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
     return 0;
   }
 
-  int max_size = sdu_buffer_size + 3 + 4; // 3: max header, 4: max integrity
+  int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
   char pdu_buf[max_size];
   int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
   AssertFatal(rb->deliver_pdu == NULL, "SRB callback should be NULL, to be provided on every invocation\n");
@@ -1257,7 +1266,7 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
     return 0;
   }
 
-  int max_size = sdu_buffer_size + 3 + 4; // 3: max header, 4: max integrity
+  int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
   char pdu_buf[max_size];
   int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
   deliver_pdu deliver_pdu_cb = rb->deliver_pdu;
