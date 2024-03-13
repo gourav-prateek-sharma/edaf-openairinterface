@@ -4274,11 +4274,8 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-  if (coreset0 == NULL)
-    coreset0 = calloc(1,sizeof(*coreset0));
-
-  AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
-
+  AssertFatal(type0_PDCCH_CSS_config, "No type0 CSS configuration\n");
+  AssertFatal(coreset0, "Coreset0 should have been allocated outside of this function\n");
   coreset0->controlResourceSetId = 0;
   int duration = type0_PDCCH_CSS_config->num_symbols;
 
@@ -4327,8 +4324,7 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
                           int slots_per_frame,
                           NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-  if(ss0 == NULL)
-    ss0 = calloc(1, sizeof(*ss0));
+  AssertFatal(ss0, "SearchSpace0 should have been allocated outside of this function\n");
   if(ss0->controlResourceSetId == NULL)
     ss0->controlResourceSetId = calloc(1, sizeof(*ss0->controlResourceSetId));
   if(ss0->monitoringSymbolsWithinSlot == NULL)

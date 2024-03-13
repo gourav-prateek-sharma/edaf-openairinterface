@@ -1351,8 +1351,7 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   bwp->bwp_Common->pdcch_ConfigCommon=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon));
   bwp->bwp_Common->pdcch_ConfigCommon->present = NR_SetupRelease_PDCCH_ConfigCommon_PR_setup;
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup = calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup));
-  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->controlResourceSetZero=NULL;
-  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet));
+  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->controlResourceSetZero = NULL;
 
   int curr_bwp = NRRIV2BW(bwp->bwp_Common->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
 
@@ -1400,7 +1399,6 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   NR_ControlResourceSet_t *coreset2 = get_coreset_config(bwp->bwp_Id, curr_bwp, ssb_bitmap);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset2);
 
-  bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 10+bwp->bwp_Id, coreset2->controlResourceSetId);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
@@ -1657,9 +1655,6 @@ static void config_csi_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                    int rep_id,
                                    int uid)
 {
-  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
-  csirep->reportConfigId = rep_id;
-  csirep->carrier = NULL;
   int resource_id = -1;
   int im_id = -1;
   for (int csi_list = 0; csi_list < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_list++) {
@@ -1678,6 +1673,9 @@ static void config_csi_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   // if there are no associated resources, do not configure
   if (resource_id < 0 || im_id < 0)
     return;
+  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
+  csirep->reportConfigId = rep_id;
+  csirep->carrier = NULL;
   csirep->resourcesForChannelMeasurement = resource_id;
   csirep->csi_IM_ResourcesForInterference = calloc(1, sizeof(*csirep->csi_IM_ResourcesForInterference));
   *csirep->csi_IM_ResourcesForInterference = im_id;
@@ -1721,9 +1719,6 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                     int uid,
                                     int num_antenna_ports)
 {
-  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
-  csirep->reportConfigId = rep_id;
-  csirep->carrier = NULL;
   int resource_id = -1;
   for (int csi_list = 0; csi_list < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_list++) {
     NR_CSI_ResourceConfig_t *csires = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_list];
@@ -1740,6 +1735,9 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   // if there are no associated resources, do not configure
   if (resource_id < 0)
     return;
+  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
+  csirep->reportConfigId = rep_id;
+  csirep->carrier = NULL;
   csirep->resourcesForChannelMeasurement = resource_id;
   csirep->csi_IM_ResourcesForInterference = NULL;
   csirep->nzp_CSI_RS_ResourcesForInterference = NULL;
@@ -2027,7 +2025,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, c
 
   asn1cCalloc(P0->choice.sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT, Z8);
   asn1cSequenceAdd(Z8->list, long, ZoneEight);
-  asn1cCallocOne(ZoneEight, 0);
+  *ZoneEight = 0;
 
   asn1cCalloc(ServCellCom->uplinkConfigCommon, UL);
   asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
@@ -2288,9 +2286,6 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   NR_ControlResourceSet_t *coreset = get_coreset_config(0, curr_bwp, bitmap);
 
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
-
-  bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList =
-      calloc(1, sizeof(*bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
 
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 5, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
