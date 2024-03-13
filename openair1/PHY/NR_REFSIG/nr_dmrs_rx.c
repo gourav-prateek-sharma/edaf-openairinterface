@@ -292,8 +292,14 @@ int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,
                  nb_pusch_rb,
                  nb_dmrs);
           printf("NR_DMRS_RX: wf[%d] = %d wt[%d]= %d\n", i & 1, wf1[p - 1000][i & 1], lp, wt1[p - 1000][lp]);
-    printf("NR_DMRS_RX: i %d dmrs_offset %d k %d pusch dmrsseq[i<<1] %d, dmrsseq[(i<<1)+1] %d  pilots[k<<1] %d pilots[(k<<1)+1] %d\n", i, dmrs_offset, k, 
-		 dmrs_seq[i].r, dmrs_seq[i].i, output[k].r, output[(k].i);
+          printf("NR_DMRS_RX: i %d dmrs_offset %d k %d pusch dmrsseq.r %d, dmrsseq.i %d  pilots.r %d pilots.i %d\n",
+                 i,
+                 dmrs_offset,
+                 k, 
+                 dmrs_seq[i].r,
+                 dmrs_seq[i].i,
+                 output[k].r,
+                 output[k].i);
 #endif
         }
       } else {
