@@ -496,14 +496,14 @@ bool rx_sss_nr(PHY_VARS_NR_UE *ue,
   }
 
 //#ifdef DEBUG_SSS_NR
-  
 #define SSS_METRIC_FLOOR_NR   (30000)
   if (*tot_metric > SSS_METRIC_FLOOR_NR) {	
     Nid2 = GET_NID2(frame_parms->Nid_cell);
     Nid1 = GET_NID1(frame_parms->Nid_cell);
     LOG_D(PHY,"Nid2 %d Nid1 %d tot_metric %d, phase_max %d \n", Nid2, Nid1, *tot_metric, *phase_max);
   }
-  // #endif
+// #endif
+
   int re = 0;
   int im = 0;
   if (Nid1 == N_ID_1_NUMBER) {
