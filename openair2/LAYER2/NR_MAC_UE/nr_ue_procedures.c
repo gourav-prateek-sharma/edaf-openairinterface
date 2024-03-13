@@ -2504,14 +2504,8 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slot)
           si->SR_pending); // todo
     si->SR_COUNTER++;
 
-    // start the sr-prohibittimer : rel 9 and above
-    if (si->sr_ProhibitTimer > 0) { // timer configured
-      si->sr_ProhibitTimer--;
-      si->sr_ProhibitTimer_Running = 1;
-    } else {
-      si->sr_ProhibitTimer_Running = 0;
-    }
-    //mac->ul_active =1;
+    // start the sr-prohibittimer
+    nr_timer_start(&si->sr_ProhibitTimer);
     return (1);   //instruct phy to signal SR
   } else {
     // notify RRC to relase PUCCH/SRS
@@ -2526,6 +2520,7 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slot)
     }
     si->SR_pending = 0;
     si->SR_COUNTER = 0;
+    nr_timer_stop(&si->sr_ProhibitTimer);
     return (0);
   }
 }

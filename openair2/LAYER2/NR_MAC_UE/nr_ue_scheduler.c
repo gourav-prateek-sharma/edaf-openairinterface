@@ -133,6 +133,7 @@ static void trigger_regular_bsr(NR_UE_MAC_INST_t *mac, NR_LogicalChannelIdentity
 void update_mac_timers(NR_UE_MAC_INST_t *mac)
 {
   nr_timer_tick(&mac->ra.contention_resolution_timer);
+  nr_timer_tick(&mac->scheduling_info.sr_ProhibitTimer);
   nr_timer_tick(&mac->scheduling_info.sr_DelayTimer);
   bool retxBSR_expired = nr_timer_tick(&mac->scheduling_info.retxBSR_Timer);
   if (retxBSR_expired) {
@@ -2678,6 +2679,7 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
   LOG_D(NR_MAC, "[UE %d][SR] Gave SDU to PHY, clearing any scheduling request\n", mac->ue_id);
   sched_info->SR_pending = 0;
   sched_info->SR_COUNTER = 0;
+  nr_timer_stop(&sched_info->sr_ProhibitTimer);
 
   /* Actions when a BSR is sent */
   if (mac_ce_p->bsr_ce_len) {

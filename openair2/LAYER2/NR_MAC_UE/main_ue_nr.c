@@ -165,6 +165,7 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   }
   nr_timer_stop(&nr_mac->ra.contention_resolution_timer);
   nr_timer_stop(&nr_mac->scheduling_info.sr_DelayTimer);
+  nr_timer_stop(&nr_mac->scheduling_info.sr_ProhibitTimer);
   nr_timer_stop(&nr_mac->scheduling_info.retxBSR_Timer);
 
   // consider all timeAlignmentTimers as expired and perform the corresponding actions in clause 5.2
@@ -187,8 +188,6 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   // cancel any triggered Scheduling Request procedure
   nr_mac->scheduling_info.SR_COUNTER = 0;
   nr_mac->scheduling_info.SR_pending = 0;
-  nr_mac->scheduling_info.sr_ProhibitTimer = 0;
-  nr_mac->scheduling_info.sr_ProhibitTimer_Running = 0;
   nr_mac->scheduling_info.sr_id = -1; // invalid init value
 
   // cancel any triggered Buffer Status Reporting procedure

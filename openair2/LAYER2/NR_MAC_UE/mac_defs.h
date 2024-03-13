@@ -222,10 +222,8 @@ typedef struct {
   NR_timer_t retxBSR_Timer;
   /// periodicBSR-Timer
   NR_timer_t periodicBSR_Timer;
-  /// default value is 0: not configured
-  uint16_t sr_ProhibitTimer;
-  /// sr ProhibitTime running
-  uint8_t sr_ProhibitTimer_Running;
+  /// sr ProhibitTimer
+  NR_timer_t sr_ProhibitTimer;
   // Maximum number of SR transmissions
   uint32_t sr_TransMax;
   int sr_id;

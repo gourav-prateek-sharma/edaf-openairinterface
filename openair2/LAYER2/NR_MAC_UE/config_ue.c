@@ -1691,6 +1691,7 @@ static uint32_t nr_get_sf_periodicBSRTimer(long periodicBSR)
 static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroupConfig_t *mcg)
 {
   NR_UE_SCHEDULING_INFO *si = &mac->scheduling_info;
+  int scs = mac->current_UL_BWP->scs;
   if (mcg->drx_Config)
     LOG_E(NR_MAC, "DRX not implemented! Configuration not handled!\n");
   if (mcg->schedulingRequestConfig) {
@@ -1699,8 +1700,7 @@ static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroup
       for (int i = 0; i < src->schedulingRequestToReleaseList->list.count; i++) {
         if (*src->schedulingRequestToReleaseList->list.array[i] == si->sr_id) {
           si->SR_COUNTER = 0;
-          si->sr_ProhibitTimer = 0;
-          si->sr_ProhibitTimer_Running = 0;
+          nr_timer_setup(&si->sr_ProhibitTimer, 0, 1); // default value is 0ms
           si->sr_id = -1; // invalid init value
         }
         else
@@ -1715,13 +1715,16 @@ static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroup
                     "Current implementation cannot handle more than 1 SR configuration\n");
         si->sr_id = sr->schedulingRequestId;
         si->sr_TransMax = sr->sr_TransMax;
+        int target_ms = 0;
         if (sr->sr_ProhibitTimer)
-          LOG_E(NR_MAC, "SR prohibit timer not properly implemented\n");
+          target_ms = 1 << *sr->sr_ProhibitTimer;
+        // length of slot is (1/2^scs)ms
+        nr_timer_setup(&si->sr_ProhibitTimer, target_ms << scs, 1); // 1 slot update rate
       }
     }
   }
   if (mcg->bsr_Config) {
-    int subframes_per_slot = nr_slots_per_frame[mac->current_UL_BWP->scs] / 10;
+    int subframes_per_slot = nr_slots_per_frame[scs] / 10;
     uint32_t periodic_sf = nr_get_sf_periodicBSRTimer(mcg->bsr_Config->periodicBSR_Timer);
     uint32_t target = periodic_sf < UINT_MAX ? periodic_sf * subframes_per_slot : periodic_sf;
     nr_timer_setup(&si->periodicBSR_Timer, target, 1); // 1 slot update rate
