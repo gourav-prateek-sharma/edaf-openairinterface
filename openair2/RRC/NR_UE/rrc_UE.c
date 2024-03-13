@@ -315,7 +315,7 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst)
     FILE *f = NULL;
     if (uecap_file)
       f = fopen(uecap_file, "r");
-    if(f) {
+    if (f) {
       char UE_NR_Capability_xer[65536];
       size_t size = fread(UE_NR_Capability_xer, 1, sizeof UE_NR_Capability_xer, f);
       if (size == 0 || size == sizeof UE_NR_Capability_xer) {
@@ -326,6 +326,7 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst)
             xer_decode(0, &asn_DEF_NR_UE_NR_Capability, (void *)&rrc->UECap.UE_NR_Capability, UE_NR_Capability_xer, size);
         assert(dec_rval.code == RC_OK);
       }
+      fclose(f);
     }
 
     memset(&rrc->timers_and_constants, 0, sizeof(rrc->timers_and_constants));
