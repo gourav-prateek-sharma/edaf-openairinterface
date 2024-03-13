@@ -175,7 +175,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
       VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_gNB_PDSCH_MODULATION, 0);
       stop_meas(dlsch_modulation_stats);
 #ifdef DEBUG_DLSCH
-      printf("PDSCH Modulation: Qm %d(%u)\n", Qm, nb_re);
+      printf("PDSCH Modulation: Qm %d(%d)\n", Qm, nb_re);
       for (int i = 0; i < nb_re; i += 8) {
         for (int j=0; j<8; j++) {
           printf("%d %d\t", mod_symbs[codeWord][i + j].r, mod_symbs[codeWord][i + j].i);
@@ -213,8 +213,12 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
     c16_t txdataF_precoding[rel15->nrOfLayers][NR_NUMBER_OF_SYMBOLS_PER_SLOT][frame_parms->ofdm_symbol_size] __attribute__((aligned(64)));;
 
 #ifdef DEBUG_DLSCH_MAPPING
-    printf("PDSCH resource mapping started (start SC %d\tstart symbol %d\tN_PRB %d\tnb_re %u,nb_layers %d)\n",
-           start_sc, rel15->StartSymbolIndex, rel15->rbSize, nb_re,rel15->nrOfLayers);
+    printf("PDSCH resource mapping started (start SC %d\tstart symbol %d\tN_PRB %d\tnb_re %d,nb_layers %d)\n",
+           start_sc,
+           rel15->StartSymbolIndex,
+           rel15->rbSize,
+           nb_re,
+           rel15->nrOfLayers);
 #endif
 
     start_meas(&gNB->dlsch_resource_mapping_stats);

@@ -805,7 +805,7 @@ void nr_layer_precoder_simd(const int n_layers,
 
     #ifdef DEBUG_DLSCH_PRECODING_PRINT_WITH_TRIVIAL // Print simd and trivial result, TODO: To be removed
       c16_t *y_simd = (c16_t*) &y;
-      printf("debug_to_be_removed re_cnt=%u, sc=%u, y_simd=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n",
+      printf("debug_to_be_removed re_cnt=%d, sc=%u, y_simd=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n",
              re_cnt,
              sc,
              y_simd[0].r,
@@ -816,7 +816,7 @@ void nr_layer_precoder_simd(const int n_layers,
              y_simd[2].i,
              y_simd[3].r,
              y_simd[3].i);
-      printf("debug_to_be_removed re_cnt=%u, sc=%u, y_triv=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n",
+      printf("debug_to_be_removed re_cnt=%d, sc=%u, y_triv=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n",
              re_cnt,
              sc,
              y_triv[0].r,

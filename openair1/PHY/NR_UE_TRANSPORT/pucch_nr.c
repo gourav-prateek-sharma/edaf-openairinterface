@@ -126,7 +126,7 @@ void nr_generate_pucch0(const PHY_VARS_NR_UE *ue,
 
     //txptr = &txdataF[0][re_offset];
 #ifdef DEBUG_NR_PUCCH_TX
-    printf("\t [nr_generate_pucch0] symbol %d PRB %d (%u)\n",l,prb_offset[l],re_offset);
+    printf("\t [nr_generate_pucch0] symbol %d PRB %d (%d)\n",l,prb_offset[l], re_offset);
 #endif
     c16_t *txdataFptr = txdataF[0] + l2 * frame_parms->ofdm_symbol_size;
     const int32_t amp = amp16;
@@ -777,7 +777,7 @@ void nr_generate_pucch2(const PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_NR_PUCCH_TX
           printf(
               "\t [nr_generate_pucch2] (n=%d,i=%d) mapping PUCCH to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d "
-              "\tfirst_carrier_offset=%d \tz_pucch[%d]=txptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
+              "\tfirst_carrier_offset=%d \tz_pucch[%d]=txptr(%d)=(x_n(l=%d,n=%d)=(%d,%d))\n",
               n,
               i,
               amp,
@@ -801,7 +801,7 @@ void nr_generate_pucch2(const PHY_VARS_NR_UE *ue,
 #ifdef DEBUG_NR_PUCCH_TX
           printf(
               "\t [nr_generate_pucch2] (n=%d,i=%d) mapping DM-RS to RE \t amp=%d \tofdm_symbol_size=%d \tN_RB_DL=%d "
-              "\tfirst_carrier_offset=%d \tz_dm-rs[%d]=txptr(%u)=(x_n(l=%d,n=%d)=(%d,%d))\n",
+              "\tfirst_carrier_offset=%d \tz_dm-rs[%d]=txptr(%d)=(x_n(l=%d,n=%d)=(%d,%d))\n",
               n,
               i,
               amp,

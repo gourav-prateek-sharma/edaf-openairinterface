@@ -1013,7 +1013,11 @@ void dft64(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D64STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+#if defined(__x86_64__) || defined(__i386__)
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#elif defined(__arm__) || defined(__aarch64__)
+  printf("t: %u cycles, d: %u cycles, b: %u cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#endif
 #endif
 
 
@@ -1102,7 +1106,11 @@ void idft64(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D64STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+#if defined(__x86_64__) || defined(__i386__)
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#elif defined(__arm__) || defined(__aarch64__)
+  printf("t: %u cycles, d: %u cycles, b: %u cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#endif
 #endif
 
 
@@ -1433,7 +1441,11 @@ void dft256(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D256STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+#if defined(__x86_64__) || defined(__i386__)
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#elif defined(__arm__) || defined(__aarch64__)
+  printf("t: %u cycles, d: %u cycles, b: %u cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
+#endif
 #endif
 
   if (scale>0) {
