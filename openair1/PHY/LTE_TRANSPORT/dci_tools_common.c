@@ -491,6 +491,7 @@ uint32_t get_prb(int N_RB_DL,int odd_slot,int vrb,int Ngap) {
       break;
     case 4:  // even: 4->1, odd: 4->4
       ret=  ((3*odd_slot) + 1)%6;
+      break;
     case 5:  // even: 5->4, odd: 5->1
       ret=  ((3*odd_slot) + 4)%6;
       break;
