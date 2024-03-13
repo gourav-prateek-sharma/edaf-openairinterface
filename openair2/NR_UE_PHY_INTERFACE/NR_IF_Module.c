@@ -1148,10 +1148,11 @@ int nr_ue_ul_indication(nr_uplink_indication_t *ul_info)
 static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
 {
   uint32_t ret_mask = 0x0;
+  DevAssert(dl_info != NULL);
   NR_UE_MAC_INST_t *mac = get_mac_inst(dl_info->module_id);
 
   // DL indication after reception of DCI or DL PDU
-  if (dl_info && dl_info->dci_ind && dl_info->dci_ind->number_of_dcis) {
+  if (dl_info->dci_ind && dl_info->dci_ind->number_of_dcis) {
     LOG_T(MAC, "[L2][IF MODULE][DL INDICATION][DCI_IND]\n");
     for (int i = 0; i < dl_info->dci_ind->number_of_dcis; i++) {
       LOG_T(MAC, ">>>NR_IF_Module i=%d, dl_info->dci_ind->number_of_dcis=%d\n", i, dl_info->dci_ind->number_of_dcis);

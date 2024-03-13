@@ -45,17 +45,17 @@ static void f1_setup_request_direct(const f1ap_setup_req_t *req)
     if (req->cell[n].sys_info) {
       f1ap_gnb_du_system_info_t *orig_sys_info = req->cell[n].sys_info;
       f1ap_gnb_du_system_info_t *copy_sys_info = calloc(1, sizeof(*copy_sys_info));
-      AssertFatal(copy_sys_info != NULL, "out of memory\n");
+      AssertFatal(copy_sys_info, "out of memory\n");
       f1ap_msg->cell[n].sys_info = copy_sys_info;
 
       copy_sys_info->mib = calloc(orig_sys_info->mib_length, sizeof(uint8_t));
-      AssertFatal(copy_sys_info->mib != NULL, "out of memory\n");
+      AssertFatal(copy_sys_info->mib, "out of memory\n");
       memcpy(copy_sys_info->mib, orig_sys_info->mib, orig_sys_info->mib_length);
       copy_sys_info->mib_length = orig_sys_info->mib_length;
 
       if (orig_sys_info->sib1_length > 0) {
         copy_sys_info->sib1 = calloc(orig_sys_info->sib1_length, sizeof(uint8_t));
-        AssertFatal(copy_sys_info->sib1 != NULL, "out of memory\n");
+        AssertFatal(copy_sys_info->sib1, "out of memory\n");
         memcpy(copy_sys_info->sib1, orig_sys_info->sib1, orig_sys_info->sib1_length);
         copy_sys_info->sib1_length = orig_sys_info->sib1_length;
       }

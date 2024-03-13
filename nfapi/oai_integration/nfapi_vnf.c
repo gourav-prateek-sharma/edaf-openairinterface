@@ -759,7 +759,7 @@ int phy_nr_uci_indication(nfapi_nr_uci_indication_t *ind)
   if(NFAPI_MODE == NFAPI_MODE_VNF)
   {
     nfapi_nr_uci_indication_t *uci_ind = CALLOC(1, sizeof(*uci_ind));
-    AssertFatal(uci_ind != NULL, "Memory not allocated for uci_ind in phy_nr_uci_indication.");
+    AssertFatal(uci_ind, "Memory not allocated for uci_ind in phy_nr_uci_indication.");
     *uci_ind = *ind;
 
     uci_ind->uci_list = CALLOC(NFAPI_NR_UCI_IND_MAX_PDU, sizeof(nfapi_nr_uci_t));

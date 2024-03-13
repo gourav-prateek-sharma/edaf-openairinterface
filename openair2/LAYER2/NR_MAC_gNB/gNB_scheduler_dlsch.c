@@ -1071,9 +1071,8 @@ void nr_schedule_ue_spec(module_id_t module_id,
     if (nr_get_code_rate_dl(sched_pdsch->mcs, current_BWP->mcsTableIdx) != R) {
       pdsch_pdu->mcsTable[0] = 0;
     }
-    AssertFatal(harq!=NULL,"harq is null\n");
-    AssertFatal(harq->round<gNB_mac->dl_bler.harq_round_max,"%d",harq->round);
-    pdsch_pdu->rvIndex[0] = nr_rv_round_map[harq->round%4];
+    AssertFatal(harq->round < gNB_mac->dl_bler.harq_round_max,"%d", harq->round);
+    pdsch_pdu->rvIndex[0] = nr_rv_round_map[harq->round % 4];
     pdsch_pdu->TBSize[0] = TBS;
     pdsch_pdu->dataScramblingId = *scc->physCellId;
     pdsch_pdu->nrOfLayers = nrOfLayers;

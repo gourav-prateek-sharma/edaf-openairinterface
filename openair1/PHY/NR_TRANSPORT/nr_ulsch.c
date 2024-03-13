@@ -42,7 +42,7 @@ static NR_gNB_ULSCH_t *find_nr_ulsch(PHY_VARS_gNB *gNB, uint16_t rnti, int pid)
 
   for (int i = 0; i < gNB->max_nb_pusch; i++) {
     ulsch = &gNB->ulsch[i];
-    AssertFatal(ulsch != NULL, "gNB->ulsch[%d] is null\n", i);
+    AssertFatal(ulsch, "gNB->ulsch[%d] is null\n", i);
     if (!ulsch->active) {
       if (first_free_index == -1)
         first_free_index = i;

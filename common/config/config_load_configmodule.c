@@ -395,11 +395,9 @@ void write_parsedcfg(configmodule_interface_t *cfgptr)
                   cfgptr->status->emptyla,
                   cfgptr->status->num_write);
   }
-  if (cfgptr != NULL) {
-    if (cfgptr->write_parsedcfg != NULL) {
-      printf("[CONFIG] calling config module write_parsedcfg function...\n");
-      cfgptr->write_parsedcfg(cfgptr);
-    }
+  if (cfgptr->write_parsedcfg != NULL) {
+    printf("[CONFIG] calling config module write_parsedcfg function...\n");
+    cfgptr->write_parsedcfg(cfgptr);
   }
 }
 
@@ -407,8 +405,8 @@ void write_parsedcfg(configmodule_interface_t *cfgptr)
 /* config module could be initialized again after this call */
 void end_configmodule(configmodule_interface_t *cfgptr)
 {
-  write_parsedcfg(cfgptr);
   if (cfgptr != NULL) {
+    write_parsedcfg(cfgptr);
     if (cfgptr->end != NULL) {
       printf ("[CONFIG] calling config module end function...\n");
       cfgptr->end(cfgptr);

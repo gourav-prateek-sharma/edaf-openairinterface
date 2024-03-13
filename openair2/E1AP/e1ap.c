@@ -2030,21 +2030,21 @@ void *E1AP_CUUP_task(void *arg)
       case E1AP_BEARER_CONTEXT_SETUP_RESP: {
         const e1ap_bearer_setup_resp_t *resp = &E1AP_BEARER_CONTEXT_SETUP_RESP(msg);
         const e1ap_upcp_inst_t *inst = getCxtE1(myInstance);
-        AssertFatal(inst != NULL, "no E1 instance found for instance %ld\n", myInstance);
+        AssertFatal(inst, "no E1 instance found for instance %ld\n", myInstance);
         e1apCUUP_send_BEARER_CONTEXT_SETUP_RESPONSE(inst->cuup.assoc_id, resp);
       } break;
 
       case E1AP_BEARER_CONTEXT_MODIFICATION_RESP: {
         const e1ap_bearer_modif_resp_t *resp = &E1AP_BEARER_CONTEXT_MODIFICATION_RESP(msg);
         const e1ap_upcp_inst_t *inst = getCxtE1(myInstance);
-        AssertFatal(inst != NULL, "no E1 instance found for instance %ld\n", myInstance);
+        AssertFatal(inst, "no E1 instance found for instance %ld\n", myInstance);
         e1apCUUP_send_BEARER_CONTEXT_MODIFICATION_RESPONSE(inst->cuup.assoc_id, resp);
       } break;
 
       case E1AP_BEARER_CONTEXT_RELEASE_CPLT: {
         const e1ap_bearer_release_cplt_t *cplt = &E1AP_BEARER_CONTEXT_RELEASE_CPLT(msg);
         const e1ap_upcp_inst_t *inst = getCxtE1(myInstance);
-        AssertFatal(inst != NULL, "no E1 instance found for instance %ld\n", myInstance);
+        AssertFatal(inst, "no E1 instance found for instance %ld\n", myInstance);
         e1apCUUP_send_BEARER_CONTEXT_RELEASE_COMPLETE(inst->cuup.assoc_id, cplt);
       } break;
 

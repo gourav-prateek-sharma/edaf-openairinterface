@@ -2580,7 +2580,7 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
 
   struct NR_ServingCellConfig__downlinkBWP_ToAddModList *DL_BWP_list =
       SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList;
-  struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig->uplinkBWP_ToAddModList;
+  struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig ? uplinkConfig->uplinkBWP_ToAddModList : NULL;
   if (DL_BWP_list) {
     for (int i = 0; i < DL_BWP_list->list.count; i++) {
       NR_BWP_Downlink_t *bwp = DL_BWP_list->list.array[i];
@@ -2675,7 +2675,8 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   const int dl_antenna_ports = pdschap->N1 * pdschap->N2 * pdschap->XP;
   const int do_csirs = configuration->do_CSIRS;
 
-  AssertFatal(servingcellconfigcommon != NULL, "servingcellconfigcommon is null\n");
+  AssertFatal(servingcellconfigcommon, "servingcellconfigcommon is null\n");
+  AssertFatal(servingcellconfigdedicated, "servingcellconfigdedicated is null\n");
 
   if (uecap == NULL)
     LOG_E(RRC, "No UE Capabilities available when programming default CellGroup in NSA\n");
@@ -2803,7 +2804,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
 
   // Downlink BWPs
   int n_dl_bwp = 1;
-  if (servingcellconfigdedicated && servingcellconfigdedicated->downlinkBWP_ToAddModList) {
+  if (servingcellconfigdedicated->downlinkBWP_ToAddModList) {
     n_dl_bwp = servingcellconfigdedicated->downlinkBWP_ToAddModList->list.count;
   }
   if (n_dl_bwp > 0) {
@@ -2833,8 +2834,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
 
   // Uplink BWPs
   int n_ul_bwp = 1;
-  if (servingcellconfigdedicated && servingcellconfigdedicated->uplinkConfig
-      && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
+  if (servingcellconfigdedicated->uplinkConfig && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
     n_ul_bwp = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
   }
   if (n_ul_bwp > 0) {

@@ -260,7 +260,7 @@ static int handle_ue_context_drbs_release(int rnti,
         newGtpuDeleteOneTunnel(f1inst, rnti, drb->rb_id);
       asn_sequence_del(&cellGroupConfig->rlc_BearerToAddModList->list, idx, 1);
       long *plcid = malloc(sizeof(*plcid));
-      AssertFatal(plcid != NULL, "out of memory\n");
+      AssertFatal(plcid, "out of memory\n");
       *plcid = lcid;
       int ret = ASN_SEQUENCE_ADD(&cellGroupConfig->rlc_BearerToReleaseList->list, plcid);
       DevAssert(ret == 0);
@@ -392,7 +392,7 @@ void ue_context_setup_request(const f1ap_ue_context_setup_t *req)
   NR_SCHED_LOCK(&mac->sched_lock);
 
   NR_UE_info_t *UE = find_nr_UE(&RC.nrmac[0]->UE_info, req->gNB_DU_ue_id);
-  AssertFatal(UE != NULL, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
+  AssertFatal(UE, "did not find UE with RNTI %04x, but UE Context Setup Failed not implemented\n", req->gNB_DU_ue_id);
 
   NR_CellGroupConfig_t *new_CellGroup = clone_CellGroupConfig(UE->CellGroup);
 
