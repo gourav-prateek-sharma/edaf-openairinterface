@@ -1881,7 +1881,7 @@ int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_s
 
 NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, const f1ap_plmn_t *plmn, uint64_t cellID, int tac)
 {
-  AssertFatal(cellID < (1l << 36), "cellID must fit within 36 bits, but is %ld\n", cellID);
+  AssertFatal(cellID < (1l << 36), "cellID must fit within 36 bits, but is %lu\n", cellID);
 
   NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
   AssertFatal(sib1_message != NULL, "out of memory\n");

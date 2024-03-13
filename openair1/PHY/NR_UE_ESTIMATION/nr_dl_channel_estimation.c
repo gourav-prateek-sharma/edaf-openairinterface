@@ -647,7 +647,7 @@ c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
 
   unsigned int k = ue->frame_parms.Nid_cell % 4;
 
-  DEBUG_PBCH("PBCH DMRS Correlation : gNB_id %d , OFDM size %d, Ncp=%d, k=%d symbol %d\n",
+  DEBUG_PBCH("PBCH DMRS Correlation : gNB_id %d , OFDM size %d, Ncp=%d, k=%u symbol %d\n",
              proc->gNB_id,
              ue->frame_parms.ofdm_symbol_size,
              ue->frame_parms.Ncp,
@@ -666,7 +666,7 @@ c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
     const c16_t *rxF = &rxdataF[aarx][symbol_offset + k];
 
     DEBUG_PBCH("pbch ch est pilot RB_DL %d\n", ue->frame_parms.N_RB_DL);
-    DEBUG_PBCH("k %d, first_carrier %d\n", k, ue->frame_parms.first_carrier_offset);
+    DEBUG_PBCH("k %u, first_carrier %d\n", k, ue->frame_parms.first_carrier_offset);
 
     // Treat first 2 pilots specially (left edge)
     computed_val = c32x16maddShift(*pil, rxF[re_offset], computed_val, 15);

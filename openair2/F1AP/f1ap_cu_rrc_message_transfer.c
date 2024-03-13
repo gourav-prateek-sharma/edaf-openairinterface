@@ -250,7 +250,7 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t instance, sctp_assoc_t assoc_id
    * let's put an assert to check that it is the expected DU UE ID. */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(cu_ue_f1ap_id);
   if (ue_data.secondary_ue != du_ue_f1ap_id) {
-    LOG_E(F1AP, "unexpected DU UE ID %d received, expected it to be %ld\n", ue_data.secondary_ue, du_ue_f1ap_id);
+    LOG_E(F1AP, "unexpected DU UE ID %u received, expected it to be %lu\n", ue_data.secondary_ue, du_ue_f1ap_id);
     return 1;
   }
 

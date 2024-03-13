@@ -81,10 +81,10 @@ void nrLDPC_bnProcPc_BG2_generator_128(const char *dir, int R)
     fprintf(fd,"  // Process group with 1 CN\n");
     fprintf(fd,"        uint32_t M = (%d*Z + 15)>>4;\n",lut_numBnInBnGroups[0]);
 
-    fprintf(fd,"        simde__m128i* p_bnProcBuf    = (simde__m128i*) &bnProcBuf    [%d];\n",lut_startAddrBnGroups   [idxBnGroup]);
-    fprintf(fd,"        simde__m128i* p_bnProcBufRes = (simde__m128i*) &bnProcBufRes [%d];\n",lut_startAddrBnGroups   [idxBnGroup]);
-    fprintf(fd,"        simde__m128i* p_llrProcBuf   = (simde__m128i*) &llrProcBuf   [%d];\n",lut_startAddrBnGroupsLlr[idxBnGroup]);
-    fprintf(fd,"        simde__m128i* p_llrRes       = (simde__m128i*) &llrRes       [%d];\n",lut_startAddrBnGroupsLlr[idxBnGroup]);
+    fprintf(fd,"        simde__m128i* p_bnProcBuf    = (simde__m128i*) &bnProcBuf    [%u];\n", lut_startAddrBnGroups[idxBnGroup]);
+    fprintf(fd,"        simde__m128i* p_bnProcBufRes = (simde__m128i*) &bnProcBufRes [%u];\n", lut_startAddrBnGroups[idxBnGroup]);
+    fprintf(fd,"        simde__m128i* p_llrProcBuf   = (simde__m128i*) &llrProcBuf   [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
+    fprintf(fd,"        simde__m128i* p_llrRes       = (simde__m128i*) &llrRes       [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
     fprintf(fd,"        simde__m128i ymm0, ymm1, ymmRes0, ymmRes1;\n");
 
 
@@ -115,9 +115,9 @@ void nrLDPC_bnProcPc_BG2_generator_128(const char *dir, int R)
         cnOffsetInGroup = (lut_numBnInBnGroups[cnidx]*NR_LDPC_ZMAX)>>4;
 
         // Set pointers to start of group 2
-        fprintf(fd,"  p_bnProcBuf     = (simde__m128i*) &bnProcBuf    [%d];\n",lut_startAddrBnGroups[idxBnGroup]);
-        fprintf(fd,"  p_llrProcBuf    = (simde__m128i*) &llrProcBuf   [%d];\n",lut_startAddrBnGroupsLlr[idxBnGroup]);
-        fprintf(fd,"  p_llrRes        = (simde__m128i*) &llrRes       [%d];\n",lut_startAddrBnGroupsLlr[idxBnGroup]);
+        fprintf(fd,"  p_bnProcBuf     = (simde__m128i*) &bnProcBuf    [%u];\n", lut_startAddrBnGroups[idxBnGroup]);
+        fprintf(fd,"  p_llrProcBuf    = (simde__m128i*) &llrProcBuf   [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
+        fprintf(fd,"  p_llrRes        = (simde__m128i*) &llrRes       [%d];\n", lut_startAddrBnGroupsLlr[idxBnGroup]);
 
         // Loop over BNs
         fprintf(fd,"        for (int i=0;i<M;i++) {\n");
@@ -128,10 +128,10 @@ void nrLDPC_bnProcPc_BG2_generator_128(const char *dir, int R)
             // Loop over CNs
         for (k=1; k<=cnidx; k++)
         {
-           fprintf(fd,"        ymm0 = simde_mm_cvtepi8_epi16(p_bnProcBuf[%d + i]);\n", k*cnOffsetInGroup);
+           fprintf(fd,"        ymm0 = simde_mm_cvtepi8_epi16(p_bnProcBuf[%u + i]);\n", k * cnOffsetInGroup);
            fprintf(fd,"        ymmRes0 = simde_mm_adds_epi16(ymmRes0, ymm0);\n");
 
-           fprintf(fd,"        ymm1 = simde_mm_cvtepi8_epi16(simde_mm_srli_si128(p_bnProcBuf[%d + i],8));\n", k*cnOffsetInGroup);
+           fprintf(fd,"        ymm1 = simde_mm_cvtepi8_epi16(simde_mm_srli_si128(p_bnProcBuf[%u + i],8));\n", k * cnOffsetInGroup);
 
            fprintf(fd, "       ymmRes1 = simde_mm_adds_epi16(ymmRes1, ymm1); \n");
         }

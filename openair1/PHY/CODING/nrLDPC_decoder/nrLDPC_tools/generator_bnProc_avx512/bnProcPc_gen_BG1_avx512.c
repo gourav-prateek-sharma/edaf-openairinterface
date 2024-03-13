@@ -121,7 +121,7 @@ fprintf(fd,  "// Process group with 1 CNs \n");
           fprintf(fd, "            zmm0 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j]);\n", k * cnOffsetInGroup);
           fprintf(fd, "            zmmRes0 = simde_mm512_adds_epi16(zmmRes0, zmm0);\n");
 
-          fprintf(fd, "            zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%d + j +1]);\n", k * cnOffsetInGroup);
+          fprintf(fd, "            zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j +1]);\n", k * cnOffsetInGroup);
 
           fprintf(fd, "           zmmRes1 = simde_mm512_adds_epi16(zmmRes1, zmm1); \n");
         }
@@ -177,7 +177,7 @@ fprintf(fd,  "// Process group with 2 CNs \n");
           fprintf(fd, "            zmm0 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j]);\n", k * cnOffsetInGroup);
           fprintf(fd, "            zmmRes0 = simde_mm512_adds_epi16(zmmRes0, zmm0);\n");
 
-          fprintf(fd, "            zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%d + j +1]);\n", k * cnOffsetInGroup);
+          fprintf(fd, "            zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j +1]);\n", k * cnOffsetInGroup);
 
           fprintf(fd, "           zmmRes1 = simde_mm512_adds_epi16(zmmRes1, zmm1); \n");
         }
@@ -290,7 +290,7 @@ fprintf(fd,  "// Process group with 4 CNs \n");
           fprintf(fd, "        zmm0 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j]);\n", k * cnOffsetInGroup);
           fprintf(fd, "        zmmRes0 = simde_mm512_adds_epi16(zmmRes0, zmm0);\n");
 
-          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%d + j +1]);\n", k * cnOffsetInGroup);
+          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j +1]);\n", k * cnOffsetInGroup);
 
           fprintf(fd, "       zmmRes1 = simde_mm512_adds_epi16(zmmRes1, zmm1); \n");
         }
@@ -346,7 +346,7 @@ fprintf(fd,  "// Process group with 5 CNs \n");
           fprintf(fd, "        zmm0 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j]);\n", k * cnOffsetInGroup);
           fprintf(fd, "        zmmRes0 = simde_mm512_adds_epi16(zmmRes0, zmm0);\n");
 
-          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%d + j +1]);\n", k * cnOffsetInGroup);
+          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j +1]);\n", k * cnOffsetInGroup);
 
           fprintf(fd, "       zmmRes1 = simde_mm512_adds_epi16(zmmRes1, zmm1); \n");
         }
@@ -459,7 +459,7 @@ fprintf(fd,  "// Process group with 7 CNs \n");
           fprintf(fd, "        zmm0 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j]);\n", k * cnOffsetInGroup);
           fprintf(fd, "        zmmRes0 = simde_mm512_adds_epi16(zmmRes0, zmm0);\n");
 
-          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%d + j +1]);\n", k * cnOffsetInGroup);
+          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j +1]);\n", k * cnOffsetInGroup);
 
           fprintf(fd, "       zmmRes1 = simde_mm512_adds_epi16(zmmRes1, zmm1); \n");
         }
@@ -1479,7 +1479,7 @@ fprintf(fd,  "// Process group with 25 CNs \n");
           fprintf(fd, "        zmm0 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j]);\n", k * cnOffsetInGroup);
           fprintf(fd, "        zmmRes0 = simde_mm512_adds_epi16(zmmRes0, zmm0);\n");
 
-          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%d + j +1]);\n", k * cnOffsetInGroup);
+          fprintf(fd, "        zmm1 = simde_mm512_cvtepi8_epi16(p_bnProcBuf[%u + j +1]);\n", k * cnOffsetInGroup);
 
           fprintf(fd, "       zmmRes1 = simde_mm512_adds_epi16(zmmRes1, zmm1); \n");
         }
