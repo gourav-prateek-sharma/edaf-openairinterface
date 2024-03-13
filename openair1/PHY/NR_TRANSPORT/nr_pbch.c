@@ -265,10 +265,10 @@ int nr_generate_pbch(nfapi_nr_dl_tti_ssb_pdu *ssb_pdu,
   pbch->pbch_a |= n_hf<<28; // half frame index bit
 
   if (Lmax == 64)
-    for (int i=0; i<3; i++)
-      pbch->pbch_a |= ((ssb_index>>(5-i))&1)<<(29+i); // resp. 6th, 5th and 4th bits of ssb_index
+    for (int i = 0; i < 3; i++)
+      pbch->pbch_a |= (uint32_t)((ssb_index >> (5 - i)) & 1) << (29 + i); // resp. 6th, 5th and 4th bits of ssb_index
   else
-    pbch->pbch_a |= ((ssb_sc_offset>>4)&1)<<29; //MSB of k_SSB (bit index 4)
+    pbch->pbch_a |= ((ssb_sc_offset >> 4) & 1) << 29; //MSB of k_SSB (bit index 4)
 
   LOG_D(PHY,"After extra byte: pbch_a = 0x%08x\n",pbch->pbch_a);
 
