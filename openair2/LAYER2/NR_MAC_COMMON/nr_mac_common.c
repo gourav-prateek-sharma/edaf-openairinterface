@@ -3605,8 +3605,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
     AssertFatal(startSymbol <= l0, "Wrong config, Start symbol %d cannot be later than dmrs_TypeA_Position %d \n", startSymbol, l0);
 
     // Section 7.4.1.1.2 in Spec 38.211
-    AssertFatal(l0 == 2 || (l0 == 3 && (ld != 3 || ld != 4)), "ld 3 or 4 symbols only possible with dmrs_TypeA_Position POS2 \n");
-
+    AssertFatal(l0 == 2 || (l0 == 3 && (ld != 3 && ld != 4)), "ld 3 or 4 symbols only possible with dmrs_TypeA_Position POS2 \n");
   }
 
   // number of front loaded symbols
