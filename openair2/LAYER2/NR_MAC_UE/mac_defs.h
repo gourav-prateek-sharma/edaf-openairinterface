@@ -225,7 +225,7 @@ typedef struct {
   /// sr ProhibitTimer
   NR_timer_t sr_ProhibitTimer;
   // Maximum number of SR transmissions
-  uint32_t sr_TransMax;
+  uint32_t sr_MaxTransmissions;
   int sr_id;
   ///timer before triggering a periodic PHR
   uint16_t periodicPHR_Timer;

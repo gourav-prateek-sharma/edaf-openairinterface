@@ -2484,23 +2484,22 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slot)
 {
   // no UL-SCH resources available for this tti && UE has a valid PUCCH resources for SR configuration for this tti
   NR_UE_SCHEDULING_INFO *si = &mac->scheduling_info;
-  int max_sr_transmissions = (1 << (2 + si->sr_TransMax));
   LOG_D(NR_MAC, "[UE %d] Frame %d slot %d send SR indication (SR_COUNTER/sr_TransMax %d/%d), SR_pending %d\n",
         mac->ue_id,
         frameP,
         slot,
         si->SR_COUNTER,
-        max_sr_transmissions,
+        si->sr_MaxTransmissions,
         si->SR_pending); // todo
 
   if ((si->SR_pending == 1) &&
-      (si->SR_COUNTER < max_sr_transmissions)) {
+      (si->SR_COUNTER < si->sr_MaxTransmissions)) {
     LOG_D(NR_MAC, "[UE %d] Frame %d slot %d PHY asks for SR (SR_COUNTER/sr_TransMax %d/%d), SR_pending %d, increment SR_COUNTER\n",
           mac->ue_id,
           frameP,
           slot,
           si->SR_COUNTER,
-          max_sr_transmissions,
+          si->sr_MaxTransmissions,
           si->SR_pending); // todo
     si->SR_COUNTER++;
 
