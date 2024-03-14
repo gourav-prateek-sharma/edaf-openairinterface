@@ -729,7 +729,6 @@ rrc_gNB_modify_dedicatedRRCReconfiguration(
 
   struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList =
       CALLOC(1, sizeof(*dedicatedNAS_MessageList));
-  NR_DRB_ToAddMod_t *DRB_config = NULL;
 
   for (int i = 0; i < ue_p->nb_of_pdusessions; i++) {
     // bypass the new and already configured pdu sessions
@@ -784,13 +783,11 @@ rrc_gNB_modify_dedicatedRRCReconfiguration(
           ue_p->pduSession[i].cause_value = NGAP_CauseRadioNetwork_not_supported_5QI_value;
           continue;
       }
-      LOG_I(NR_RRC,
-            "PDU SESSION ID %ld, DRB ID %ld (index %d), QOS flow %d, 5QI %ld \n",
-            DRB_config->cnAssociation->choice.sdap_Config->pdu_Session,
-            DRB_config->drb_Identity,
-            i,
-            qos_flow_index,
-            ue_p->pduSession[i].param.qos[qos_flow_index].fiveQI);
+        LOG_I(NR_RRC,
+              "index %d, QOS flow %d, 5QI %ld \n",
+              i,
+              qos_flow_index,
+              ue_p->pduSession[i].param.qos[qos_flow_index].fiveQI);
     }
 
     ue_p->pduSession[i].status = PDU_SESSION_STATUS_DONE;

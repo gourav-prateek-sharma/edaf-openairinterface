@@ -312,7 +312,7 @@ int main(int argc, char **argv) {
 #ifdef IFFT_FPGA
   int **txdataF2;
 #endif
-  int **txdata,**txdata1 = NULL,**txdata2 = NULL;
+  int **txdata, **txdata1 = NULL, **txdata2 = NULL;
   double **s_re,**s_im,**s_re1,**s_im1,**s_re2,**s_im2,**r_re,**r_im,**r_re1,**r_im1,**r_re2,**r_im2;
   double iqim = 0.0;
   unsigned char pbch_pdu[6];
@@ -1180,12 +1180,12 @@ int main(int argc, char **argv) {
         s_re[aa][i] = tmp_re;
         s_im[aa][i] = tmp_im;
 
-        if (interf1>-20) {
+        if (interf1 >- 20 && txdata1) {
           s_re1[aa][i] = ((double)(((short *)txdata1[aa]))[(i<<1)]);
           s_im1[aa][i] = ((double)(((short *)txdata1[aa]))[(i<<1)+1]);
         }
 
-        if (interf2>-20) {
+        if (interf2 >- 20 && txdata2) {
           s_re2[aa][i] = ((double)(((short *)txdata2[aa]))[(i<<1)]);
           s_im2[aa][i] = ((double)(((short *)txdata2[aa]))[(i<<1)+1]);
         }
