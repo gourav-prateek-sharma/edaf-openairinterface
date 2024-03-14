@@ -18,6 +18,7 @@ RUN make
 WORKDIR /oai-ran
 RUN mkdir -p cmake_targets/log && \
     cppcheck --enable=warning --force --xml --xml-version=2 \
+        --inline-suppr \
         -i openair1/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder.c \
         --suppressions-list=ci-scripts/cppcheck_suppressions.list \
         -I common/utils \
