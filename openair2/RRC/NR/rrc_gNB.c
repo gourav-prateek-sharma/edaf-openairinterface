@@ -1940,6 +1940,19 @@ static void rrc_delete_ue_data(gNB_RRC_UE_t *UE)
   ASN_STRUCT_FREE(asn_DEF_NR_MeasResults, UE->measResults);
 }
 
+void rrc_remove_ue(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p)
+{
+  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  /* we call nr_pdcp_remove_UE() in the handler of E1 bearer release, but if we
+   * are in E1, we also need to free the UE in the CU-CP, so call it twice to
+   * cover all cases */
+  nr_pdcp_remove_UE(UE->rrc_ue_id);
+  rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(0, UE->rrc_ue_id);
+  LOG_I(NR_RRC, "removed UE CU UE ID %u/RNTI %04x \n", UE->rrc_ue_id, UE->rnti);
+  rrc_delete_ue_data(UE);
+  rrc_gNB_remove_ue_context(rrc, ue_context_p);
+}
+
 static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
 {
   const int instance = 0;
@@ -1950,16 +1963,8 @@ static void rrc_CU_process_ue_context_release_complete(MessageDef *msg_p)
     LOG_E(RRC, "could not find UE context for CU UE ID %u, aborting transaction\n", complete->gNB_CU_ue_id);
     return;
   }
-  gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
 
-  /* we call nr_pdcp_remove_UE() in the handler of E1 bearer release, but if we
-   * are in E1, we also need to free the UE in the CU-CP, so call it twice to
-   * cover all cases */
-  nr_pdcp_remove_UE(UE->rrc_ue_id);
-  rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(instance, UE->rrc_ue_id);
-  LOG_I(NR_RRC, "removed UE CU UE ID %u/RNTI %04x \n", UE->rrc_ue_id, UE->rnti);
-  rrc_delete_ue_data(UE);
-  rrc_gNB_remove_ue_context(rrc, ue_context_p);
+  rrc_remove_ue(RC.nrrrc[0], ue_context_p);
 }
 
 static void rrc_CU_process_ue_context_modification_response(MessageDef *msg_p, instance_t instance)
@@ -2672,23 +2677,6 @@ rrc_gNB_generate_RRCRelease(
   };
   deliver_ue_ctxt_release_data_t data = {.rrc = rrc, .release_cmd = &ue_context_release_cmd, .assoc_id = ue_data.du_assoc_id};
   nr_pdcp_data_req_srb(ctxt_pP->rntiMaybeUEid, DCCH, rrc_gNB_mui++, size, buffer, rrc_deliver_ue_ctxt_release_cmd, &data);
-
-  /* a UE might not be associated to a CU-UP if it never requested a PDU
-   * session (intentionally, or because of erros) */
-  if (ue_associated_to_cuup(rrc, UE)) {
-    sctp_assoc_t assoc_id = get_existing_cuup_for_ue(rrc, UE);
-    e1ap_bearer_release_cmd_t cmd = {
-      .gNB_cu_cp_ue_id = UE->rrc_ue_id,
-      .gNB_cu_up_ue_id = UE->rrc_ue_id,
-    };
-    rrc->cucp_cuup.bearer_context_release(assoc_id, &cmd);
-  }
-
-#ifdef E2_AGENT
-  signal_rrc_state_changed_to(UE, RC_SM_RRC_IDLE);
-#endif
-
-  /* UE will be freed after UE context release complete */
 }
 
 int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib1, uint32_t tmsi, uint8_t paging_drx)

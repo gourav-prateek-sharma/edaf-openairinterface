@@ -73,6 +73,10 @@
 #include "conversions.h"
 #include "RRC/NR/rrc_gNB_radio_bearers.h"
 
+#ifdef E2_AGENT
+#include "openair2/E2AP/RAN_FUNCTION/O-RAN/ran_func_rc_extern.h"
+#endif
+
 #include "uper_encoder.h"
 
 extern RAN_CONTEXT_t RC;
@@ -1178,7 +1182,7 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_REQ(MessageDef *msg_p, instance_t in
     itti_send_msg_to_task(TASK_NGAP, instance, msg_fail_p);
     return (-1);
   } else {
-    /* TODO release context. */
+
     /* Send the response */
     MessageDef *msg_resp_p;
     msg_resp_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_RESP);
@@ -1195,7 +1199,7 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_REQ(MessageDef *msg_p, instance_t in
 */
 int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_t instance)
 {
-  //-----------------------------------------------------------------------------
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
   uint32_t gNB_ue_ngap_id = 0;
   protocol_ctxt_t ctxt;
   gNB_ue_ngap_id = NGAP_UE_CONTEXT_RELEASE_COMMAND(msg_p).gNB_ue_ngap_id;
@@ -1214,9 +1218,34 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
   }
 
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
-  PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, UE->rrc_ue_id, 0, 0);
-  ctxt.eNB_index = 0;
-  rrc_gNB_generate_RRCRelease(&ctxt, ue_context_p);
+#ifdef E2_AGENT
+  signal_rrc_state_changed_to(UE, RC_SM_RRC_IDLE);
+#endif
+
+  /* a UE might not be associated to a CU-UP if it never requested a PDU
+   * session (intentionally, or because of erros) */
+  if (ue_associated_to_cuup(rrc, UE)) {
+    sctp_assoc_t assoc_id = get_existing_cuup_for_ue(rrc, UE);
+    e1ap_bearer_release_cmd_t cmd = {
+      .gNB_cu_cp_ue_id = UE->rrc_ue_id,
+      .gNB_cu_up_ue_id = UE->rrc_ue_id,
+    };
+    rrc->cucp_cuup.bearer_context_release(assoc_id, &cmd);
+  }
+
+  /* special case: the DU might be offline, in which case the f1_ue_data exists
+   * but is set to 0 */
+  if (cu_exists_f1_ue_data(UE->rrc_ue_id) && cu_get_f1_ue_data(UE->rrc_ue_id).du_assoc_id != 0) {
+    PROTOCOL_CTXT_SET_BY_INSTANCE(&ctxt, instance, GNB_FLAG_YES, UE->rrc_ue_id, 0, 0);
+    ctxt.eNB_index = 0;
+    rrc_gNB_generate_RRCRelease(&ctxt, ue_context_p);
+
+    /* UE will be freed after UE context release complete */
+  } else {
+    // the DU is offline already
+    rrc_remove_ue(rrc, ue_context_p);
+  }
+
   return 0;
 }
 
