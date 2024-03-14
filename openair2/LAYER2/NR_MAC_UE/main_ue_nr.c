@@ -79,6 +79,9 @@ void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
   memset(mac->ssb_list, 0, sizeof(mac->ssb_list));
   memset(mac->prach_assoc_pattern, 0, sizeof(mac->prach_assoc_pattern));
+
+  for (int i = 0; i < NR_MAX_SR_ID; i++)
+    memset(&mac->scheduling_info.sr_info[i], 0, sizeof(mac->scheduling_info.sr_info[i]));
 }
 
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
@@ -165,8 +168,9 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   }
   nr_timer_stop(&nr_mac->ra.contention_resolution_timer);
   nr_timer_stop(&nr_mac->scheduling_info.sr_DelayTimer);
-  nr_timer_stop(&nr_mac->scheduling_info.sr_ProhibitTimer);
   nr_timer_stop(&nr_mac->scheduling_info.retxBSR_Timer);
+  for (int i = 0; i < NR_MAX_SR_ID; i++)
+    nr_timer_stop(&nr_mac->scheduling_info.sr_info[i].prohibitTimer);
 
   // consider all timeAlignmentTimers as expired and perform the corresponding actions in clause 5.2
   // TODO
@@ -186,9 +190,10 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   free_and_zero(nr_mac->ra.Msg3_buffer);
 
   // cancel any triggered Scheduling Request procedure
-  nr_mac->scheduling_info.SR_COUNTER = 0;
-  nr_mac->scheduling_info.SR_pending = 0;
-  nr_mac->scheduling_info.sr_id = -1; // invalid init value
+  for (int i = 0; i < NR_MAX_SR_ID; i++) {
+    nr_mac->scheduling_info.sr_info[i].pending = false;
+    nr_mac->scheduling_info.sr_info[i].counter = 0;
+  }
 
   // cancel any triggered Buffer Status Reporting procedure
   nr_mac->scheduling_info.BSR_reporting_active = NR_BSR_TRIGGER_NONE;

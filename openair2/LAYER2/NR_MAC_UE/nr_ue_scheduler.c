@@ -133,7 +133,8 @@ static void trigger_regular_bsr(NR_UE_MAC_INST_t *mac, NR_LogicalChannelIdentity
 void update_mac_timers(NR_UE_MAC_INST_t *mac)
 {
   nr_timer_tick(&mac->ra.contention_resolution_timer);
-  nr_timer_tick(&mac->scheduling_info.sr_ProhibitTimer);
+  for (int j = 0; j < NR_MAX_SR_ID; j++)
+    nr_timer_tick(&mac->scheduling_info.sr_info[j].prohibitTimer);
   nr_timer_tick(&mac->scheduling_info.sr_DelayTimer);
   bool retxBSR_expired = nr_timer_tick(&mac->scheduling_info.retxBSR_Timer);
   if (retxBSR_expired) {
@@ -1108,9 +1109,31 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
     LOG_E(NR_MAC, "Internal error, no scheduled_response function\n");
 }
 
-static void nr_trigger_sr(NR_UE_MAC_INST_t *mac)
+static void nr_update_sr(NR_UE_MAC_INST_t *mac)
 {
   NR_UE_SCHEDULING_INFO *sched_info = &mac->scheduling_info;
+
+  // if no pending data available for transmission
+  // All pending SR(s) shall be cancelled and each respective sr-ProhibitTimer shall be stopped
+  bool data_avail = false;
+  for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
+    if (sched_info->lc_sched_info[i].LCID_buffer_remain > 0) {
+      data_avail = true;
+      break;
+    }
+  }
+  if (!data_avail) {
+    for (int i = 0; i < NR_MAX_SR_ID; i++) {
+      nr_sr_info_t *sr = &sched_info->sr_info[i];
+      if (sr->active_SR_ID) {
+        LOG_D(NR_MAC, "No pending data available -> Canceling pending SRs\n");
+        sr->pending = false;
+        sr->counter = 0;
+        nr_timer_stop(&sr->prohibitTimer);
+      }
+    }
+  }
+
   // if a Regular BSR has been triggered and logicalChannelSR-DelayTimer is not running
   if (((sched_info->BSR_reporting_active & NR_BSR_TRIGGER_REGULAR) == 0)
       || is_nr_timer_active(sched_info->sr_DelayTimer))
@@ -1129,7 +1152,18 @@ static void nr_trigger_sr(NR_UE_MAC_INST_t *mac)
   // TODO not implemented
 
   // trigger SR
-  sched_info->SR_pending = 1;
+  if (lc_info->sr_id < 0 || lc_info->sr_id >= NR_MAX_SR_ID)
+    LOG_E(NR_MAC, "No SR corresponding to this LCID\n"); // TODO not sure what to do here
+  else {
+    nr_sr_info_t *sr = &sched_info->sr_info[lc_info->sr_id];
+    if (!sr->pending) {
+      LOG_D(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
+      sr->pending = true;
+      sr->counter = 0;
+      // TODO initiate a Random Access procedure on the SpCell and cancel the pending SR
+      // if the MAC entity has no valid PUCCH resource configured for the pending SR
+    }
+  }
 }
 
 static void nr_update_bsr(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP, uint8_t gNB_index)
@@ -1288,7 +1322,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   }
 
   if(mac->state == UE_CONNECTED)
-    nr_trigger_sr(mac);
+    nr_update_sr(mac);
 
   // update Bj for all active lcids before LCP procedure
   LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
@@ -1947,8 +1981,7 @@ void nr_ue_pucch_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, int slotP, voi
   // SR
   if (mac->state == UE_CONNECTED && trigger_periodic_scheduling_request(mac, &pucch[0], frameP, slotP)) {
     num_res++;
-    /* sr_payload = 1 means that this is a positive SR, sr_payload = 0 means that it is a negative SR */
-    pucch[0].sr_payload = nr_ue_get_SR(mac, frameP, slotP);
+    // TODO check if the PUCCH resource for the SR transmission occasion overlap with a UL-SCH resource
   }
 
   // CSI
@@ -2534,10 +2567,8 @@ static int nr_ue_get_sdu_mac_ce_pre(NR_UE_MAC_INST_t *mac,
   bsr_t
 */
 static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
-                                      int CC_id,
                                       frame_t frame,
                                       slot_t slot,
-                                      uint8_t gNB_index,
                                       uint8_t *ulsch_buffer,
                                       uint16_t buflen,
                                       NR_UE_MAC_CE_INFO *mac_ce_p)
@@ -2676,19 +2707,15 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
     }
   }
 
-  LOG_D(NR_MAC, "[UE %d][SR] Gave SDU to PHY, clearing any scheduling request\n", mac->ue_id);
-  sched_info->SR_pending = 0;
-  sched_info->SR_COUNTER = 0;
-  nr_timer_stop(&sched_info->sr_ProhibitTimer);
-
   /* Actions when a BSR is sent */
   if (mac_ce_p->bsr_ce_len) {
     LOG_D(NR_MAC,
-          "[UE %d] MAC BSR Sent !! bsr (ce%d,hdr%d) buff_len %d\n",
+          "[UE %d] MAC BSR Sent! ce %d, hdr %d buff_len %d triggering LCID %ld\n",
           mac->ue_id,
           mac_ce_p->bsr_ce_len,
           mac_ce_p->bsr_header_len,
-          buflen);
+          buflen,
+          sched_info->regularBSR_trigger_lcid);
     // Reset ReTx BSR Timer
     nr_timer_start(&sched_info->retxBSR_Timer);
     // Reset Periodic Timer except when BSR is truncated
@@ -2697,8 +2724,20 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
       LOG_D(NR_MAC, "[UE %d] MAC Periodic BSR Timer Reset\n", mac->ue_id);
     }
 
+    if (sched_info->regularBSR_trigger_lcid > 0) {
+      nr_lcordered_info_t *lc_info = get_lc_info_from_lcid(mac, sched_info->regularBSR_trigger_lcid);
+      AssertFatal(lc_info, "Couldn't find logical channel with LCID %ld\n", sched_info->regularBSR_trigger_lcid);
+      if (lc_info->sr_id >= 0 && lc_info->sr_id < NR_MAX_SR_ID) {
+        LOG_D(NR_MAC, "[UE %d][SR] Gave SDU to PHY, clearing scheduling request with ID %d\n", mac->ue_id, lc_info->sr_id);
+        nr_sr_info_t *sr = &sched_info->sr_info[lc_info->sr_id];
+        sr->pending = false;
+        sr->counter = 0;
+        nr_timer_stop(&sr->prohibitTimer);
+      }
+    }
     // Reset BSR Trigger flags
     sched_info->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
+    sched_info->regularBSR_trigger_lcid = 0;
   }
 }
 
@@ -3081,7 +3120,7 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
 
   //nr_ue_get_sdu_mac_ce_post recalculates all mac_ce related header fields since buffer has been changed after mac_rlc_data_req.
   //Also, BSR padding is handled here after knowing mac_ce_p->sdu_length_total.
-  nr_ue_get_sdu_mac_ce_post(mac, CC_id, frame, slot, gNB_index, ulsch_buffer, buflen, mac_ce_p);
+  nr_ue_get_sdu_mac_ce_post(mac, frame, slot, ulsch_buffer, buflen, mac_ce_p);
 
   if (mac_ce_p->tot_mac_ce_len > 0) {
 

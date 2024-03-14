@@ -755,6 +755,7 @@ static void nr_configure_lc_config(NR_UE_MAC_INST_t *mac,
   AssertFatal(mac_lc_config->ul_SpecificParameters, "UL parameters shouldn't be NULL for DRBs\n");
   struct NR_LogicalChannelConfig__ul_SpecificParameters *ul_parm = mac_lc_config->ul_SpecificParameters;
   lc_info->priority = ul_parm->priority;
+  lc_info->sr_id = ul_parm->schedulingRequestID ? *ul_parm->schedulingRequestID : -1;
   lc_info->sr_DelayTimerApplied = ul_parm->logicalChannelSR_DelayTimerApplied;
   lc_info->lc_SRMask = ul_parm->logicalChannelSR_Mask;
   lc_info->pbr = nr_get_pbr(ul_parm->prioritisedBitRate);
@@ -1698,30 +1699,23 @@ static void configure_maccellgroup(NR_UE_MAC_INST_t *mac, const NR_MAC_CellGroup
     const NR_SchedulingRequestConfig_t *src = mcg->schedulingRequestConfig;
     if (src->schedulingRequestToReleaseList) {
       for (int i = 0; i < src->schedulingRequestToReleaseList->list.count; i++) {
-        if (*src->schedulingRequestToReleaseList->list.array[i] == si->sr_id) {
-          si->SR_COUNTER = 0;
-          nr_timer_setup(&si->sr_ProhibitTimer, 0, 1); // default value is 0ms
-          si->sr_id = -1; // invalid init value
-        }
-        else
-          LOG_E(NR_MAC, "Cannot release SchedulingRequestConfig. Not configured.\n");
+        NR_SchedulingRequestId_t id = *src->schedulingRequestToReleaseList->list.array[i];
+        memset(&si->sr_info[id], 0, sizeof(si->sr_info[id]));
       }
     }
     if (src->schedulingRequestToAddModList) {
       for (int i = 0; i < src->schedulingRequestToAddModList->list.count; i++) {
         NR_SchedulingRequestToAddMod_t *sr = src->schedulingRequestToAddModList->list.array[i];
-        AssertFatal(si->sr_id == -1 ||
-                    si->sr_id == sr->schedulingRequestId,
-                    "Current implementation cannot handle more than 1 SR configuration\n");
-        si->sr_id = sr->schedulingRequestId;
+        nr_sr_info_t *sr_info = &si->sr_info[sr->schedulingRequestId];
+        sr_info->active_SR_ID = true;
         // NR_SchedulingRequestToAddMod__sr_TransMax_n4	= 0 and so on
         // to obtain the value to configure we need to right shift 4 by the RRC parameter
-        si->sr_MaxTransmissions = 4 << sr->sr_TransMax;
+        sr_info->maxTransmissions = 4 << sr->sr_TransMax;
         int target_ms = 0;
         if (sr->sr_ProhibitTimer)
           target_ms = 1 << *sr->sr_ProhibitTimer;
         // length of slot is (1/2^scs)ms
-        nr_timer_setup(&si->sr_ProhibitTimer, target_ms << scs, 1); // 1 slot update rate
+        nr_timer_setup(&sr_info->prohibitTimer, target_ms << scs, 1); // 1 slot update rate
       }
     }
   }
