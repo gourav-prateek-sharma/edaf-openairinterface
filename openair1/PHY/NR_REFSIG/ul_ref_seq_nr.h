@@ -228,7 +228,7 @@ static const uint16_t ref_ul_primes[SRS_SB_CONF] = {
 };
 
 /* Low-PAPR base sequence; see TS 38.211 clause 5.2.2 */
-extern int16_t *rv_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][SRS_SB_CONF];
+extern c16_t *rv_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][SRS_SB_CONF];
 
 /* 38.211 table Table 5.2.2.2-1: Definition of phi(n) for M_ZC = 6 */
 static const char phi_M_ZC_6[6 * U_GROUP_NUMBER] = {
@@ -524,9 +524,9 @@ static const uint16_t dmrs_ref_ul_primes[MAX_INDEX_DMRS_UL_ALLOCATED_REs] = {
 };
 
 /// PUSCH DMRS for transform precoding
-extern int16_t *gNB_dmrs_lowpaprtype1_sequence[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
-extern int16_t *dmrs_lowpaprtype1_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
-int16_t  get_index_for_dmrs_lowpapr_seq(int16_t num_dmrs_res);
+extern c16_t *gNB_dmrs_lowpaprtype1_sequence[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
+extern c16_t *dmrs_lowpaprtype1_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
+int get_index_for_dmrs_lowpapr_seq(int num_dmrs_res);
 void     generate_lowpapr_typ1_refsig_sequences(unsigned int scaling);
 void     free_gnb_lowpapr_sequences(void);
 

@@ -261,7 +261,7 @@ void nr_gen_ref_conj_symbols(uint32_t *in, uint32_t length, c16_t *output, uint1
 
 int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,
                                   unsigned int Ns,
-                                  int16_t *dmrs_seq,
+                                  c16_t *dmrs_seq,
                                   c16_t *output,
                                   unsigned short p,
                                   unsigned char lp,
@@ -284,8 +284,8 @@ int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,
           k = i-dmrs_offset;
           w = (wf1[p - 1000][i & 1]) * (wt1[p - 1000][lp]);
 
-          output[k].r = w * dmrs_seq[2 * i];
-          output[k].i = -(w * dmrs_seq[(2 * i) + 1]); // conjugate
+          output[k].r = w * dmrs_seq[i].r;
+          output[k].i = -w * dmrs_seq[i].i; // conjugate
 
 #ifdef DEBUG_PUSCH
           printf("NR_DMRS_RX: nr_pusch_dmrs_rx dmrs config type %d port %d nb_pusch_rb %d nb_dmrs %d\n",
@@ -294,8 +294,8 @@ int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,
                  nb_pusch_rb,
                  nb_dmrs);
           printf("NR_DMRS_RX: wf[%d] = %d wt[%d]= %d\n", i & 1, wf1[p - 1000][i & 1], lp, wt1[p - 1000][lp]);
-            printf("NR_DMRS_RX: i %d dmrs_offset %d k %d pusch dmrsseq[i<<1] %d, dmrsseq[(i<<1)+1] %d  pilots[k<<1] %d pilots[(k<<1)+1] %d\n", i, dmrs_offset, k, 
-              dmrs_seq[i<<1], dmrs_seq[(i<<1)+1], output[k].r, output[(k].i);
+    printf("NR_DMRS_RX: i %d dmrs_offset %d k %d pusch dmrsseq[i<<1] %d, dmrsseq[(i<<1)+1] %d  pilots[k<<1] %d pilots[(k<<1)+1] %d\n", i, dmrs_offset, k, 
+		 dmrs_seq[i].r, dmrs_seq[i].i, output[k].r, output[(k].i);
 #endif
         }
       } else {

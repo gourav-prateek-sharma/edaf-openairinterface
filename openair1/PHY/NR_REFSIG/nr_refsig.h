@@ -70,7 +70,7 @@ extern simde__m128i byte2m128i[256];
 
 int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,
                                   unsigned int Ns,
-                                  int16_t *dmrs_seq,
+                                  c16_t *dmrs_seq,
                                   c16_t *output,
                                   unsigned short p,
                                   unsigned char lp,

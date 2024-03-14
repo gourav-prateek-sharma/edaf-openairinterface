@@ -318,24 +318,19 @@ void nr_layer_mapping(int nbCodes,
   }
 }
 
-void nr_ue_layer_mapping(int16_t *mod_symbs,
-                         uint8_t n_layers,
-                         uint32_t n_symbs,
-                         int16_t **tx_layers) {
-
+void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, c16_t **tx_layers)
+{
   for (int i=0; i<n_symbs/n_layers; i++) {
     for (int l=0; l<n_layers; l++) {
-      tx_layers[l][i<<1] = (mod_symbs[(n_layers*i+l)<<1]*AMP)>>15;
-      tx_layers[l][(i<<1)+1] = (mod_symbs[((n_layers*i+l)<<1)+1]*AMP)>>15;
+      tx_layers[l][i] = c16mulRealShift(mod_symbs[n_layers * i + l], AMP, 15);
     }
   }
 }
 
-
-void nr_dft(int32_t *z, int32_t *d, uint32_t Msc_PUSCH)
+void nr_dft(c16_t *z, c16_t *d, uint32_t Msc_PUSCH)
 {
-  simde__m128i dft_in128[1][3240], dft_out128[1][3240];
-  uint32_t *dft_in0 = (uint32_t*)dft_in128[0], *dft_out0 = (uint32_t*)dft_out128[0];
+  simde__m128i dft_in128[3240], dft_out128[3240];
+  c16_t *dft_in0 = (c16_t *)dft_in128, *dft_out0 = (c16_t *)dft_out128;
 
   uint32_t i, ip;
 
@@ -659,36 +654,32 @@ void init_timeshift_rotation(NR_DL_FRAME_PARMS *fp)
   }
 }
 
-int nr_layer_precoder(int16_t **datatx_F_precoding, const char *prec_matrix, uint8_t n_layers, int32_t re_offset)
+c16_t nr_layer_precoder(c16_t **datatx_F_precoding, const char *prec_matrix, uint8_t n_layers, int32_t re_offset)
 {
-  int32_t precodatatx_F = 0;
+  c16_t precodatatx_F = {0};
 
   for (int al = 0; al<n_layers; al++) {
-    int16_t antenna_re = datatx_F_precoding[al][re_offset<<1];
-    int16_t antenna_im = datatx_F_precoding[al][(re_offset<<1) +1];
-
+    c16_t antenna = datatx_F_precoding[al][re_offset];
     switch (prec_matrix[al]) {
       case '0': //multiply by zero
         break;
 
       case '1': //multiply by 1
-        ((int16_t *) &precodatatx_F)[0] += antenna_re;
-        ((int16_t *) &precodatatx_F)[1] += antenna_im;
+        precodatatx_F = c16add(precodatatx_F, antenna);
         break;
 
       case 'n': // multiply by -1
-        ((int16_t *) &precodatatx_F)[0] -= antenna_re;
-        ((int16_t *) &precodatatx_F)[1] -= antenna_im;
+        precodatatx_F = c16sub(precodatatx_F, antenna);
         break;
 
       case 'j': //
-        ((int16_t *) &precodatatx_F)[0] -= antenna_im;
-        ((int16_t *) &precodatatx_F)[1] += antenna_re;
+        precodatatx_F.r -= antenna.i;
+        precodatatx_F.i += antenna.r;
         break;
 
       case 'o': // -j
-        ((int16_t *) &precodatatx_F)[0] += antenna_im;
-        ((int16_t *) &precodatatx_F)[1] -= antenna_re;
+        precodatatx_F.r += antenna.i;
+        precodatatx_F.i -= antenna.r;
         break;
     }
   }

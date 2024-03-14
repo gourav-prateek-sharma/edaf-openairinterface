@@ -133,7 +133,7 @@ static const uint16_t srs_max_number_cs[3] = {8, 12, 6};
 
 int generate_srs_nr(nfapi_nr_srs_pdu_t *srs_config_pdu,
                     NR_DL_FRAME_PARMS *frame_parms,
-                    int32_t **txdataF,
+                    c16_t **txdataF,
                     uint16_t symbol_offset,
                     nr_srs_info_t *nr_srs_info,
                     int16_t amp,
