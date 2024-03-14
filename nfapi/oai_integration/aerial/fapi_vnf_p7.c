@@ -997,6 +997,11 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
                                            nfapi_p7_codec_config_t *config,
                                            uint32_t *data_len)
 {
+  if (pMessageBuf == NULL || pPackedBuf == NULL) {
+    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P7 Pack supplied pointers are null\n");
+    return -1;
+  }
+
   nfapi_p7_message_header_t *pMessageHeader = pMessageBuf;
   uint8_t *end = pPackedBuf + packedBufLen;
   uint8_t *data_end = pDataBuf + dataBufLen;
@@ -1008,11 +1013,6 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
   uint8_t *pPacketBodyFieldStart = &pWritePackedMessage[8];
   uint8_t *pPackedDataField = &pDataPackedMessage[0];
   uint8_t *pPackedDataFieldStart = &pDataPackedMessage[0];
-
-  if (pMessageBuf == NULL || pPackedBuf == NULL) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P7 Pack supplied pointers are null\n");
-    return -1;
-  }
 
   // PHY API message header
   // Number of messages [0]
@@ -1136,6 +1136,11 @@ static int32_t aerial_pack_tx_data_request(void *pMessageBuf,
 
 int fapi_nr_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packedBufLen, nfapi_p7_codec_config_t *config)
 {
+  if (pMessageBuf == NULL || pPackedBuf == NULL) {
+    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P7 Pack supplied pointers are null\n");
+    return -1;
+  }
+
   nfapi_p7_message_header_t *pMessageHeader = pMessageBuf;
   uint8_t *end = pPackedBuf + packedBufLen;
   uint8_t *pWritePackedMessage = pPackedBuf;
@@ -1143,11 +1148,6 @@ int fapi_nr_p7_message_pack(void *pMessageBuf, void *pPackedBuf, uint32_t packed
   uint8_t *pPackedLengthField = &pWritePackedMessage[4];
   uint8_t *pPacketBodyField = &pWritePackedMessage[8];
   uint8_t *pPacketBodyFieldStart = &pWritePackedMessage[8];
-
-  if (pMessageBuf == NULL || pPackedBuf == NULL) {
-    NFAPI_TRACE(NFAPI_TRACE_ERROR, "P7 Pack supplied pointers are null\n");
-    return -1;
-  }
 
   // PHY API message header
   // Number of messages [0]
