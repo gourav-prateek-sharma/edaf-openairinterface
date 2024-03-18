@@ -540,6 +540,40 @@ static void nr_schedule_msg2(uint16_t rach_frame,
   *msg2_frame = *msg2_frame % 1024;
 }
 
+static bool ra_contains_preamble(const NR_RA_t *ra, uint16_t preamble_index)
+{
+  for (int j = 0; j < ra->preambles.num_preambles; j++) {
+    // check if the preamble received correspond to one of the listed or configured preambles
+    if (preamble_index == ra->preambles.preamble_list[j]) {
+      if (ra->rnti == 0 && get_softmodem_params()->nsa)
+        continue;
+      return true;
+    }
+  }
+  return false;
+}
+
+static NR_RA_t *find_free_nr_RA(NR_RA_t *ra_base, int ra_count, uint16_t preamble_index)
+{
+  // for posteriority: in the past we checked the beam index, but only in CFRA
+  //if (ra->cfra && preamble_index != ra->preamble.preamble_list[beam_index]])
+  //  // then is not right RA
+  //
+  // that seems strange because:
+  // - we check preamble_index already
+  // - why only CFRA?
+
+  for (int i = 0; i < ra_count; ++i) {
+    NR_RA_t *ra = &ra_base[i];
+    if (ra->ra_state != nrRA_gNB_IDLE)
+      continue;
+    if (!ra_contains_preamble(ra, preamble_index))
+      continue;
+
+    return ra;
+  }
+  return NULL;
+}
 
 void nr_initiate_ra_proc(module_id_t module_idP,
                          int CC_id,
@@ -550,147 +584,93 @@ void nr_initiate_ra_proc(module_id_t module_idP,
                          uint8_t symbol,
                          int16_t timing_offset)
 {
+  VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 1);
+
   gNB_MAC_INST *nr_mac = RC.nrmac[module_idP];
   NR_SCHED_LOCK(&nr_mac->sched_lock);
 
-  uint8_t ul_carrier_id = 0; // 0 for NUL 1 for SUL
-  uint16_t msg2_frame, msg2_slot,monitoring_slot_period,monitoring_offset;
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
-  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
-  frame_type_t frame_type = cc->frame_type;
 
-  uint8_t total_RApreambles = MAX_NUM_NR_PRACH_PREAMBLES;
-  uint8_t  num_ssb_per_RO = scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->ssb_perRACH_OccasionAndCB_PreamblesPerSSB->present;
-  int pr_found;
-
-  if( scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->totalNumberOfRA_Preambles != NULL)
-    total_RApreambles = *scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->totalNumberOfRA_Preambles;
-
-  if(num_ssb_per_RO > 3) { /*num of ssb per RO >= 1*/
-    num_ssb_per_RO -= 3;
-    total_RApreambles = total_RApreambles/num_ssb_per_RO ;
-  }
-
-  for (int i = 0; i < NR_NB_RA_PROC_MAX; i++) {
-
-    NR_RA_t *ra = &cc->ra[i];
-    if (ra->ra_state != nrRA_gNB_IDLE)
-      continue;
-
-    pr_found = 0;
-
-    for(int j = 0; j < ra->preambles.num_preambles; j++) {
-      //check if the preamble received correspond to one of the listed or configured preambles
-      if (preamble_index == ra->preambles.preamble_list[j]) {
-        if (ra->rnti == 0 && get_softmodem_params()->nsa)
-          continue;
-        pr_found=1;
-        break;
-      }
-    }
-    if (pr_found == 0) {
-       continue;
-    }
-
-    rnti_t ra_rnti = nr_get_ra_rnti(symbol, slotP, freq_index, ul_carrier_id);
-
-    // Configure RA BWP
-    configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
-
-    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 1);
-
-    LOG_D(NR_MAC,
-          "[gNB %d][RAPROC] CC_id %d Frame %d, Slot %d  Initiating RA procedure for preamble index %d\n",
-          module_idP,
-          CC_id,
-          frameP,
-          slotP,
-          preamble_index);
-
-    uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);
-
-    // the UE sent a RACH either for starting RA procedure or RA procedure failed and UE retries
-    if (ra->cfra) {
-      // if the preamble received correspond to one of the listed
-      if (!(preamble_index == ra->preambles.preamble_list[beam_index])) {
-        LOG_E(
-            NR_MAC,
-            "[gNB %d][RAPROC] FAILURE: preamble %d does not correspond to any of the ones in rach_ConfigDedicated\n",
-            module_idP,
-            preamble_index);
-        continue; // if the PRACH preamble does not correspond to any of the ones sent through RRC abort RA proc
-      }
-    }
-    LOG_D(NR_MAC, "Frame %d, Slot %d: Activating RA process \n", frameP, slotP);
-    ra->timing_offset = timing_offset;
-    ra->preamble_slot = slotP;
-
-    // retrieving ra pdcch monitoring period and offset
-    find_monitoring_periodicity_offset_common(ra->ra_ss, &monitoring_slot_period, &monitoring_offset);
-
-    nr_schedule_msg2(frameP,
-                     slotP,
-                     &msg2_frame,
-                     &msg2_slot,
-                     ra->DL_BWP.scs,
-                     scc,
-                     frame_type,
-                     monitoring_slot_period,
-                     monitoring_offset,
-                     beam_index,
-                     cc->num_active_ssb,
-                     nr_mac->tdd_beam_association,
-                     nr_mac->if_inst->sl_ahead);
-
-    ra->Msg2_frame = msg2_frame;
-    ra->Msg2_slot = msg2_slot;
-
-    LOG_D(NR_MAC, "%s() Msg2[%04d%d] SFN/SF:%04d%d\n", __FUNCTION__, ra->Msg2_frame, ra->Msg2_slot, frameP, slotP);
-
-    int loop = 0;
-    bool exist_connected_ue, exist_in_pending_ra_ue;
-    if (ra->rnti == 0) { // This condition allows for the usage of a preconfigured rnti for the CFRA
-      rnti_t trial = 0;
-      do {
-        // 3GPP TS 38.321 version 15.13.0 Section 7.1 Table 7.1-1: RNTI values
-        while (trial < 1 || trial > 0xffef)
-          trial = (taus() % 0xffef) + 1;
-        exist_connected_ue = find_nr_UE(&nr_mac->UE_info, trial) != NULL;
-        exist_in_pending_ra_ue = find_nr_RA_id(module_idP, CC_id, trial) != -1;
-        loop++;
-      } while (loop < 100 && (exist_connected_ue || exist_in_pending_ra_ue) );
-      if (loop == 100) {
-	LOG_E(NR_MAC, "[RAPROC] initialisation random access: no more available RNTIs for new UE\n");
-	NR_SCHED_UNLOCK(&nr_mac->sched_lock);
-	return;
-      }
-      ra->rnti = trial;
-    }
-
-    ra->ra_state = nrRA_Msg2;
-    ra->RA_rnti = ra_rnti;
-    ra->preamble_index = preamble_index;
-    ra->beam_id = cc->ssb_index[beam_index];
-
-    LOG_I(NR_MAC,
-          "[gNB %d][RAPROC] CC_id %d Frame %d Activating Msg2 generation in frame %d, slot %d using RA rnti %x SSB, new rnti %04x "
-          "index %u RA index %d\n",
-          module_idP,
-          CC_id,
-          frameP,
-          ra->Msg2_frame,
-          ra->Msg2_slot,
-          ra->RA_rnti,
-          ra->rnti,
-          cc->ssb_index[beam_index],
-          i);
-
+  NR_RA_t *ra = find_free_nr_RA(cc->ra, sizeofArray(cc->ra), preamble_index);
+  if (ra == NULL) {
+    LOG_E(NR_MAC, "FAILURE: %4d.%2d initiating RA procedure for preamble index %d: no free RA process\n", frameP, slotP, preamble_index);
     NR_SCHED_UNLOCK(&nr_mac->sched_lock);
+    VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 0);
     return;
   }
 
+  if (ra->rnti == 0) { // This condition allows for the usage of a preconfigured rnti for the CFRA
+    int loop = 0;
+    bool exist_connected_ue, exist_in_pending_ra_ue;
+    rnti_t trial = 0;
+    do {
+      // 3GPP TS 38.321 version 15.13.0 Section 7.1 Table 7.1-1: RNTI values
+      while (trial < 1 || trial > 0xffef)
+        trial = (taus() % 0xffef) + 1;
+      exist_connected_ue = find_nr_UE(&nr_mac->UE_info, trial) != NULL;
+      exist_in_pending_ra_ue = find_nr_RA_id(module_idP, CC_id, trial) != -1;
+      loop++;
+    } while (loop < 100 && (exist_connected_ue || exist_in_pending_ra_ue) );
+    if (loop == 100) {
+      LOG_E(NR_MAC, "[RAPROC] initialisation random access: no more available RNTIs for new UE\n");
+      NR_SCHED_UNLOCK(&nr_mac->sched_lock);
+      return;
+    }
+    ra->rnti = trial;
+  }
+
+  ra->ra_state = nrRA_Msg2;
+  ra->preamble_slot = slotP;
+  ra->preamble_index = preamble_index;
+  ra->timing_offset = timing_offset;
+  uint8_t ul_carrier_id = 0; // 0 for NUL 1 for SUL
+  ra->RA_rnti = nr_get_ra_rnti(symbol, slotP, freq_index, ul_carrier_id);
+  int index = ra - cc->ra;
+  LOG_I(NR_MAC, "%d.%d UE RA-RNTI %04x RNTI %04x: Activating RA process index %d\n", frameP, slotP, ra->RA_rnti, ra->rnti, index);
+
+  // Configure RA BWP
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
+  configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
+
+  // retrieving ra pdcch monitoring period and offset
+  uint16_t monitoring_slot_period, monitoring_offset;
+  find_monitoring_periodicity_offset_common(ra->ra_ss, &monitoring_slot_period, &monitoring_offset);
+
+  uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);
+  ra->beam_id = cc->ssb_index[beam_index];
+  uint16_t msg2_frame, msg2_slot;
+  nr_schedule_msg2(frameP,
+                   slotP,
+                   &msg2_frame,
+                   &msg2_slot,
+                   ra->DL_BWP.scs,
+                   scc,
+                   cc->frame_type,
+                   monitoring_slot_period,
+                   monitoring_offset,
+                   beam_index,
+                   cc->num_active_ssb,
+                   nr_mac->tdd_beam_association,
+                   nr_mac->if_inst->sl_ahead);
+
+  ra->Msg2_frame = msg2_frame;
+  ra->Msg2_slot = msg2_slot;
+
+  LOG_D(NR_MAC, "%s() Msg2[%04d%d] SFN/SF:%04d%d\n", __FUNCTION__, ra->Msg2_frame, ra->Msg2_slot, frameP, slotP);
+
+  LOG_I(NR_MAC,
+        "[gNB %d][RAPROC] CC_id %d Frame %d Activating Msg2 generation in frame %d, slot %d using RA rnti %x SSB, new rnti %04x "
+        "index %u\n",
+        module_idP,
+        CC_id,
+        frameP,
+        ra->Msg2_frame,
+        ra->Msg2_slot,
+        ra->RA_rnti,
+        ra->rnti,
+        cc->ssb_index[beam_index]);
+
   NR_SCHED_UNLOCK(&nr_mac->sched_lock);
-  LOG_E(NR_MAC, "[gNB %d][RAPROC] FAILURE: CC_id %d %4d.%2d initiating RA procedure for preamble index %d: no free RA process\n", module_idP, CC_id, frameP, slotP, preamble_index);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 0);
 }
