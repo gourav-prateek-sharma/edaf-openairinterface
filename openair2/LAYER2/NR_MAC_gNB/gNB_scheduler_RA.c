@@ -70,6 +70,7 @@ static const uint8_t DELTA[4] = {2, 3, 4, 6};
 
 static const float ssb_per_rach_occasion[8] = {0.125, 0.25, 0.5, 1, 2, 4, 8};
 
+__attribute__ ((unused))
 static int16_t ssb_index_from_prach(module_id_t module_idP,
                                     frame_t frameP,
                                     sub_frame_t slotP,
@@ -422,124 +423,6 @@ void schedule_nr_prach(module_id_t module_idP, frame_t frameP, sub_frame_t slotP
   }
 }
 
-static void nr_schedule_msg2(uint16_t rach_frame,
-                             uint16_t rach_slot,
-                             uint16_t *msg2_frame,
-                             uint16_t *msg2_slot,
-                             int mu,
-                             NR_ServingCellConfigCommon_t *scc,
-                             frame_type_t frame_type,
-                             uint16_t monitoring_slot_period,
-                             uint16_t monitoring_offset,
-                             uint8_t beam_index,
-                             uint8_t num_active_ssb,
-                             int16_t *tdd_beam_association,
-                             int sl_ahead)
-{
-  // preferentially we schedule the msg2 in the mixed slot or in the last dl slot
-  // if they are allowed by search space configuration
-  uint8_t response_window = scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric.ra_ResponseWindow;
-  uint8_t slot_window;
-  const int n_slots_frame = nr_slots_per_frame[mu];
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  // number of mixed slot or of last dl slot if there is no mixed slot
-  uint8_t last_dl_slot_period = n_slots_frame-1;
-  // lenght of tdd period in slots
-  uint8_t tdd_period_slot = n_slots_frame;
-
-  if (tdd) {
-    last_dl_slot_period = tdd->nrofDownlinkSymbols == 0? (tdd->nrofDownlinkSlots-1) : tdd->nrofDownlinkSlots;
-    tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
-  }
-  else{
-    if(frame_type == TDD)
-      AssertFatal(frame_type == FDD, "Dynamic TDD not handled yet\n");
-  }
-
-
-  switch(response_window){
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl1:
-      slot_window = 1;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl2:
-      slot_window = 2;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl4:
-      slot_window = 4;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl8:
-      slot_window = 8;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl10:
-      slot_window = 10;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl20:
-      slot_window = 20;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl40:
-      slot_window = 40;
-      break;
-    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl80:
-      slot_window = 80;
-      break;
-    default:
-      AssertFatal(1==0,"Invalid response window value %d\n",response_window);
-  }
-  AssertFatal(slot_window<=nr_slots_per_frame[mu],"Msg2 response window needs to be lower or equal to 10ms");
-
-  // slot and frame limit to transmit msg2 according to response window
-  uint8_t slot_limit = (rach_slot + slot_window)%nr_slots_per_frame[mu];
-  uint16_t frame_limit = rach_frame + (rach_slot + slot_window)/nr_slots_per_frame[mu];
-
-  // computing start of next period
-  uint8_t start_next_period = rach_slot-(rach_slot%tdd_period_slot)+tdd_period_slot;
-  int eff_slot = start_next_period + last_dl_slot_period; // initializing scheduling of slot to next mixed (or last dl) slot
-
-  // we can't schedule msg2 before sl_ahead since prach
-  while ((eff_slot-rach_slot)<=sl_ahead) {
-    eff_slot += tdd_period_slot;
-  }
-#ifdef ENABLE_AERIAL
-  if (nfapi_mode > 0) { // Aerial needs slot_ahead = 0, requiring addition of another TDD period
-    eff_slot += tdd_period_slot;
-  }
-#endif
-  int FR = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] >= 257 ? nr_FR2 : nr_FR1;
-  if (FR==nr_FR2) {
-    int num_tdd_period = (eff_slot%nr_slots_per_frame[mu])/tdd_period_slot;
-    while((tdd_beam_association[num_tdd_period]!=-1)&&(tdd_beam_association[num_tdd_period]!=beam_index)) {
-      eff_slot += tdd_period_slot;
-      num_tdd_period = (eff_slot % nr_slots_per_frame[mu])/tdd_period_slot;
-    }
-    if(tdd_beam_association[num_tdd_period] == -1)
-      tdd_beam_association[num_tdd_period] = beam_index;
-  }
-
-  *msg2_frame = rach_frame + eff_slot / nr_slots_per_frame[mu];
-  *msg2_slot = eff_slot % nr_slots_per_frame[mu];
-
-  // go to previous slot if the current scheduled slot is beyond the response window
-  // and if the slot is not among the PDCCH monitored ones (38.213 10.1)
-  while (*msg2_frame > frame_limit
-         || (*msg2_frame == frame_limit && *msg2_slot > slot_limit)
-         || ((*msg2_frame * nr_slots_per_frame[mu] + *msg2_slot - monitoring_offset) % monitoring_slot_period != 0)) {
-
-    if((frame_type == FDD) || ((*msg2_slot%tdd_period_slot) > 0)) {
-      if (*msg2_slot==0) {
-        (*msg2_frame)--;
-        *msg2_slot = nr_slots_per_frame[mu] - 1;
-      }
-      else
-        (*msg2_slot)--;
-    }
-    else
-      AssertFatal(1==0,"No available DL slot to schedule msg2 has been found");
-  }
-
-  // calculate frame number considering wrap-around
-  *msg2_frame = *msg2_frame % 1024;
-}
-
 static bool ra_contains_preamble(const NR_RA_t *ra, uint16_t preamble_index)
 {
   for (int j = 0; j < ra->preambles.num_preambles; j++) {
@@ -583,75 +466,6 @@ static const NR_RA_t *find_nr_RA_rnti(const NR_RA_t *ra_base, int ra_count, rnti
       return ra;
   }
   return NULL;
-}
-
-static void find_monitoring_periodicity_offset_common(const NR_SearchSpace_t *ss, uint16_t *slot_period, uint16_t *offset)
-{
-  switch (ss->monitoringSlotPeriodicityAndOffset->present) {
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl1:
-      *slot_period = 1;
-      *offset = 0;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl2:
-      *slot_period = 2;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl2;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl4:
-      *slot_period = 4;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl4;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl5:
-      *slot_period = 5;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl5;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl8:
-      *slot_period = 8;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl8;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl10:
-      *slot_period = 10;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl10;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl16:
-      *slot_period = 16;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl16;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl20:
-      *slot_period = 20;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl20;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl40:
-      *slot_period = 40;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl40;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl80:
-      *slot_period = 80;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl80;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl160:
-      *slot_period = 160;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl160;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl320:
-      *slot_period = 320;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl320;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl640:
-      *slot_period = 640;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl640;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl1280:
-      *slot_period = 1280;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl1280;
-      break;
-    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl2560:
-      *slot_period = 2560;
-      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl2560;
-      break;
-    default:
-      AssertFatal(1 == 0, "Invalid monitoring slot periodicity and offset value\n");
-      break;
-  }
 }
 
 void nr_initiate_ra_proc(module_id_t module_idP,
@@ -711,44 +525,6 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   // Configure RA BWP
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
-
-  // retrieving ra pdcch monitoring period and offset
-  uint16_t monitoring_slot_period, monitoring_offset;
-  find_monitoring_periodicity_offset_common(ra->ra_ss, &monitoring_slot_period, &monitoring_offset);
-
-  uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);
-  ra->beam_id = cc->ssb_index[beam_index];
-  uint16_t msg2_frame, msg2_slot;
-  nr_schedule_msg2(frameP,
-                   slotP,
-                   &msg2_frame,
-                   &msg2_slot,
-                   ra->DL_BWP.scs,
-                   scc,
-                   cc->frame_type,
-                   monitoring_slot_period,
-                   monitoring_offset,
-                   beam_index,
-                   cc->num_active_ssb,
-                   nr_mac->tdd_beam_association,
-                   nr_mac->if_inst->sl_ahead);
-
-  ra->Msg2_frame = msg2_frame;
-  ra->Msg2_slot = msg2_slot;
-
-  LOG_D(NR_MAC, "%s() Msg2[%04d%d] SFN/SF:%04d%d\n", __FUNCTION__, ra->Msg2_frame, ra->Msg2_slot, frameP, slotP);
-
-  LOG_I(NR_MAC,
-        "[gNB %d][RAPROC] CC_id %d Frame %d Activating Msg2 generation in frame %d, slot %d using RA rnti %x SSB, new rnti %04x "
-        "index %u\n",
-        module_idP,
-        CC_id,
-        frameP,
-        ra->Msg2_frame,
-        ra->Msg2_slot,
-        ra->RA_rnti,
-        ra->rnti,
-        cc->ssb_index[beam_index]);
 
   NR_SCHED_UNLOCK(&nr_mac->sched_lock);
 
@@ -1261,6 +1037,145 @@ static void nr_add_msg3(module_id_t module_idP, int CC_id, frame_t frameP, sub_f
 }
 
 
+static void find_monitoring_periodicity_offset_common(const NR_SearchSpace_t *ss, uint16_t *slot_period, uint16_t *offset)
+{
+  switch (ss->monitoringSlotPeriodicityAndOffset->present) {
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl1:
+      *slot_period = 1;
+      *offset = 0;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl2:
+      *slot_period = 2;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl2;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl4:
+      *slot_period = 4;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl4;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl5:
+      *slot_period = 5;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl5;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl8:
+      *slot_period = 8;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl8;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl10:
+      *slot_period = 10;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl10;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl16:
+      *slot_period = 16;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl16;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl20:
+      *slot_period = 20;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl20;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl40:
+      *slot_period = 40;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl40;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl80:
+      *slot_period = 80;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl80;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl160:
+      *slot_period = 160;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl160;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl320:
+      *slot_period = 320;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl320;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl640:
+      *slot_period = 640;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl640;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl1280:
+      *slot_period = 1280;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl1280;
+      break;
+    case NR_SearchSpace__monitoringSlotPeriodicityAndOffset_PR_sl2560:
+      *slot_period = 2560;
+      *offset = ss->monitoringSlotPeriodicityAndOffset->choice.sl2560;
+      break;
+    default:
+      AssertFatal(1 == 0, "Invalid monitoring slot periodicity and offset value\n");
+      break;
+  }
+}
+
+static bool check_msg2_monitoring(const NR_RA_t *ra, int mu, int current_frame, int current_slot)
+{
+  int n = nr_slots_per_frame[mu];
+
+  // check if the slot is not among the PDCCH monitored ones (38.213 10.1)
+  uint16_t monitoring_slot_period, monitoring_offset;
+  find_monitoring_periodicity_offset_common(ra->ra_ss, &monitoring_slot_period, &monitoring_offset);
+  if ((current_frame * n + current_slot - monitoring_offset) % monitoring_slot_period != 0)
+    return false;
+  return true;
+}
+
+static int get_response_window(e_NR_RACH_ConfigGeneric__ra_ResponseWindow response_window)
+{
+  int slots;
+  switch (response_window) {
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl1:
+      slots = 1;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl2:
+      slots = 2;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl4:
+      slots = 4;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl8:
+      slots = 8;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl10:
+      slots = 10;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl20:
+      slots = 20;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl40:
+      slots = 40;
+      break;
+    case NR_RACH_ConfigGeneric__ra_ResponseWindow_sl80:
+      slots = 80;
+      break;
+    default:
+      AssertFatal(false, "Invalid response window value %d\n", response_window);
+  }
+  return slots;
+}
+
+static bool msg2_in_response_window(int rach_frame, int rach_slot, int mu, long rrc_ra_ResponseWindow, int current_frame, int current_slot)
+{
+  int window_slots = get_response_window(rrc_ra_ResponseWindow);
+  int n = nr_slots_per_frame[mu];
+
+  int abs_rach = n * rach_frame + rach_slot;
+  int abs_now = n * current_frame + current_slot;
+  int diff = (n * 1024 + abs_now - abs_rach) % (n * 1024);
+
+  bool in_window = diff <= window_slots;
+  if (!in_window) {
+    LOG_W(NR_MAC,
+          "exceeded RA window: preamble at %d.%2d now %d.%d (diff %d), ra_ResponseWindow %ld/%d slots\n",
+          rach_frame,
+          rach_slot,
+          current_frame,
+          current_slot,
+          diff,
+          rrc_ra_ResponseWindow,
+          window_slots);
+  }
+  return in_window;
+}
+
 static void nr_generate_Msg2(module_id_t module_idP,
                              int CC_id,
                              frame_t frameP,
@@ -1270,18 +1185,30 @@ static void nr_generate_Msg2(module_id_t module_idP,
                              nfapi_nr_tx_data_request_t *TX_req)
 {
   gNB_MAC_INST *nr_mac = RC.nrmac[module_idP];
+  // no DL -> cannot send Msg2
+  if (!is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP))
+    return;
+
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
   NR_UE_ServingCell_Info_t *sc_info = &ra->sc_info;
+  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
 
-  if (ra->Msg2_frame != frameP || ra->Msg2_slot != slotP)
+  long rrc_ra_ResponseWindow =
+      scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric.ra_ResponseWindow;
+  if (!msg2_in_response_window(ra->preamble_frame, ra->preamble_slot, dl_bwp->scs, rrc_ra_ResponseWindow, frameP, slotP)) {
+    LOG_E(NR_MAC, "UE RA-RNTI %04x RNTI %04x: exceeded RA window, cannot schedule Msg2\n", ra->RA_rnti, ra->rnti);
+    nr_clear_ra_proc(ra);
+    return;
+  }
+
+  if (!check_msg2_monitoring(ra, dl_bwp->scs, frameP, slotP))
     return;
 
   int mcsIndex = -1; // initialization value
   int rbStart = 0;
   int rbSize = 8;
 
-  NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   NR_SearchSpace_t *ss = ra->ra_ss;
 
   long BWPStart = 0;
@@ -1320,14 +1247,14 @@ static void nr_generate_Msg2(module_id_t module_idP,
   }
 
   if (rbStart > (BWPSize - rbSize)) {
-    LOG_E(NR_MAC, "%s(): cannot find free vrb_map for RA RNTI %04x!\n", __func__, ra->RA_rnti);
+    LOG_W(NR_MAC, "%s(): cannot find free vrb_map for RA RNTI %04x!\n", __func__, ra->RA_rnti);
     return;
   }
 
   // Checking if the DCI allocation is feasible in current subframe
   nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
   if (dl_req->nPDUs > NFAPI_NR_MAX_DL_TTI_PDUS - 2) {
-    LOG_I(NR_MAC, "[RAPROC] Subframe %d: FAPI DL structure is full, skip scheduling UE %d\n", slotP, ra->RA_rnti);
+    LOG_W(NR_MAC, "[RAPROC] Subframe %d: FAPI DL structure is full, skip scheduling UE %d\n", slotP, ra->RA_rnti);
     return;
   }
 
@@ -1335,8 +1262,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   int CCEIndex = get_cce_index(nr_mac, CC_id, slotP, 0, &aggregation_level, ss, coreset, &ra->sched_pdcch, true);
 
   if (CCEIndex < 0) {
-    LOG_E(NR_MAC, "cannot find free CCE for Msg2 of RA RNTI 0x%04x!\n", ra->rnti);
-    nr_clear_ra_proc(ra);
+    LOG_W(NR_MAC, "cannot find free CCE for Msg2 of RA RNTI 0x%04x!\n", ra->rnti);
     return;
   }
 
