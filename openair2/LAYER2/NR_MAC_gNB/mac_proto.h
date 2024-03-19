@@ -302,8 +302,6 @@ void remove_front_nr_list(NR_list_t *listP);
 
 NR_UE_info_t * find_nr_UE(NR_UEs_t* UEs, rnti_t rntiP);
 
-int find_nr_RA_id(module_id_t mod_idP, int CC_idP, rnti_t rntiP);
-
 void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                       NR_ServingCellConfigCommon_t *scc,
                       NR_UE_sched_ctrl_t *sched_ctrl,

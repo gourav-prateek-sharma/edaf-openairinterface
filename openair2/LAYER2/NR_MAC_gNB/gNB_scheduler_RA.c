@@ -575,6 +575,16 @@ static NR_RA_t *find_free_nr_RA(NR_RA_t *ra_base, int ra_count, uint16_t preambl
   return NULL;
 }
 
+static const NR_RA_t *find_nr_RA_rnti(const NR_RA_t *ra_base, int ra_count, rnti_t rnti)
+{
+  for (int i = 0; i < ra_count; ++i) {
+    const NR_RA_t *ra = &ra_base[i];
+    if (ra->ra_state != nrRA_gNB_IDLE && ra->rnti == rnti)
+      return ra;
+  }
+  return NULL;
+}
+
 void nr_initiate_ra_proc(module_id_t module_idP,
                          int CC_id,
                          frame_t frameP,
@@ -608,7 +618,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
       while (trial < 1 || trial > 0xffef)
         trial = (taus() % 0xffef) + 1;
       exist_connected_ue = find_nr_UE(&nr_mac->UE_info, trial) != NULL;
-      exist_in_pending_ra_ue = find_nr_RA_id(module_idP, CC_id, trial) != -1;
+      exist_in_pending_ra_ue = find_nr_RA_rnti(cc->ra, sizeofArray(cc->ra), ra->rnti) != NULL;
       loop++;
     } while (loop < 100 && (exist_connected_ue || exist_in_pending_ra_ue) );
     if (loop == 100) {
