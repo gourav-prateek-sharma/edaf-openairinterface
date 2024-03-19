@@ -1281,7 +1281,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
     if (CCEIndex < 0) {
       LOG_E(NR_MAC, "cannot find free CCE for Msg2 of RA RNTI 0x%04x!\n", ra->rnti);
-      nr_clear_ra_proc(module_idP, CC_id, frameP, ra);
+      nr_clear_ra_proc(ra);
       return;
     }
 
@@ -1986,7 +1986,7 @@ static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, s
       // UE->apply_cellgroup was already set when processing RRCReestablishment message
       nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[module_id], UE, UE->apply_cellgroup);
 
-      nr_clear_ra_proc(module_id, CC_id, frame, ra);
+      nr_clear_ra_proc(ra);
       if (sched_ctrl->retrans_dl_harq.head >= 0) {
         remove_nr_list(&sched_ctrl->retrans_dl_harq, current_harq_pid);
       }
@@ -1997,14 +1997,12 @@ static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, s
   }
 }
 
-void nr_clear_ra_proc(module_id_t module_idP, int CC_id, frame_t frameP, NR_RA_t *ra)
+void nr_clear_ra_proc(NR_RA_t *ra)
 {
   /* we assume that this function is mutex-protected from outside */
-  NR_SCHED_ENSURE_LOCKED(&RC.nrmac[module_idP]->sched_lock);
-  LOG_D(NR_MAC,"[gNB %d][RAPROC] CC_id %d Frame %d Clear Random access information rnti %x\n", module_idP, CC_id, frameP, ra->rnti);
+  NR_SCHED_ENSURE_LOCKED(&RC.nrmac[0]->sched_lock);
   ra->ra_state = nrRA_gNB_IDLE;
   ra->timing_offset = 0;
-  ra->RRC_timer = 20;
   ra->msg3_round = 0;
   if(ra->cfra == false) {
     ra->rnti = 0;
@@ -2151,7 +2149,7 @@ void nr_schedule_RA(module_id_t module_idP,
         if (ra->contention_resolution_timer < 0) {
           LOG_W(NR_MAC, "(%d.%d) RA Contention Resolution timer expired for UE 0x%04x, RA procedure failed...\n", frameP, slotP, ra->rnti);
           nr_mac_release_ue(mac, ra->rnti);
-          nr_clear_ra_proc(module_idP, CC_id, frameP, ra);
+          nr_clear_ra_proc(ra);
           continue;
         }
       }

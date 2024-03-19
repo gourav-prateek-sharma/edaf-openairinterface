@@ -188,8 +188,6 @@ typedef struct {
   uint8_t cont_res_id[6];
   /// Timing offset indicated by PHY
   int16_t timing_offset;
-  /// Timeout for RRC connection
-  int16_t RRC_timer;
   /// Msg3 first RB
   int msg3_first_rb;
   /// Msg3 number of RB
