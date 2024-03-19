@@ -699,6 +699,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   }
 
   ra->ra_state = nrRA_Msg2;
+  ra->preamble_frame = frameP;
   ra->preamble_slot = slotP;
   ra->preamble_index = preamble_index;
   ra->timing_offset = timing_offset;
