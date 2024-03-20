@@ -272,6 +272,7 @@ def GetParametersFromXML(action):
 		CiTestObj.iperf_packetloss_threshold = test.findtext('iperf_packetloss_threshold')
 		CiTestObj.iperf_bitrate_threshold = test.findtext('iperf_bitrate_threshold') or '90'
 		CiTestObj.iperf_profile = test.findtext('iperf_profile') or 'balanced'
+		CiTestObj.iperf_tcp_rate_target = test.findtext('iperf_tcp_rate_target') or None
 		if CiTestObj.iperf_profile != 'balanced' and CiTestObj.iperf_profile != 'unbalanced' and CiTestObj.iperf_profile != 'single-ue':
 			logging.error(f'test-case has wrong profile {CiTestObj.iperf_profile}, forcing balanced')
 			CiTestObj.iperf_profile = 'balanced'

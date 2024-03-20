@@ -120,7 +120,7 @@ class OaiCiTest():
 		self.iperf_bitrate_threshold = ''
 		self.iperf_profile = ''
 		self.iperf_options = ''
-		self.iperf_direction = ''
+		self.iperf_tcp_rate_target = ''
 		self.nbMaxUEtoAttach = -1
 		self.UEDevices = []
 		self.UEDevicesStatus = []
