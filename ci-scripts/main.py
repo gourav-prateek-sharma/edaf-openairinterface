@@ -268,7 +268,7 @@ def GetParametersFromXML(action):
 	elif action == 'Iperf':
 		CiTestObj.iperf_args = test.findtext('iperf_args')
 		CiTestObj.ue_ids = test.findtext('id').split(' ')
-		CiTestObj.iperf_direction = test.findtext('direction')
+		CiTestObj.svr_id = test.findtext('svr_id') or None
 		CiTestObj.iperf_packetloss_threshold = test.findtext('iperf_packetloss_threshold')
 		CiTestObj.iperf_bitrate_threshold = test.findtext('iperf_bitrate_threshold') or '90'
 		CiTestObj.iperf_profile = test.findtext('iperf_profile') or 'balanced'

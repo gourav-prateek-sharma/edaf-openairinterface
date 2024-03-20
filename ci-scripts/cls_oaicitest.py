@@ -52,7 +52,7 @@ import constants as CONST
 import cls_cluster as OC
 import sshconnection
 
-import cls_module_ue
+import cls_module
 import cls_cmd
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -113,6 +113,7 @@ class OaiCiTest():
 		self.clean_repository = True
 		self.air_interface=''
 		self.ue_ids = []
+		self.svr_id = None
 		self.cmd_prefix = '' # prefix before {lte,nr}-uesoftmodem
 
 
@@ -222,7 +223,7 @@ class OaiCiTest():
 
 
 	def InitializeUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		messages = []
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.initialize) for ue in ues]
@@ -438,7 +439,7 @@ class OaiCiTest():
 			self.AutoTerminateUEandeNB(HTML,RAN,EPC,CONTAINERS)
 
 	def AttachUE(self, HTML, RAN, EPC, CONTAINERS):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.attach) for ue in ues]
 			attached = [f.result() for f in futures]
@@ -453,7 +454,7 @@ class OaiCiTest():
 			self.AutoTerminateUEandeNB(HTML, RAN, EPC, CONTAINERS)
 
 	def DetachUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.detach) for ue in ues]
 			[f.result() for f in futures]
@@ -461,7 +462,7 @@ class OaiCiTest():
 		HTML.CreateHtmlTestRowQueue('NA', 'OK', messages)
 
 	def DataDisableUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.dataDisable) for ue in ues]
 			status = [f.result() for f in futures]
@@ -473,7 +474,7 @@ class OaiCiTest():
 			HTML.CreateHtmlTestRowQueue('N/A', 'KO', ["Could not disable UE data!"])
 
 	def DataEnableUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		logging.debug(f'disabling data for UEs {ues}')
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.dataEnable) for ue in ues]
@@ -486,7 +487,7 @@ class OaiCiTest():
 			HTML.CreateHtmlTestRowQueue('N/A', 'KO', ["Could not enable UE data!"])
 
 	def CheckStatusUE(self,HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		logging.debug(f'checking status of UEs {ues}')
 		messages = []
 		with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -590,7 +591,7 @@ class OaiCiTest():
 		if self.ue_ids == []:
 			raise Exception("no module names in self.ue_ids provided")
 
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		logging.debug(ues)
 		pingLock = Lock()
 		with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -990,7 +991,8 @@ class OaiCiTest():
 
 		logging.debug(f'Iperf: iperf_args "{self.iperf_args}" iperf_direction "{self.iperf_direction}" iperf_packetloss_threshold "{self.iperf_packetloss_threshold}" iperf_bitrate_threshold "{self.iperf_bitrate_threshold}" iperf_profile "{self.iperf_profile}" iperf_options "{self.iperf_options}"')
 
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
+		svr = cls_module.Module_UE(self.svr_id)
 		logging.debug(ues)
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(self.Iperf_Module, EPC, ue, RAN, i, len(ues)) for i, ue in enumerate(ues)]
@@ -1272,7 +1274,7 @@ class OaiCiTest():
 		return global_status
 
 	def TerminateUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.terminate) for ue in ues]
 			archives = [f.result() for f in futures]
