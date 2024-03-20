@@ -735,6 +735,44 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
   }
 }
 
+static int get_feasible_msg3_tda(frame_type_t frame_type,
+                                 int mu_delta,
+                                 uint64_t ulsch_slot_bitmap[3],
+                                 const NR_PUSCH_TimeDomainResourceAllocationList_t *tda_list,
+                                 int slots_per_frame,
+                                 int slot,
+                                 const NR_TDD_UL_DL_Pattern_t *tdd)
+{
+  DevAssert(tda_list != NULL);
+
+  if (frame_type == FDD) {
+    int tda = 0; // the first occasion is good enough
+    return tda;
+  }
+
+  // TDD
+  DevAssert(tdd != NULL);
+  for (int i = 0; i < tda_list->list.count; i++) {
+    // check if it is UL
+    long k2 = *tda_list->list.array[i]->k2;
+    int temp_slot = (slot + k2 + mu_delta) % slots_per_frame; // msg3 slot according to 8.3 in 38.213
+    if (!is_xlsch_in_slot(ulsch_slot_bitmap[temp_slot / 64], temp_slot))
+      continue;
+
+    // check if enough symbols in case of mixed slot
+    bool has_mixed = tdd->nrofUplinkSymbols != 0 || tdd->nrofDownlinkSymbols != 0;
+    // is in mixed slot with less than 3 symbols?
+    if (has_mixed && temp_slot == tdd->nrofDownlinkSlots && tdd->nrofUplinkSymbols < 3)
+      continue;
+
+    // is in mixed slot with more or equal than 3 symbols, or UL slot
+    int tda = i;
+    return tda;
+  }
+
+  return -1; // invalid
+}
+
 static void nr_get_Msg3alloc(module_id_t module_id,
                              int CC_id,
                              NR_ServingCellConfigCommon_t *scc,
@@ -752,66 +790,26 @@ static void nr_get_Msg3alloc(module_id_t module_id,
   NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
   NR_UE_ServingCell_Info_t *sc_info = &ra->sc_info;
 
-  int mu = ul_bwp->scs;
-  int StartSymbolIndex = 0;
-  int NrOfSymbols = 0;
-  int startSymbolAndLength = 0;
-  int abs_slot = 0;
-  int Msg3maxsymb = 14, Msg3start = 0;
-  ra->Msg3_tda_id = 16; // initialization to a value above limit
-
-  NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
-
+  const NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  int mu = ul_bwp->scs;
   const int n_slots_frame = nr_slots_per_frame[mu];
-  uint8_t k2 = 0;
-  if (frame_type == TDD) {
-    int msg3_slot = get_first_ul_slot(tdd->nrofDownlinkSlots, tdd->nrofDownlinkSymbols, tdd->nrofUplinkSymbols);
-    if (tdd->nrofUplinkSymbols != 0) {
-      if (tdd->nrofUplinkSymbols < 3)
-        msg3_slot++; // we can't trasmit msg3 in mixed slot if there are less than 3 symbols
-      else {
-        Msg3maxsymb = tdd->nrofUplinkSymbols;
-        Msg3start = 14 - tdd->nrofUplinkSymbols;
-      }
-    }
-    const int nb_periods_per_frame = get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
-    const int nb_slots_per_period = ((1<<mu)*10)/nb_periods_per_frame;
-    for (int i=0; i<pusch_TimeDomainAllocationList->list.count; i++) {
-      startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength;
-      SLIV2SL(startSymbolAndLength, &StartSymbolIndex, &NrOfSymbols);
-      k2 = *pusch_TimeDomainAllocationList->list.array[i]->k2;
-      LOG_D(NR_MAC,"Checking Msg3 TDA %d for Msg3_slot %d Msg3_start %d Msg3_nsymb %d: k2 %d, sliv %d,S %d L %d\n",
-            i, msg3_slot, Msg3start, Msg3maxsymb, (int)k2, (int)pusch_TimeDomainAllocationList->list.array[i]->startSymbolAndLength, StartSymbolIndex, NrOfSymbols);
-      // we want to transmit in the uplink symbols of mixed slot or the first uplink slot
-      abs_slot = (current_slot + k2 + DELTA[mu]);
-      int temp_slot = abs_slot % nr_slots_per_frame[mu]; // msg3 slot according to 8.3 in 38.213
-      if ((temp_slot % nb_slots_per_period) == msg3_slot &&
-          is_xlsch_in_slot(mac->ulsch_slot_bitmap[temp_slot / 64], temp_slot) &&
-          StartSymbolIndex == Msg3start &&
-          NrOfSymbols <= Msg3maxsymb) {
-        ra->Msg3_tda_id = i;
-        ra->msg3_startsymb = StartSymbolIndex;
-        ra->msg3_nbSymb = NrOfSymbols;
-        ra->Msg3_slot = temp_slot;
-        break;
-      }
-    }
-    AssertFatal(ra->Msg3_tda_id < 16, "Couldn't find an appropriate TD allocation for Msg3\n");
-  }
-  else {
-    ra->Msg3_tda_id = 0;
-    k2 = *pusch_TimeDomainAllocationList->list.array[0]->k2;
-    abs_slot = current_slot + k2 + DELTA[mu]; // msg3 slot according to 8.3 in 38.213
-    ra->Msg3_slot = abs_slot % nr_slots_per_frame[mu];
-  }
+  ra->Msg3_tda_id = get_feasible_msg3_tda(frame_type,
+                                          DELTA[mu],
+                                          mac->ulsch_slot_bitmap,
+                                          pusch_TimeDomainAllocationList,
+                                          n_slots_frame,
+                                          current_slot,
+                                          tdd);
+  DevAssert(ra->Msg3_tda_id >= 0 && ra->Msg3_tda_id < 16);
 
-  AssertFatal(ra->Msg3_tda_id<16,"Unable to find Msg3 time domain allocation in list\n");
+  int startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
+  SLIV2SL(startSymbolAndLength, &ra->msg3_startsymb, &ra->msg3_nbSymb);
 
-  if (n_slots_frame > abs_slot)
-    ra->Msg3_frame = current_frame;
-  else
-    ra->Msg3_frame = (current_frame + (abs_slot / n_slots_frame)) % 1024;
+  long k2 = *pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->k2;
+  int abs_slot = current_slot + k2 + DELTA[mu];
+  ra->Msg3_slot = abs_slot % n_slots_frame;
+  ra->Msg3_frame = (current_frame + (abs_slot / n_slots_frame)) % 1024;
 
   // beam association for FR2
   if (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] >= 257) {
@@ -824,7 +822,14 @@ static void nr_get_Msg3alloc(module_id_t module_id,
       tdd_beam_association[num_tdd_period] = ra->beam_id;
   }
 
-  LOG_I(NR_MAC, "[RAPROC] Msg3 slot %d: current slot %u Msg3 frame %u k2 %u Msg3_tda_id %u\n", ra->Msg3_slot, current_slot, ra->Msg3_frame, k2,ra->Msg3_tda_id);
+  LOG_I(NR_MAC,
+        "[RAPROC] Msg3 scheduled at %d.%d (%d.%d k2 %ld TDA %u)\n",
+        ra->Msg3_frame,
+        ra->Msg3_slot,
+        current_frame,
+        current_slot,
+        k2,
+        ra->Msg3_tda_id);
   const int buffer_index = ul_buffer_index(ra->Msg3_frame, ra->Msg3_slot, mu, mac->vrb_map_UL_size);
   uint16_t *vrb_map_UL = &mac->common_channels[CC_id].vrb_map_UL[buffer_index * MAX_BWP_SIZE];
 
@@ -843,13 +848,11 @@ static void nr_get_Msg3alloc(module_id_t module_id,
   while (rbSize < msg3_nb_rb) {
     rbStart += rbSize; /* last iteration rbSize was not enough, skip it */
     rbSize = 0;
-    while (rbStart < bwpSize &&
-           (vrb_map_UL[rbStart + bwpStart]&SL_to_bitmap(StartSymbolIndex, NrOfSymbols)))
+    while (rbStart < bwpSize && (vrb_map_UL[rbStart + bwpStart] & SL_to_bitmap(ra->msg3_startsymb, ra->msg3_nbSymb)))
       rbStart++;
     AssertFatal(rbStart < bwpSize - msg3_nb_rb, "no space to allocate Msg 3 for RA!\n");
     while (rbStart + rbSize < bwpSize
-           && !(vrb_map_UL[rbStart + bwpStart + rbSize]&SL_to_bitmap(StartSymbolIndex, NrOfSymbols))
-           && rbSize < msg3_nb_rb)
+           && !(vrb_map_UL[rbStart + bwpStart + rbSize] & SL_to_bitmap(ra->msg3_startsymb, ra->msg3_nbSymb)) && rbSize < msg3_nb_rb)
       rbSize++;
   }
   ra->msg3_nb_rb = msg3_nb_rb;
