@@ -32,11 +32,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <time.h>
 
 #include "common/utils/LOG/log.h"
 #include "rrc_gNB_UE_context.h"
 #include "openair2/F1AP/f1ap_ids.h"
 
+static void rrc_gNB_ue_context_update_time(rrc_gNB_ue_context_t *ctxt)
+{
+  ctxt->ue_context.last_seen = time(NULL);
+}
 
 //------------------------------------------------------------------------------
 int rrc_gNB_compare_ue_rnti_id(rrc_gNB_ue_context_t *c1_pP, rrc_gNB_ue_context_t *c2_pP)
@@ -68,6 +73,7 @@ rrc_gNB_ue_context_t *rrc_gNB_allocate_new_ue_context(gNB_RRC_INST *rrc_instance
     return NULL;
   }
   new_p->ue_context.rrc_ue_id = uid_linear_allocator_new(&rrc_instance_pP->uid_allocator) + 1;
+  rrc_gNB_ue_context_update_time(new_p);
 
   for(int i = 0; i < NB_RB_MAX; i++)
     new_p->ue_context.pduSession[i].xid = -1;
@@ -92,8 +98,10 @@ rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_by_rnti(gNB_RRC_INST *rrc_instance_
   rrc_gNB_ue_context_t *ue_context_p;
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &(rrc_instance_pP->rrc_ue_head)) {
     f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_context_p->ue_context.rrc_ue_id);
-    if (ue_data.du_assoc_id == assoc_id && ue_context_p->ue_context.rnti == rntiP)
+    if (ue_data.du_assoc_id == assoc_id && ue_context_p->ue_context.rnti == rntiP) {
+      rrc_gNB_ue_context_update_time(ue_context_p);
       return ue_context_p;
+    }
   }
   LOG_W(NR_RRC, "search by RNTI %04x and assoc_id %d: no UE found\n", rntiP, assoc_id);
   return NULL;
@@ -104,8 +112,10 @@ rrc_gNB_ue_context_t *rrc_gNB_get_ue_context_by_rnti_any_du(gNB_RRC_INST *rrc_in
   rrc_gNB_ue_context_t *ue_context_p;
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &(rrc_instance_pP->rrc_ue_head))
   {
-    if (ue_context_p->ue_context.rnti == rntiP)
+    if (ue_context_p->ue_context.rnti == rntiP) {
+      rrc_gNB_ue_context_update_time(ue_context_p);
       return ue_context_p;
+    }
   }
   LOG_W(NR_RRC, "search by rnti not found %04x\n", rntiP);
   return NULL;
@@ -146,8 +156,10 @@ rrc_gNB_ue_context_t *rrc_gNB_ue_context_random_exist(gNB_RRC_INST *rrc_instance
 {
   rrc_gNB_ue_context_t *ue_context_p = NULL;
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head) {
-    if (ue_context_p->ue_context.random_ue_identity == ue_identityP)
+    if (ue_context_p->ue_context.random_ue_identity == ue_identityP) {
+      rrc_gNB_ue_context_update_time(ue_context_p);
       return ue_context_p;
+    }
   }
   return NULL;
 }
@@ -161,8 +173,10 @@ rrc_gNB_ue_context_t *rrc_gNB_ue_context_5g_s_tmsi_exist(gNB_RRC_INST *rrc_insta
   RB_FOREACH(ue_context_p, rrc_nr_ue_tree_s, &rrc_instance_pP->rrc_ue_head)
   {
     LOG_I(NR_RRC, "Checking for UE 5G S-TMSI %ld: RNTI %04x\n", s_TMSI, ue_context_p->ue_context.rnti);
-    if (ue_context_p->ue_context.ng_5G_S_TMSI_Part1 == s_TMSI)
+    if (ue_context_p->ue_context.ng_5G_S_TMSI_Part1 == s_TMSI) {
+      rrc_gNB_ue_context_update_time(ue_context_p);
       return ue_context_p;
+    }
   }
     return NULL;
 }

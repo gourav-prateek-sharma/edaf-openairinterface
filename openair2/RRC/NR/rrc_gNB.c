@@ -33,6 +33,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <time.h>
 
 #include "nr_rrc_config.h"
 #include "nr_rrc_defs.h"
@@ -2290,6 +2291,7 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
     return;
   }
 
+  time_t now = time(NULL);
   int i = 0;
   rrc_gNB_ue_context_t *ue_context_p = NULL;
   /* cast is necessary to eliminate warning "discards ‘const’ qualifier" */
@@ -2309,6 +2311,8 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
       fprintf(f, " S-TMSI %x", ue_ctxt->Initialue_identity_5g_s_TMSI.fiveg_tmsi);
     fprintf(f, ":\n");
 
+    time_t last_seen = now - ue_ctxt->last_seen;
+    fprintf(f, "    last RRC activity: %ld seconds ago\n", last_seen);
     fprintf(f, "    RRC status %s\n", get_rrc_connection_status_text(ue_ctxt->StatusRrc));
 
     if (ue_ctxt->nb_of_pdusessions == 0)

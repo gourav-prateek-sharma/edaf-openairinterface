@@ -249,6 +249,8 @@ typedef enum {
 } rrc_action_t;
 
 typedef struct gNB_RRC_UE_s {
+  time_t last_seen; // last time this UE has been accessed
+
   drb_t                              established_drbs[MAX_DRBS_PER_UE];
   NR_DRB_ToReleaseList_t            *DRB_ReleaseList;
 
