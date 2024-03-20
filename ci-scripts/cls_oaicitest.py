@@ -92,6 +92,101 @@ def Iperf_ComputeTime(args):
 		raise Exception('Iperf time not found!')
 	return int(result.group('iperf_time'))
 
+def Iperf_analyzeV3TCPJson(filename, iperf_tcp_rate_target):
+	if (not os.path.isfile(filename)):
+		return (False, 'Iperf3 TCP: Log file not present')
+	if (os.path.getsize(filename)==0):
+		return (False, 'Iperf3 TCP: Log file is empty')
+
+	with open(filename) as file:
+		filename = json.load(file)
+		try:
+			sender_bitrate   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
+		except Exception as e:
+			return (False, 'Could not compute Iperf3 bitrate!')
+
+	snd_msg = f'Sender Bitrate   : {sender_bitrate} Mbps'
+	rcv_msg = f'Receiver Bitrate : {receiver_bitrate} Mbps'
+	success = True
+	if (iperf_tcp_rate_target is not None):
+		if (int(receiver_bitrate) < int(iperf_tcp_rate_target)):
+			rcv_msg += f" (too low! < {iperf_tcp_rate_target} Mbps)"
+			success = False
+		else:
+			rcv_msg += f" (target : {iperf_tcp_rate_target} Mbps)"
+	return(success, f'{snd_msg}\n{rcv_msg}')
+
+def Iperf_analyzeV3BIDIRJson(filename):
+	if (not os.path.isfile(filename)):
+		return (False, 'Iperf3 Bidir TCP: Log file not present')
+	if (os.path.getsize(filename)==0):
+		return (False, 'Iperf3 Bidir TCP: Log file is empty')
+
+	with open(filename) as file:
+		filename = json.load(file)
+		try:
+			sender_bitrate_dl   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate_dl = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
+			sender_bitrate_ul   = round(filename['end']['streams'][1]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate_ul = round(filename['end']['streams'][1]['receiver']['bits_per_second']/1000000,2)
+		except Exception as e:
+			return (False, 'Could not compute BIDIR bitrate!')
+
+	msg = f'Sender Bitrate DL   : {sender_bitrate_dl} Mbps\n'
+	msg += f'Receiver Bitrate DL : {receiver_bitrate_dl} Mbps\n'
+	msg += f'Sender Bitrate UL   : {sender_bitrate_ul} Mbps\n'
+	msg += f'Receiver Bitrate UL : {receiver_bitrate_ul} Mbps\n'
+	return (True, msg)
+
+def Iperf_analyzeV3UDP(filename, iperf_bitrate_threshold, iperf_packetloss_threshold):
+	if (not os.path.isfile(filename)):
+		return (False, 'Iperf3 UDP: Log file not present')
+	if (os.path.getsize(filename)==0):
+		return (False, 'Iperf3 UDP: Log file is empty')
+	sender_bitrate = None
+	receiver_bitrate = None
+	with open(filename, 'r') as server_file:
+		for line in server_file.readlines():
+			res_sender = re.search(r'(?P<bitrate>[0-9\.]+)\s+(?P<unit>[KMG]bits\/sec)\s+(?P<jitter>[0-9\.]+\s+ms)\s+(?P<lostPack>\d+)/(?P<sentPack>\d+) \((?P<lost>[0-9\.]+).*?\s+(sender)', line)
+			res_receiver = re.search(r'(?P<bitrate>[0-9\.]+)\s+(?P<unit>[KMG]bits\/sec)\s+(?P<jitter>[0-9\.]+\s+ms)\s+(?P<lostPack>\d+)/(?P<receivedPack>\d+) \((?P<lost>[0-9\.]+).*?\s+(receiver)', line)
+			if res_sender is not None:
+				sender_bitrate = res_sender.group('bitrate')
+				sender_unit = res_sender.group('unit')
+				sender_jitter = res_sender.group('jitter')
+				sender_lostPack = res_sender.group('lostPack')
+				sender_sentPack = res_sender.group('sentPack')
+				sender_packetloss = res_sender.group('lost')
+			if res_receiver is not None:
+				receiver_bitrate = res_receiver.group('bitrate')
+				receiver_unit = res_receiver.group('unit')
+				receiver_jitter = res_receiver.group('jitter')
+				receiver_lostPack = res_receiver.group('lostPack')
+				receiver_receivedPack = res_receiver.group('receivedPack')
+				receiver_packetloss = res_receiver.group('lost')
+
+	if receiver_bitrate is not None and sender_bitrate is not None:
+		if sender_unit == 'Kbits/sec':
+			sender_bitrate = float(sender_bitrate) / 1000
+		if receiver_unit == 'Kbits/sec':
+			receiver_bitrate = float(receiver_bitrate) / 1000
+		br_perf = 100 * float(receiver_bitrate) / float(sender_bitrate)
+		br_perf = '%.2f ' % br_perf
+		sender_bitrate = '%.2f ' % float(sender_bitrate)
+		receiver_bitrate = '%.2f ' % float(receiver_bitrate)
+		req_msg = f'Sender Bitrate   : {sender_bitrate} Mbps'
+		bir_msg = f'Receiver Bitrate : {receiver_bitrate} Mbps'
+		brl_msg = f'{br_perf}%'
+		jit_msg = f'Jitter           : {receiver_jitter}'
+		pal_msg = f'Packet Loss      : {receiver_packetloss} %'
+		if float(br_perf) < float(iperf_bitrate_threshold):
+			brl_msg = f'too low! < {iperf_bitrate_threshold}%'
+		if float(receiver_packetloss) > float(iperf_packetloss_threshold):
+			pal_msg += f' (too high! > {iperf_packetloss_threshold}%)'
+		result = float(br_perf) >= float(iperf_bitrate_threshold) and float(receiver_packetloss) <= float(iperf_packetloss_threshold)
+		return (result, f'{req_msg}\n{bir_msg} ({brl_msg})\n{jit_msg}\n{pal_msg}')
+	else:
+		return (False, 'Could not analyze iperf report')
 
 #-----------------------------------------------------------
 # OaiCiTest Class Definition
