@@ -782,26 +782,17 @@ static void nr_get_Msg3alloc(module_id_t module_id,
                              int16_t *tdd_beam_association)
 {
   // msg3 is scheduled in mixed slot in the following TDD period
+  DevAssert(ra->Msg3_tda_id >= 0 && ra->Msg3_tda_id < 16);
 
   uint16_t msg3_nb_rb = 8; // sdu has 6 or 8 bytes
   gNB_MAC_INST *mac = RC.nrmac[module_id];
-  frame_type_t frame_type = mac->common_channels->frame_type;
 
   NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
   NR_UE_ServingCell_Info_t *sc_info = &ra->sc_info;
 
   const NR_PUSCH_TimeDomainResourceAllocationList_t *pusch_TimeDomainAllocationList = ul_bwp->tdaList_Common;
-  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
   int mu = ul_bwp->scs;
   const int n_slots_frame = nr_slots_per_frame[mu];
-  ra->Msg3_tda_id = get_feasible_msg3_tda(frame_type,
-                                          DELTA[mu],
-                                          mac->ulsch_slot_bitmap,
-                                          pusch_TimeDomainAllocationList,
-                                          n_slots_frame,
-                                          current_slot,
-                                          tdd);
-  DevAssert(ra->Msg3_tda_id >= 0 && ra->Msg3_tda_id < 16);
 
   int startSymbolAndLength = pusch_TimeDomainAllocationList->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
   SLIV2SL(startSymbolAndLength, &ra->msg3_startsymb, &ra->msg3_nbSymb);
@@ -813,6 +804,7 @@ static void nr_get_Msg3alloc(module_id_t module_id,
 
   // beam association for FR2
   if (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] >= 257) {
+    const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
     AssertFatal(tdd,"Dynamic TDD not handled yet\n");
     uint8_t tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
     int num_tdd_period = ra->Msg3_slot/tdd_period_slot;
@@ -1207,6 +1199,20 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
   if (!check_msg2_monitoring(ra, dl_bwp->scs, frameP, slotP))
     return;
+
+  const NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
+  const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  ra->Msg3_tda_id = get_feasible_msg3_tda(cc->frame_type,
+                                          DELTA[ul_bwp->scs],
+                                          nr_mac->ulsch_slot_bitmap,
+                                          ul_bwp->tdaList_Common,
+                                          nr_slots_per_frame[ul_bwp->scs],
+                                          slotP,
+                                          tdd);
+  if (ra->Msg3_tda_id < 0 || ra->Msg3_tda_id > 15) {
+    LOG_W(NR_MAC, "UE RNTI %04x %d.%d: infeasible Msg3 TDA\n", ra->rnti, frameP, slotP);
+    return;
+  }
 
   int mcsIndex = -1; // initialization value
   int rbStart = 0;
