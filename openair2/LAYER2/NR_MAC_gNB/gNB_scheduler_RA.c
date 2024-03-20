@@ -504,7 +504,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
       loop++;
     } while (loop < 100 && (exist_connected_ue || exist_in_pending_ra_ue) );
     if (loop == 100) {
-      LOG_E(NR_MAC, "[RAPROC] initialisation random access: no more available RNTIs for new UE\n");
+      LOG_E(NR_MAC, "initialisation random access: no more available RNTIs for new UE\n");
       NR_SCHED_UNLOCK(&nr_mac->sched_lock);
       return;
     }
@@ -519,7 +519,7 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   uint8_t ul_carrier_id = 0; // 0 for NUL 1 for SUL
   ra->RA_rnti = nr_get_ra_rnti(symbol, slotP, freq_index, ul_carrier_id);
   int index = ra - cc->ra;
-  LOG_I(NR_MAC, "%d.%d UE RA-RNTI %04x RNTI %04x: Activating RA process index %d\n", frameP, slotP, ra->RA_rnti, ra->rnti, index);
+  LOG_I(NR_MAC, "%d.%d UE RA-RNTI %04x TC-RNTI %04x: Activating RA process index %d\n", frameP, slotP, ra->RA_rnti, ra->rnti, index);
 
   // Configure RA BWP
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
@@ -676,7 +676,7 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
                                  &ra->sched_pdcch,
                                  true);
     if (CCEIndex < 0) {
-      LOG_E(NR_MAC, "%s(): cannot find free CCE for RA RNTI 0x%04x!\n", __func__, ra->rnti);
+      LOG_E(NR_MAC, "UE %04x cannot find free CCE!\n", ra->rnti);
       return;
     }
 
@@ -811,7 +811,8 @@ static void nr_get_Msg3alloc(module_id_t module_id,
   ra->Msg3_frame = (current_frame + (abs_slot / n_slots_frame)) % 1024;
 
   LOG_I(NR_MAC,
-        "[RAPROC] Msg3 scheduled at %d.%d (%d.%d k2 %ld TDA %u)\n",
+        "UE %04x: Msg3 scheduled at %d.%d (%d.%d k2 %ld TDA %u)\n",
+        ra->rnti,
         ra->Msg3_frame,
         ra->Msg3_slot,
         current_frame,
@@ -984,7 +985,7 @@ static void nr_add_msg3(module_id_t module_idP, int CC_id, frame_t frameP, sub_f
     vrb_map_UL[i + ra->msg3_first_rb + ra->msg3_bwp_start] |= mask;
   }
 
-  LOG_D(NR_MAC, "[gNB %d][RAPROC] Frame %d, Slot %d : CC_id %d RA is active, Msg3 in (%d,%d)\n", module_idP, frameP, slotP, CC_id, ra->Msg3_frame, ra->Msg3_slot);
+  LOG_D(NR_MAC, "UE %04x: %d.%d RA is active, Msg3 in (%d,%d)\n", ra->rnti, frameP, slotP, ra->Msg3_frame, ra->Msg3_slot);
   buffer_index = ul_buffer_index(ra->Msg3_frame, ra->Msg3_slot, scs, mac->UL_tti_req_ahead_size);
   nfapi_nr_ul_tti_request_t *future_ul_tti_req = &RC.nrmac[module_idP]->UL_tti_req_ahead[CC_id][buffer_index];
   AssertFatal(future_ul_tti_req->SFN == ra->Msg3_frame
@@ -1004,15 +1005,16 @@ static void nr_add_msg3(module_id_t module_idP, int CC_id, frame_t frameP, sub_f
   const int startSymbolAndLength = ul_bwp->tdaList_Common->list.array[ra->Msg3_tda_id]->startSymbolAndLength;
   const int mappingtype = ul_bwp->tdaList_Common->list.array[ra->Msg3_tda_id]->mappingType;
 
-  LOG_D(NR_MAC, "Frame %d, Slot %d Adding Msg3 UL Config Request for (%d,%d) : (%d,%d,%d) for rnti: %d\n",
-    frameP,
-    slotP,
-    ra->Msg3_frame,
-    ra->Msg3_slot,
-    ra->msg3_nb_rb,
-    ra->msg3_first_rb,
-    ra->msg3_round,
-    ra->rnti);
+  LOG_D(NR_MAC,
+        "UE %04x: %d.%d Adding Msg3 UL Config Request for (%d,%d) : (%d,%d,%d)\n",
+        ra->rnti,
+        frameP,
+        slotP,
+        ra->Msg3_frame,
+        ra->Msg3_slot,
+        ra->msg3_nb_rb,
+        ra->msg3_first_rb,
+        ra->msg3_round);
 
   fill_msg3_pusch_pdu(pusch_pdu,scc,
                       ra->msg3_round,
@@ -1176,9 +1178,11 @@ static void nr_generate_Msg2(module_id_t module_idP,
                              nfapi_nr_tx_data_request_t *TX_req)
 {
   gNB_MAC_INST *nr_mac = RC.nrmac[module_idP];
+
   // no DL -> cannot send Msg2
-  if (!is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP))
+  if (!is_xlsch_in_slot(nr_mac->dlsch_slot_bitmap[slotP / 64], slotP)) {
     return;
+  }
 
   NR_COMMON_channels_t *cc = &nr_mac->common_channels[CC_id];
   NR_UE_DL_BWP_t *dl_bwp = &ra->DL_BWP;
@@ -1188,17 +1192,21 @@ static void nr_generate_Msg2(module_id_t module_idP,
   long rrc_ra_ResponseWindow =
       scc->uplinkConfigCommon->initialUplinkBWP->rach_ConfigCommon->choice.setup->rach_ConfigGeneric.ra_ResponseWindow;
   if (!msg2_in_response_window(ra->preamble_frame, ra->preamble_slot, dl_bwp->scs, rrc_ra_ResponseWindow, frameP, slotP)) {
-    LOG_E(NR_MAC, "UE RA-RNTI %04x RNTI %04x: exceeded RA window, cannot schedule Msg2\n", ra->RA_rnti, ra->rnti);
+    LOG_E(NR_MAC, "UE RA-RNTI %04x TC-RNTI %04x: exceeded RA window, cannot schedule Msg2\n", ra->RA_rnti, ra->rnti);
     nr_clear_ra_proc(ra);
     return;
   }
 
-  if (!check_msg2_monitoring(ra, dl_bwp->scs, frameP, slotP))
+  if (!check_msg2_monitoring(ra, dl_bwp->scs, frameP, slotP)) {
+    LOG_E(NR_MAC, "UE RA-RNTI %04x TC-RNTI %04x: Msg2 not monitored by UE\n", ra->RA_rnti, ra->rnti);
     return;
+  }
   const NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-  if (!beam_is_active(tdd, ul_bwp->scs, nr_mac->tdd_beam_association, slotP, ra->beam_id))
+  if (!beam_is_active(tdd, ul_bwp->scs, nr_mac->tdd_beam_association, slotP, ra->beam_id)) {
+    LOG_I(NR_MAC, "UE RA-RNTI %04x TC-RNTI %04x: beam %d inactive\n", ra->RA_rnti, ra->rnti, ra->beam_id);
     return;
+  }
 
   ra->Msg3_tda_id = get_feasible_msg3_tda(cc->frame_type,
                                           DELTA[ul_bwp->scs],
@@ -1261,7 +1269,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   // Checking if the DCI allocation is feasible in current subframe
   nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
   if (dl_req->nPDUs > NFAPI_NR_MAX_DL_TTI_PDUS - 2) {
-    LOG_W(NR_MAC, "[RAPROC] Subframe %d: FAPI DL structure is full, skip scheduling UE %d\n", slotP, ra->RA_rnti);
+    LOG_W(NR_MAC, "UE %04x: %d.%d FAPI DL structure is full\n", ra->rnti, frameP, slotP);
     return;
   }
 
@@ -1269,7 +1277,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   int CCEIndex = get_cce_index(nr_mac, CC_id, slotP, 0, &aggregation_level, ss, coreset, &ra->sched_pdcch, true);
 
   if (CCEIndex < 0) {
-    LOG_W(NR_MAC, "cannot find free CCE for Msg2 of RA RNTI 0x%04x!\n", ra->rnti);
+    LOG_W(NR_MAC, "UE %04x: %d.%d cannot find free CCE for Msg2!\n", ra->rnti, frameP, slotP);
     return;
   }
 
@@ -1303,9 +1311,8 @@ static void nr_generate_Msg2(module_id_t module_idP,
   pdsch_pdu_rel15->precodingAndBeamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = 0;
 
   LOG_A(NR_MAC,
-        "[gNB %d][RAPROC] CC_id %d Frame %d, slotP %d: Generating RA-Msg2 DCI, rnti 0x%x, state %d, CoreSetType %d\n",
-        module_idP,
-        CC_id,
+        "UE %04x: %d.%d Generating RA-Msg2 DCI, RA RNTI 0x%x, state %d, CoreSetType %d\n",
+        ra->rnti,
         frameP,
         slotP,
         ra->RA_rnti,
@@ -1396,7 +1403,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   dci_payload.tb_scaling = tb_scaling;
 
   LOG_D(NR_MAC,
-        "[RAPROC] DCI type 1 payload: freq_alloc %d (%d,%d,%ld), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d \n",
+        "DCI type 1 payload: freq_alloc %d (%d,%d,%ld), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d \n",
         dci_payload.frequency_domain_assignment.val,
         pdsch_pdu_rel15->rbStart,
         pdsch_pdu_rel15->rbSize,
@@ -1407,7 +1414,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
         dci_payload.tb_scaling);
 
   LOG_D(NR_MAC,
-        "[RAPROC] DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  "
+        "DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  "
         "n_symb %d\n",
         pdcch_pdu_rel15->dci_pdu[0].RNTI,
         TYPE_RA_RNTI_,
@@ -1454,20 +1461,16 @@ static void nr_generate_Msg2(module_id_t module_idP,
       NR_UE_sched_ctrl_t *sched_ctrl = &UE->UE_sched_ctrl;
       sched_ctrl->rrc_processing_timer = (delay_ms << ra->DL_BWP.scs);
     }
-    LOG_D(NR_MAC,
-          "Frame %d, Subframe %d: Setting RA-Msg3 reception (CFRA) for SFN.Slot %d.%d\n",
-          frameP,
-          slotP,
-          ra->Msg3_frame,
-          ra->Msg3_slot);
-  } else {
-    LOG_D(NR_MAC,
-          "Frame %d, Subframe %d: Setting RA-Msg3 reception (CBRA) for SFN.Slot %d.%d\n",
-          frameP,
-          slotP,
-          ra->Msg3_frame,
-          ra->Msg3_slot);
   }
+
+  LOG_D(NR_MAC,
+        "UE %04x: %d.%d: Setting RA-Msg3 reception (%s) for SFN.Slot %d.%d\n",
+        ra->rnti,
+        frameP,
+        slotP,
+        ra->cfra ? "CFRA" : "CBRA",
+        ra->Msg3_frame,
+        ra->Msg3_slot);
 
   T(T_GNB_MAC_DL_RAR_PDU_WITH_DATA,
     T_INT(module_idP),
@@ -1493,13 +1496,6 @@ static void nr_generate_Msg2(module_id_t module_idP,
   }
 
   ra->ra_state = nrRA_WAIT_Msg3;
-  LOG_D(NR_MAC,
-        "[gNB %d][RAPROC] Frame %d, Subframe %d: rnti %04x RA state %s\n",
-        module_idP,
-        frameP,
-        slotP,
-        ra->rnti,
-        nrra_text[ra->ra_state]);
 }
 
 static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
@@ -1641,7 +1637,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
   dci_payload.pdsch_to_harq_feedback_timing_indicator.val = pucch ? pucch->timing_indicator : 0;
 
   LOG_D(NR_MAC,
-        "[RAPROC] DCI 1_0 payload: freq_alloc %d (%d,%d,%d), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d pucchres %d harqtiming %d\n",
+        "DCI 1_0 payload: freq_alloc %d (%d,%d,%d), time_alloc %d, vrb to prb %d, mcs %d tb_scaling %d pucchres %d harqtiming %d\n",
         dci_payload.frequency_domain_assignment.val,
         pdsch_pdu_rel15->rbStart,
         pdsch_pdu_rel15->rbSize,
@@ -1654,7 +1650,7 @@ static void prepare_dl_pdus(gNB_MAC_INST *nr_mac,
         dci_payload.pdsch_to_harq_feedback_timing_indicator.val);
 
   LOG_D(NR_MAC,
-        "[RAPROC] DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  "
+        "DCI params: rnti 0x%x, rnti_type %d, dci_format %d coreset params: FreqDomainResource %llx, start_symbol %d  "
         "n_symb %d, BWPsize %d\n",
         pdcch_pdu_rel15->dci_pdu[0].RNTI,
         TYPE_TC_RNTI_,
@@ -1774,7 +1770,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     // Checking if the DCI allocation is feasible in current subframe
     nfapi_nr_dl_tti_request_body_t *dl_req = &DL_req->dl_tti_request_body;
     if (dl_req->nPDUs > NFAPI_NR_MAX_DL_TTI_PDUS - 2) {
-      LOG_I(NR_MAC, "[RAPROC] Subframe %d: FAPI DL structure is full, skip scheduling UE %d\n", slotP, ra->rnti);
+      LOG_I(NR_MAC, "UE %04x: %d.%d FAPI DL structure is full\n", ra->rnti, frameP, slotP);
       return;
     }
 
@@ -1844,7 +1840,7 @@ static void nr_generate_Msg4(module_id_t module_idP,
     const int delta_PRI = 0;
     int r_pucch = nr_get_pucch_resource(coreset, ra->UL_BWP.pucch_Config, CCEIndex);
 
-    LOG_D(NR_MAC,"[RAPROC] Msg4 r_pucch %d (CCEIndex %d, delta_PRI %d)\n", r_pucch, CCEIndex, delta_PRI);
+    LOG_D(NR_MAC, "Msg4 r_pucch %d (CCEIndex %d, delta_PRI %d)\n", r_pucch, CCEIndex, delta_PRI);
 
     int alloc = nr_acknack_scheduling(nr_mac, UE, frameP, slotP, r_pucch, 1);
     if (alloc < 0) {
