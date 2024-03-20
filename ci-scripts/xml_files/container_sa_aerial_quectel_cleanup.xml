@@ -25,11 +25,20 @@
   <htmlTabName>CleanUp AERIAL</htmlTabName>
   <htmlTabIcon>trash</htmlTabIcon>
   <TestCaseRequestedList>
+    000000
     111111
     222222
     333333
   </TestCaseRequestedList>
   <TestCaseExclusionList></TestCaseExclusionList>
+
+  <testCase id="000000">
+    <class>Undeploy_Object</class>
+    <desc>Undeploy gNB</desc>
+    <yaml_path>ci-scripts/yaml_files/sa_gnb_aerial</yaml_path>
+    <eNB_instance>0</eNB_instance>
+    <eNB_serverId>0</eNB_serverId>
+  </testCase>
 
   <testCase id="111111">
     <class>Clean_Test_Server_Images</class>
