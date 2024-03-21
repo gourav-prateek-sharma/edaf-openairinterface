@@ -239,14 +239,20 @@ int CU_handle_UL_RRC_MESSAGE_TRANSFER(instance_t instance, sctp_assoc_t assoc_id
   F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_ULRRCMessageTransferIEs_t, ie, container,
                              F1AP_ProtocolIE_ID_id_gNB_DU_UE_F1AP_ID, true);
   du_ue_f1ap_id = ie->value.choice.GNB_DU_UE_F1AP_ID;
+
+  if (!cu_exists_f1_ue_data(cu_ue_f1ap_id)) {
+    LOG_E(F1AP, "unknown CU UE ID %ld\n", cu_ue_f1ap_id);
+    return 1;
+  }
+
   /* the RLC-PDCP does not transport the DU UE ID (yet), so we drop it here.
    * For the moment, let's hope this won't become relevant; to sleep in peace,
    * let's put an assert to check that it is the expected DU UE ID. */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(cu_ue_f1ap_id);
-  AssertFatal(ue_data.secondary_ue == du_ue_f1ap_id,
-              "unexpected DU UE ID %d received, expected it to be %ld\n",
-              ue_data.secondary_ue,
-              du_ue_f1ap_id);
+  if (ue_data.secondary_ue != du_ue_f1ap_id) {
+    LOG_E(F1AP, "unexpected DU UE ID %d received, expected it to be %ld\n", ue_data.secondary_ue, du_ue_f1ap_id);
+    return 1;
+  }
 
   /* mandatory */
   /* SRBID */
