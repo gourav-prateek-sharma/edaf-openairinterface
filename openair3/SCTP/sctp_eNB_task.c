@@ -354,65 +354,67 @@ sctp_handle_new_association_req_multi(
                ns, sctp_nb_cnx, assoc_id);
 }
 
-//------------------------------------------------------------------------------
-static void
-sctp_handle_new_association_req(
-    const instance_t instance,
-    const task_id_t requestor,
-    const sctp_new_association_req_t * const sctp_new_association_req_p)
+static const char *print_ip(struct addrinfo *p, char *buf, size_t buf_len)
 {
-    int                           sd       = 0;
-    sctp_assoc_t assoc_id = 0;
+  void *addr;
+  if (p->ai_family == AF_INET) {
+    struct sockaddr_in *ipv4 = (struct sockaddr_in *)p->ai_addr;
+    addr = &ipv4->sin_addr;
+  } else {
+    struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *)p->ai_addr;
+    addr = &ipv6->sin6_addr;
+  }
 
-    struct sctp_event_subscribe   events={0};
+  // convert the IP to a string and print it:
+  return inet_ntop(p->ai_family, addr, buf, buf_len);
+}
 
-    struct sctp_cnx_list_elm_s   *sctp_cnx = NULL;
-    enum sctp_connection_type_e   connection_type = SCTP_TYPE_CLIENT;
+static void sctp_handle_new_association_req(const instance_t instance,
+                                            const task_id_t requestor,
+                                            const sctp_new_association_req_t *const req)
+{
+  enum sctp_connection_type_e connection_type = SCTP_TYPE_CLIENT;
 
-    struct ifreq                  ifr;
-    struct ifaddrs               *ifaddr = NULL;
-    struct ifaddrs               *ifa    = NULL;
-    int                           family = 0;
-    int                           s = 0;
-    struct in_addr                in;
-    struct in6_addr               in6;
-    /* Prepare a new SCTP association as requested by upper layer and try to connect
-     * to remote host.
-     */
-    DevAssert(sctp_new_association_req_p != NULL);
+  /* local address: IPv4 has priority, but can also handle IPv6 */
+  const char *local = NULL;
+  if (req->local_address.ipv6) {
+    local = req->local_address.ipv6_address;
+    SCTP_WARN("please specify IPv6 addresses in the IPv4 field, IPv4 handles both\n");
+  }
+  if (req->local_address.ipv4)
+    local = req->local_address.ipv4_address;
 
-    /* Create new socket with IPv6 affinity */
-//#warning "SCTP may Force IPv4 only, here"
-#ifdef NO_VIRTUAL_MACHINE
+  /* Prepare a new SCTP association as requested by upper layer and try to connect
+   * to remote host.
+   */
+  DevAssert(req != NULL);
+  struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_SCTP};
+  if (local == NULL)
+    hints.ai_flags = AI_PASSIVE;
+  struct addrinfo *serv;
 
-    // in init chunk appears a list of host addresses, IPv4 and IPv4 in an arbitrary (unsorted) order
-    // SCTP hearbeats starts with first ipv4 addresses then stop triyng with other ipv4 addresses
-    // if it encounters an IPv6 address in list, so we can force the building of IPv4 addresses only
-    // with AF_INET (the working IPv4 address can be the last in the list...)
-    if ((sd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP)) < 0) {
-#else
+  int status = getaddrinfo(local, NULL, &hints, &serv);
+  AssertFatal(status == 0, "getaddrinfo() failed: %s\n", gai_strerror(status));
 
-    if ((sd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP)) < 0) {
-#endif
-        SCTP_ERROR("Socket creation failed: %s\n", strerror(errno));
-        return;
+  int sd;
+  struct addrinfo *p = NULL;
+  for (p = serv; p != NULL; p = p->ai_next) {
+    char buf[512];
+    const char *ip = print_ip(p, buf, sizeof(buf));
+    SCTP_DEBUG("Trying %s for client socket creation\n", ip);
+
+    if ((sd = socket(serv->ai_family, serv->ai_socktype, serv->ai_protocol)) == -1) {
+      SCTP_WARN("Socket creation failed: %s\n", strerror(errno));
+      continue;
     }
 
-    /* Add the socket to list of fd monitored by ITTI */
-    itti_subscribe_event_fd(TASK_SCTP, sd);
-
-    if (sctp_set_init_opt(sd,
-                          sctp_new_association_req_p->in_streams,
-                          sctp_new_association_req_p->out_streams,
-                          SCTP_MAX_ATTEMPTS, SCTP_TIMEOUT) != 0) {
-        SCTP_ERROR("Setsockopt IPPROTO_SCTP_INITMSG failed: %s\n",
-                   strerror(errno));
-        itti_unsubscribe_event_fd(TASK_SCTP, sd);
-        close(sd);
-        return;
-    }
+    /* we assume we can set options, or something is likely broken; the
+     * connection won't operate properly */
+    int ret = sctp_set_init_opt(sd, req->in_streams, req->out_streams, SCTP_MAX_ATTEMPTS, SCTP_TIMEOUT);
+    AssertFatal(ret == 0, "sctp_set_init_opt() failed\n");
 
     /* Subscribe to all events */
+    struct sctp_event_subscribe events = {0};
     events.sctp_data_io_event = 1;
     events.sctp_association_event = 1;
     events.sctp_address_event = 1;
@@ -421,199 +423,115 @@ sctp_handle_new_association_req(
     events.sctp_shutdown_event = 1;
     events.sctp_partial_delivery_event = 1;
 
-    if (setsockopt(sd, IPPROTO_SCTP, SCTP_EVENTS, &events,
-                   8) < 0) {
-        SCTP_ERROR("Setsockopt IPPROTO_SCTP_EVENTS failed: %s\n",
-                   strerror(errno));
-        close(sd);
-        return;
+    /* as above */
+    ret = setsockopt(sd, serv->ai_protocol, SCTP_EVENTS, &events, 8);
+    AssertFatal(ret == 0, "setsockopt() IPPROTO_SCTP_EVENTS failed: %s\n", strerror(errno));
+
+    /* if that fails, we will try the next address */
+    ret = sctp_bindx(sd, p->ai_addr, 1, SCTP_BINDX_ADD_ADDR);
+    if (ret != 0) {
+      SCTP_WARN("sctp_bindx() SCTP_BINDX_ADD_ADDR failed: errno %d %s\n", errno, strerror(errno));
+      close(sd);
+      continue;
     }
 
-    // Bind to device ... or we could bind to address also
-    if (getifaddrs(&ifaddr) == -1) {
-        SCTP_ERROR("getifaddrs failed: %s\n", strerror(errno));
-        close(sd);
-    }
+    SCTP_DEBUG("sctp_bindx() SCTP_BINDX_ADD_ADDR: socket bound to %s/%s\n", local, ip);
+    break;
+  }
 
-    /* Walk through linked list, maintaining head pointer so we
-       can free list later */
-    for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL)
-            continue;
+  freeaddrinfo(serv);
 
-        family = ifa->ifa_addr->sa_family;
+  if (p == NULL) {
+    SCTP_ERROR("could not open socket, no SCTP connection established\n");
+    return;
+  }
 
-        /* For an AF_INET* interface address, display the address */
-        if (sctp_new_association_req_p->local_address.ipv4 && family == AF_INET) {
-            // compare address
-            s = inet_aton(sctp_new_association_req_p->local_address.ipv4_address,
-                          &in);
+  /* SOCK_STREAM socket type requires an explicit connect to the remote host
+   * address and port. */
+  /* remote address: IPv4 has priority, but can also handle IPv6 */
+  const char *remote = NULL;
+  if (req->remote_address.ipv6) {
+    remote = req->remote_address.ipv6_address;
+    SCTP_WARN("please specify IPv6 addresses in the IPv4 field, IPv4 handles both\n");
+  }
+  if (req->remote_address.ipv4)
+    remote = req->remote_address.ipv4_address;
+  sctp_assoc_t assoc_id = 0;
+  if (remote != NULL) {
+    struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_SCTP};
+    struct addrinfo *serv;
 
-            if (s > 0 ) {
-                if (((struct sockaddr_in*)ifa->ifa_addr)->sin_addr.s_addr == in.s_addr) {
-                    struct sockaddr_in locaddr={0};
-                    locaddr.sin_family = AF_INET;
-                    locaddr.sin_port = 0;
-                    locaddr.sin_addr.s_addr = in.s_addr;
+    char port[12];
+    snprintf(port, sizeof(port), "%d", req->port);
+    int status = getaddrinfo(remote, port, &hints, &serv);
+    AssertFatal(status == 0, "getaddrinfo() failed: %s\n", gai_strerror(status));
 
-                    if (sctp_bindx(sd, (struct sockaddr*)&locaddr, 1, SCTP_BINDX_ADD_ADDR) < 0) {
-                        SCTP_ERROR("sctp_bindx SCTP_BINDX_ADD_ADDR failed: %s\n",
-                                   strerror(errno));
-                    } else {
-                        SCTP_DEBUG("sctp_bindx SCTP_BINDX_ADD_ADDR socket bound to : %s\n",
-                                   inet_ntoa(locaddr.sin_addr));
-                    }
-                    break;
+    struct addrinfo *p = NULL;
+    for (p = serv; p != NULL; p = p->ai_next) {
+      char buf[512];
+      const char *ip = print_ip(p, buf, sizeof(buf));
+      SCTP_DEBUG("Trying to connect to %s for remote end %s\n", ip, remote);
 
-                }
-            }
-        } else if (sctp_new_association_req_p->local_address.ipv6 && family == AF_INET6) {
-            // compare address
-            s = inet_pton(AF_INET6,
-                          sctp_new_association_req_p->local_address.ipv6_address,
-                          &in6);
-
-            if (s == 1 ) {
-                if (memcmp(&((struct sockaddr_in6*)ifa->ifa_addr)->sin6_addr,
-                           &in6, sizeof(in6)) == 0) {
-                    memset(&ifr, 0, sizeof(ifr));
-                    snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), "%s", ifa->ifa_name);
-
-                    if (setsockopt(sd, SOL_SOCKET, SO_BINDTODEVICE, (void *)&ifr, sizeof(ifr)) < 0) {
-                        SCTP_ERROR("Setsockopt SOL_SOCKET failed: %s\n",
-                                   strerror(errno));
-                    } else {
-                        SCTP_DEBUG("Setsockopt SOL_SOCKET socket bound to : %s\n",
-                                   ifa->ifa_name);
-                    }
-
-                    break;
-                }
-            }
-        }
-    }
-
-    freeifaddrs(ifaddr);
-
-    /* Mark the socket as non-blocking */
-    if (fcntl(sd, F_SETFL, O_NONBLOCK) < 0) {
-        SCTP_ERROR("fcntl F_SETFL O_NONBLOCK failed: %s\n",
-                   strerror(errno));
-        close(sd);
-        return;
-    }
-
-    /* SOCK_STREAM socket type requires an explicit connect to the remote host
-     * address and port.
-     * Only use IPv4 for the first connection attempt
-     */
-    if ((sctp_new_association_req_p->remote_address.ipv6 != 0) ||
-            (sctp_new_association_req_p->remote_address.ipv4 != 0)) {
-        uint8_t address_index = 0;
-        uint8_t used_address  = sctp_new_association_req_p->remote_address.ipv6 +
-                                sctp_new_association_req_p->remote_address.ipv4;
-        struct sockaddr_in addr[used_address];
-
-        memset(addr, 0, used_address * sizeof(struct sockaddr_in));
-
-        if (sctp_new_association_req_p->remote_address.ipv6 == 1) {
-            if (inet_pton(AF_INET6, sctp_new_association_req_p->remote_address.ipv6_address,
-                          &addr[address_index].sin_addr.s_addr) != 1) {
-                SCTP_ERROR("Failed to convert ipv6 address %*s to network type\n",
-                           (int)strlen(sctp_new_association_req_p->remote_address.ipv6_address),
-                           sctp_new_association_req_p->remote_address.ipv6_address);
-                close(sd);
-                return;
-            }
-
-            SCTP_DEBUG("Converted ipv6 address %*s to network type\n",
-                       (int)strlen(sctp_new_association_req_p->remote_address.ipv6_address),
-                       sctp_new_association_req_p->remote_address.ipv6_address);
-
-            addr[address_index].sin_family = AF_INET6;
-            addr[address_index].sin_port   = htons(sctp_new_association_req_p->port);
-            address_index++;
-        }
-
-        if (sctp_new_association_req_p->remote_address.ipv4 == 1) {
-            if (inet_pton(AF_INET, sctp_new_association_req_p->remote_address.ipv4_address,
-                          &addr[address_index].sin_addr.s_addr) != 1) {
-                SCTP_ERROR("Failed to convert ipv4 address %*s to network type\n",
-                           (int)strlen(sctp_new_association_req_p->remote_address.ipv4_address),
-                           sctp_new_association_req_p->remote_address.ipv4_address);
-                close(sd);
-                return;
-            }
-
-            SCTP_DEBUG("Converted ipv4 address %*s to network type\n",
-                       (int)strlen(sctp_new_association_req_p->remote_address.ipv4_address),
-                       sctp_new_association_req_p->remote_address.ipv4_address);
-
-            addr[address_index].sin_family = AF_INET;
-            addr[address_index].sin_port   = htons(sctp_new_association_req_p->port);
-            address_index++;
-        }
-
-        /* Connect to remote host and port */
-        if (sctp_connectx(sd, (struct sockaddr *)addr, 1, &assoc_id) < 0) {
-            /* sctp_connectx on non-blocking socket return EINPROGRESS */
-            if (errno != EINPROGRESS) {
-                SCTP_ERROR("Connect failed: %s\n", strerror(errno));
-                sctp_itti_send_association_resp(
-                    requestor, instance, -1, sctp_new_association_req_p->ulp_cnx_id,
-                    SCTP_STATE_UNREACHABLE, 0, 0);
-                /* Add the socket to list of fd monitored by ITTI */
-                itti_unsubscribe_event_fd(TASK_SCTP, sd);
-                close(sd);
-                return;
-            } else {
-                SCTP_DEBUG("connectx assoc_id  %d in progress..., used %d addresses\n",
-                           assoc_id, used_address);
-            }
+      if (sctp_connectx(sd, p->ai_addr, 1, &assoc_id) < 0) {
+        /* sctp_connectx on non-blocking socket return EINPROGRESS */
+        if (errno != EINPROGRESS) {
+          SCTP_ERROR("Connect failed: %s\n", strerror(errno));
+          sctp_itti_send_association_resp(requestor, instance, -1, req->ulp_cnx_id, SCTP_STATE_UNREACHABLE, 0, 0);
+          close(sd);
+          return;
         } else {
-            SCTP_DEBUG("sctp_connectx SUCCESS, used %d addresses assoc_id %d\n",
-                       used_address,
-                       assoc_id);
+          SCTP_DEBUG("sctp_connectx(): assoc_id %d in progress...\n", assoc_id);
         }
-    } else {
-        /* No remote address provided -> only bind the socket for now.
-         * Connection will be accepted in the main event loop
-         */
-        struct sockaddr_in6 addr6;
-
-        connection_type = SCTP_TYPE_SERVER;
-
-        /* For now bind to any interface */
-        addr6.sin6_family = AF_INET6;
-        addr6.sin6_addr = in6addr_any;
-        addr6.sin6_port = htons(sctp_new_association_req_p->port);
-        addr6.sin6_flowinfo = 0;
-
-        if (bind(sd, (struct sockaddr*)&addr6, sizeof(addr6)) < 0) {
-            SCTP_ERROR("Failed to bind the socket to address any (v4/v6): %s\n",
-                       strerror(errno));
-            close(sd);
-            return;
-        }
+      } else {
+        SCTP_DEBUG("sctp_connectx() SUCCESS: used assoc_id %d\n", assoc_id);
+      }
+      break;
     }
 
-    sctp_cnx = calloc(1, sizeof(*sctp_cnx));
+    freeaddrinfo(serv);
+  } else {
+    /* I am not sure that this is relevant; we already did sctp_bindx() above */
+    connection_type = SCTP_TYPE_SERVER;
 
-    sctp_cnx->connection_type = connection_type;
+    /* No remote address provided -> only bind the socket for now.
+     * Connection will be accepted in the main event loop
+     */
+    /*
+    struct sockaddr_in6 addr6;
 
-    sctp_cnx->sd       = sd;
-    sctp_cnx->task_id  = requestor;
-    sctp_cnx->cnx_id   = sctp_new_association_req_p->ulp_cnx_id;
-    sctp_cnx->ppid     = sctp_new_association_req_p->ppid;
-    sctp_cnx->instance = instance;
-    sctp_cnx->assoc_id = assoc_id;
 
-    /* Insert new element at end of list */
-    STAILQ_INSERT_TAIL(&sctp_cnx_list, sctp_cnx, entries);
-    sctp_nb_cnx++;
+    addr6.sin6_family = AF_INET6;
+    addr6.sin6_addr = in6addr_any;
+    addr6.sin6_port = htons(req->port);
+    addr6.sin6_flowinfo = 0;
 
-    SCTP_DEBUG("Inserted new descriptor for sd %d in list, nb elements %u, assoc_id %d\n",
-               sd, sctp_nb_cnx, assoc_id);
+    if (bind(sd, (struct sockaddr *)&addr6, sizeof(addr6)) < 0) {
+      SCTP_ERROR("Failed to bind the socket to address any (v4/v6): %s\n", strerror(errno));
+      close(sd);
+      return;
+    }
+    */
+  }
+
+  struct sctp_cnx_list_elm_s *sctp_cnx = calloc(1, sizeof(*sctp_cnx));
+  AssertFatal(sctp_cnx != NULL, "out of memory\n");
+  sctp_cnx->connection_type = connection_type;
+
+  sctp_cnx->sd = sd;
+  sctp_cnx->task_id = requestor;
+  sctp_cnx->cnx_id = req->ulp_cnx_id;
+  sctp_cnx->ppid = req->ppid;
+  sctp_cnx->instance = instance;
+  sctp_cnx->assoc_id = assoc_id;
+
+  /* Insert new element at end of list */
+  STAILQ_INSERT_TAIL(&sctp_cnx_list, sctp_cnx, entries);
+  sctp_nb_cnx++;
+
+  /* Add the socket to list of fd monitored by ITTI */
+  itti_subscribe_event_fd(TASK_SCTP, sd);
+
+  SCTP_DEBUG("Inserted new descriptor for sd %d in list, nb elements %u, assoc_id %d\n", sd, sctp_nb_cnx, assoc_id);
 }
 
 //------------------------------------------------------------------------------
