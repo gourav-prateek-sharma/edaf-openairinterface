@@ -318,7 +318,7 @@ void nr_layer_mapping(int nbCodes,
   }
 }
 
-void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, c16_t **tx_layers)
+void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, int sz, c16_t tx_layers[][sz])
 {
   for (int i=0; i<n_symbs/n_layers; i++) {
     for (int l=0; l<n_layers; l++) {
@@ -654,7 +654,7 @@ void init_timeshift_rotation(NR_DL_FRAME_PARMS *fp)
   }
 }
 
-c16_t nr_layer_precoder(c16_t **datatx_F_precoding, const char *prec_matrix, uint8_t n_layers, int32_t re_offset)
+c16_t nr_layer_precoder(int sz, c16_t datatx_F_precoding[][sz], const char *prec_matrix, uint8_t n_layers, int32_t re_offset)
 {
   c16_t precodatatx_F = {0};
 

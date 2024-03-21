@@ -68,7 +68,7 @@ void nr_layer_mapping(int nbCodes,
   @param[in] n_symbs, number of modulated symbols
   @param[out] tx_layers, modulated symbols for each layer
 */
-void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, c16_t **tx_layers);
+void nr_ue_layer_mapping(const c16_t *mod_symbs, const int n_layers, const int n_symbs, int sz, c16_t tx_layers[][sz]);
 /*!
 \brief This function implements the OFDM front end processor on reception (FEP)
 \param frame_parms Pointer to frame parameters
@@ -131,7 +131,7 @@ void apply_nr_rotation_RX(NR_DL_FRAME_PARMS *frame_parms,
   @param[in] prec_matrix, Pointer to precoding matrix
   @param[in] n_layers, number of DLSCH layers
 */
-c16_t nr_layer_precoder(c16_t **datatx_F_precoding, const char *prec_matrix, uint8_t n_layers, int32_t re_offset);
+c16_t nr_layer_precoder(int sz, c16_t datatx_F_precoding[][sz], const char *prec_matrix, uint8_t n_layers, int32_t re_offset);
 
 c16_t nr_layer_precoder_cm(int n_layers,
                            int n_symbols,

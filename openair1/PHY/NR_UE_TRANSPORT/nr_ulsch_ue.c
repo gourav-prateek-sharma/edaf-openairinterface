@@ -253,12 +253,11 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
   /////////////////////////ULSCH layer mapping/////////////////////////
   ///////////
+  const int sz = available_bits / mod_order;
+  c16_t tx_layers[Nl][sz];
+  memset(tx_layers, 0, sizeof(tx_layers));
 
-  c16_t **tx_layers = (c16_t **)malloc16_clear(Nl * sizeof(c16_t *));
-  for (int nl=0; nl<Nl; nl++)
-    tx_layers[nl] = malloc16_clear(available_bits / mod_order * sizeof(c16_t));
-
-  nr_ue_layer_mapping(d_mod, Nl, available_bits / mod_order, tx_layers);
+  nr_ue_layer_mapping(d_mod, Nl, available_bits / mod_order, sz, tx_layers);
 
   ///////////
   ////////////////////////////////////////////////////////////////////////
@@ -340,10 +339,9 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   /////////////////////////ULSCH RE mapping/////////////////////////
   ///////////
 
-  int encoded_length = frame_parms->N_RB_UL*14*NR_NB_SC_PER_RB*mod_order*Nl;
-  c16_t **tx_precoding = malloc16_clear(Nl * sizeof(c16_t *));
-  for (int nl=0; nl<Nl; nl++)
-    tx_precoding[nl] = malloc16_clear(encoded_length * sizeof(c16_t));
+  const int encoded_length = frame_parms->N_RB_UL * 14 * NR_NB_SC_PER_RB * mod_order * Nl;
+  c16_t tx_precoding[Nl][encoded_length];
+  memset(tx_precoding, 0, sizeof(tx_precoding));
 
   for (int nl=0; nl < Nl; nl++) {
     uint8_t k_prime = 0;
@@ -428,7 +426,14 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
 #ifdef DEBUG_PUSCH_MAPPING
           printf("DMRS: Layer: %d\t, dmrs_idx %d\t l %d \t k %d \t k_prime %d \t n %d \t dmrs: %d %d\n",
-                 nl, dmrs_idx, l, k, k_prime, n, tx_precoding[nl])[sample_offsetF].r,tx_precoding[nl])[sample_offsetF].i);
+                 nl,
+                 dmrs_idx,
+                 l,
+                 k,
+                 k_prime,
+                 n,
+                 tx_precoding[nl][sample_offsetF].r,
+                 tx_precoding[nl][sample_offsetF].i);
 #endif
 
           dmrs_idx++;
@@ -453,8 +458,8 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
                  m,
                  l,
                  k,
-                 ((int16_t *)tx_precoding[nl])[(sample_offsetF) << 1],
-                 ((int16_t *)tx_precoding[nl])[((sample_offsetF) << 1) + 1]);
+                 tx_precoding[nl][sample_offsetF].r,
+                 tx_precoding[nl][sample_offsetF].i);
 #endif
 
           m++;
@@ -543,7 +548,7 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
 
           for (int i = 0; i < NR_NB_SC_PER_RB; i++) {
             int32_t re_offset = l * frame_parms->ofdm_symbol_size + k;
-            txdataF[ap][re_offset] = nr_layer_precoder(tx_precoding, W_prec, pusch_pdu->nrOfLayers, re_offset);
+            txdataF[ap][re_offset] = nr_layer_precoder(encoded_length, tx_precoding, W_prec, pusch_pdu->nrOfLayers, re_offset);
             if (++k >= frame_parms->ofdm_symbol_size) {
               k -= frame_parms->ofdm_symbol_size;
             }
@@ -556,14 +561,6 @@ void nr_ue_ulsch_procedures(PHY_VARS_NR_UE *UE,
   NR_UL_UE_HARQ_t *harq_process_ulsch = NULL;
   harq_process_ulsch = &UE->ul_harq_processes[harq_pid];
   harq_process_ulsch->status = SCH_IDLE;
-
-  for (int nl = 0; nl < Nl; nl++) {
-    free_and_zero(tx_layers[nl]);
-    free_and_zero(tx_precoding[nl]);
-  }
-  free_and_zero(tx_layers);
-  free_and_zero(tx_precoding);
-
   ///////////
   ////////////////////////////////////////////////////////////////////////
 }
