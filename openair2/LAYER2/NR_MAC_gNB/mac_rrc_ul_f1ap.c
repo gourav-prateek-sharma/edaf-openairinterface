@@ -29,7 +29,7 @@
 
 #include "mac_rrc_ul.h"
 
-static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params)
+static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params, const char *f1u_ip_addr)
 {
   f1ap_net_config_t nc = {0};
 
@@ -37,19 +37,17 @@ static f1ap_net_config_t read_DU_IP_config(const eth_params_t* f1_params)
   nc.CU_f1_ip_address.ipv4 = 1;
   strcpy(nc.CU_f1_ip_address.ipv4_address, f1_params->remote_addr);
   nc.CUport = f1_params->remote_portd;
-  LOG_I(GNB_APP,
-        "FIAP: CU_ip4_address in DU %p, strlen %d\n",
-        nc.CU_f1_ip_address.ipv4_address,
-        (int)strlen(f1_params->remote_addr));
 
-  nc.DU_f1_ip_address.ipv6 = 0;
-  nc.DU_f1_ip_address.ipv4 = 1;
-  strcpy(nc.DU_f1_ip_address.ipv4_address, f1_params->my_addr);
+  nc.DU_f1c_ip_address.ipv6 = 0;
+  nc.DU_f1c_ip_address.ipv4 = 1;
+  strcpy(nc.DU_f1c_ip_address.ipv4_address, f1_params->my_addr);
+  nc.DU_f1u_ip_address = strdup(f1u_ip_addr);
   nc.DUport = f1_params->my_portd;
-  LOG_I(GNB_APP,
-        "FIAP: DU_ip4_address in DU %p, strlen %ld\n",
-        nc.DU_f1_ip_address.ipv4_address,
-        strlen(f1_params->my_addr));
+  LOG_I(F1AP,
+        "F1-C DU IPaddr %s, connect to F1-C CU %s, binding GTP to %s\n",
+        nc.DU_f1c_ip_address.ipv4_address,
+        nc.CU_f1_ip_address.ipv4_address,
+        nc.DU_f1u_ip_address);
 
   // sctp_in_streams/sctp_out_streams are given by SCTP layer
   return nc;
@@ -95,7 +93,7 @@ static void f1_setup_request_f1ap(const f1ap_setup_req_t *req)
   }
   memcpy(f1ap_setup->rrc_ver, req->rrc_ver, sizeof(req->rrc_ver));
 
-  F1AP_DU_REGISTER_REQ(msg).net_config = read_DU_IP_config(&RC.nrmac[0]->eth_params_n);
+  F1AP_DU_REGISTER_REQ(msg).net_config = read_DU_IP_config(&RC.nrmac[0]->eth_params_n, RC.nrmac[0]->f1u_addr);
 
   itti_send_msg_to_task(TASK_DU_F1, 0, msg);
 }

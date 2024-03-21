@@ -41,6 +41,7 @@
 #define CONFIG_STRING_MACRLC_TRANSPORT_N_PREFERENCE        "tr_n_preference"
 #define CONFIG_STRING_MACRLC_LOCAL_N_IF_NAME               "local_n_if_name"
 #define CONFIG_STRING_MACRLC_LOCAL_N_ADDRESS               "local_n_address"
+#define CONFIG_STRING_MACRLC_LOCAL_N_ADDRESS_F1U           "local_n_address_f1u"
 #define CONFIG_STRING_MACRLC_REMOTE_N_ADDRESS              "remote_n_address"
 #define CONFIG_STRING_MACRLC_LOCAL_N_PORTC                 "local_n_portc"
 #define CONFIG_STRING_MACRLC_REMOTE_N_PORTC                "remote_n_portc"
@@ -125,6 +126,7 @@
   {CONFIG_STRING_MACRLC_MIN_GRANT_PRB,               HLP_MACRLC_MIN_GRANT_PRB, 0, .u8ptr=NULL,  .defintval=5,               TYPE_UINT8,   0}, \
   {CONFIG_STRING_MACRLC_MIN_GRANT_MCS,               HLP_MACRLC_MIN_GRANT_MCS, 0, .u8ptr=NULL,  .defintval=9,               TYPE_UINT8,   0}, \
   {CONFIG_STRING_MACRLC_IDENTITY_PM,                 HLP_MACRLC_IDENTITY_PM,   PARAMFLAG_BOOL, .u8ptr=NULL, .defintval=0,   TYPE_UINT8,   0}, \
+  {CONFIG_STRING_MACRLC_LOCAL_N_ADDRESS_F1U,         NULL,                     0, .strptr=NULL, .defstrval=NULL,            TYPE_STRING,  0}, \
 }
 // clang-format off
 
@@ -162,6 +164,7 @@
 #define MACRLC_MIN_GRANT_PRB_IDX                               31
 #define MACRLC_MIN_GRANT_MCS_IDX                               32
 #define MACRLC_IDENTITY_PM_IDX                                 33
+#define MACRLC_LOCAL_N_ADDRESS_F1U_IDX                         34
 
 #define MACRLCPARAMS_CHECK { \
   { .s5 = { NULL } }, \
@@ -198,6 +201,7 @@
   { .s5 = { NULL } }, \
   { .s5 = { NULL } }, \
   { .s2 = { NULL } }, \
+  { .s5 = { NULL } }, \
 }
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------*/

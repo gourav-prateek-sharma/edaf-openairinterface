@@ -78,7 +78,8 @@ typedef net_ip_address_t f1ap_net_ip_address_t;
 
 typedef struct f1ap_net_config_t {
   f1ap_net_ip_address_t CU_f1_ip_address;
-  f1ap_net_ip_address_t DU_f1_ip_address;
+  f1ap_net_ip_address_t DU_f1c_ip_address;
+  char *DU_f1u_ip_address;
   uint16_t CUport;
   uint16_t DUport;
 } f1ap_net_config_t;
