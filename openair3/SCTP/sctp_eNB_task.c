@@ -598,85 +598,44 @@ static int sctp_close_association(sctp_close_association_t *close_association_p)
     return 0;
 }
 
-//------------------------------------------------------------------------------
-static int sctp_create_new_listener(
-    const instance_t instance,
-    const task_id_t  requestor,
-    sctp_init_t     *init_p,
-    int server_type)
+static int sctp_create_new_listener(const instance_t instance, const task_id_t requestor, sctp_init_t *init_p, int server_type)
 {
-    struct sctp_event_subscribe   event={0};
-    struct sockaddr              *addr      = NULL;
-    struct sctp_cnx_list_elm_s   *sctp_cnx  = NULL;
-    uint16_t                      i  = 0, j = 0;
-    int                           sd = 0;
-    int                           used_addresses = 0;
+  DevAssert(init_p != NULL);
+  DevAssert(init_p->bind_address != NULL);
+  int in_streams = 1;
+  int out_streams = 1;
 
-    DevAssert(init_p != NULL);
+  /* local address: IPv4 has priority, but can also handle IPv6 */
+  const char *local = init_p->bind_address;
 
-    if (init_p->ipv4 == 0 && init_p->ipv6 == 0) {
-        SCTP_ERROR("Illegal IP configuration upper layer should request at"
-                   "least ipv4 and/or ipv6 config\n");
-        return -1;
+  struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM, .ai_protocol = IPPROTO_SCTP};
+  struct addrinfo *serv;
+
+  char port[12];
+  snprintf(port, sizeof(port), "%d", init_p->port);
+  int status = getaddrinfo(local, port, &hints, &serv);
+  AssertFatal(status == 0, "getaddrinfo() failed: %s\n", gai_strerror(status));
+
+  int sd;
+  struct addrinfo *p = NULL;
+  for (p = serv; p != NULL; p = p->ai_next) {
+    char buf[512];
+    const char *ip = print_ip(p, buf, sizeof(buf));
+    SCTP_DEBUG("Trying %s for server socket creation\n", ip);
+
+    /* SOCK_SEQPACKET to be able to reuse(?) socket through SCTP_INIT_MSG_MULTI_REQ */
+    int socktype = server_type ? SOCK_SEQPACKET : SOCK_STREAM;
+    if ((sd = socket(serv->ai_family, socktype, serv->ai_protocol)) == -1) {
+      SCTP_WARN("Socket creation failed: %s\n", strerror(errno));
+      continue;
     }
 
-    if ((used_addresses = init_p->nb_ipv4_addr + init_p->nb_ipv6_addr) == 0) {
-        SCTP_WARN("No address provided...\n");
-        return -1;
-    }
+    /* we assume we can set options, or something is likely broken; the
+     * connection won't operate properly */
+    int ret = sctp_set_init_opt(sd, in_streams, out_streams, 0, 0);
+    AssertFatal(ret == 0, "sctp_set_init_opt() failed\n");
 
-    addr = calloc(used_addresses, sizeof(struct sockaddr));
-
-    SCTP_DEBUG("Creating new listen socket on port %u with\n", init_p->port);
-
-    if (init_p->ipv4 == 1) {
-        struct sockaddr_in *ip4_addr;
-
-        SCTP_DEBUG("ipv4 addresses:\n");
-
-        for (i = 0; i < init_p->nb_ipv4_addr; i++) {
-            SCTP_DEBUG("\t- "IPV4_ADDR"\n", IPV4_ADDR_FORMAT(init_p->ipv4_address[i]));
-            ip4_addr = (struct sockaddr_in *)&addr[i];
-            ip4_addr->sin_family = AF_INET;
-            ip4_addr->sin_port   = htons(init_p->port);
-            ip4_addr->sin_addr.s_addr = init_p->ipv4_address[i];
-        }
-    }
-
-    if (init_p->ipv6 == 1) {
-        struct sockaddr_in6 *ip6_addr;
-
-        SCTP_DEBUG("ipv6 addresses:\n");
-
-        for (j = 0; j < init_p->nb_ipv6_addr; j++) {
-            SCTP_DEBUG("\t- %s\n", init_p->ipv6_address[j]);
-            ip6_addr = (struct sockaddr_in6 *)&addr[i + j];
-            ip6_addr->sin6_family = AF_INET6;
-            ip6_addr->sin6_port  = htons(init_p->port);
-
-            if (inet_pton(AF_INET6, init_p->ipv6_address[j],
-                          ip6_addr->sin6_addr.s6_addr) <= 0) {
-                SCTP_WARN("Provided ipv6 address %s is not valid\n",
-                          init_p->ipv6_address[j]);
-            }
-        }
-    }
-
-    if (server_type) {
-        if ((sd = socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP)) < 0) {
-            SCTP_ERROR("socket: %s:%d\n", strerror(errno), errno);
-            free(addr);
-            return -1;
-        }
-    }
-    else {
-        if ((sd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP)) < 0) {
-            SCTP_ERROR("socket: %s:%d\n", strerror(errno), errno);
-            free(addr);
-            return -1;
-        }
-    }
-
+    struct sctp_event_subscribe event = {0};
     event.sctp_data_io_event = 1;
     event.sctp_association_event = 1;
     event.sctp_address_event = 1;
@@ -685,83 +644,55 @@ static int sctp_create_new_listener(
     event.sctp_shutdown_event = 1;
     event.sctp_partial_delivery_event = 1;
 
-    if (setsockopt(sd, IPPROTO_SCTP, SCTP_EVENTS, &event,
-                   8) < 0) {
-        SCTP_ERROR("setsockopt: %s:%d\n", strerror(errno), errno);
-        if (sd != -1) {
-            close(sd);
-            sd = -1;
-        }
-        free(addr);
-        return -1;
-    }
+    /* as above */
+    ret = setsockopt(sd, serv->ai_protocol, SCTP_EVENTS, &event, 8);
+    AssertFatal(ret == 0, "setsockopt() IPPROTO_SCTP_EVENTS failed: %s\n", strerror(errno));
 
-    sctp_cnx = calloc(1, sizeof(*sctp_cnx));
-
-    if (server_type) {
-        sctp_cnx->connection_type = SCTP_TYPE_MULTI_SERVER;
-    }
-    else {
-        sctp_cnx->connection_type = SCTP_TYPE_SERVER;
-    }
-
-    sctp_cnx->sd              = sd;
-    sctp_cnx->local_port      = init_p->port;
-    sctp_cnx->in_streams      = 32;
-    sctp_cnx->out_streams     = 32;
-    sctp_cnx->ppid            = init_p->ppid;
-    sctp_cnx->task_id         = requestor;
-    sctp_cnx->instance        = instance;
-
-    /* Some pre-bind socket configuration */
-    if (sctp_set_init_opt(sd,
-                          sctp_cnx->in_streams,
-                          sctp_cnx->out_streams,
-                          0,
-                          0) < 0) {
-        goto err;
-    }
-
-    if (sctp_bindx(sd, addr, used_addresses, SCTP_BINDX_ADD_ADDR) != 0) {
-        SCTP_ERROR("sctp_bindx: %s:%d\n", strerror(errno), errno);
-        free(sctp_cnx);
-        sctp_cnx = NULL;
-        return -1;
+    /* if that fails, we will try the next address */
+    ret = sctp_bindx(sd, p->ai_addr, 1, SCTP_BINDX_ADD_ADDR);
+    if (ret != 0) {
+      SCTP_WARN("sctp_bindx() SCTP_BINDX_ADD_ADDR failed: errno %d %s\n", errno, strerror(errno));
+      close(sd);
+      continue;
     }
 
     if (listen(sd, 5) < 0) {
-        SCTP_ERROR("listen: %s:%d\n", strerror(errno), errno);
-        free(sctp_cnx);
-        sctp_cnx = NULL;
-        return -1;
-    }
-    SCTP_DEBUG("Created listen socket: %d\n", sd);
-    /* Insert new element at end of list */
-    STAILQ_INSERT_TAIL(&sctp_cnx_list, sctp_cnx, entries);
-    sctp_nb_cnx++;
-
-    /* Add the socket to list of fd monitored by ITTI */
-    itti_subscribe_event_fd(TASK_SCTP, sd);
-
-    return sd;
-err:
-
-    if (sd != -1) {
-        close(sd);
-        sd = -1;
+      SCTP_WARN("listen() failed: %s:%d\n", strerror(errno), errno);
+      close(sd);
+      return -1;
     }
 
-    if (sctp_cnx != NULL) {
-        free(sctp_cnx);
-        sctp_cnx = NULL;
-    }
+    SCTP_DEBUG("Created listen socket %d on %s:%s local %s\n", sd, ip, port, local);
 
-    if (addr != NULL) {
-        free(addr);
-        addr = NULL;
-    }
+    break;
+  }
 
+  freeaddrinfo(serv);
+
+  if (p == NULL) {
+    SCTP_ERROR("could not open server socket, no SCTP listener active\n");
     return -1;
+  }
+
+  struct sctp_cnx_list_elm_s *sctp_cnx = calloc(1, sizeof(*sctp_cnx));
+  AssertFatal(sctp_cnx != NULL, "out of memory\n");
+
+  sctp_cnx->connection_type = server_type ? SCTP_TYPE_MULTI_SERVER : SCTP_TYPE_SERVER;
+  sctp_cnx->sd = sd;
+  sctp_cnx->local_port = init_p->port;
+  sctp_cnx->in_streams = in_streams;
+  sctp_cnx->out_streams = out_streams;
+  sctp_cnx->ppid = init_p->ppid;
+  sctp_cnx->task_id = requestor;
+  sctp_cnx->instance = instance;
+  /* Insert new element at end of list */
+  STAILQ_INSERT_TAIL(&sctp_cnx_list, sctp_cnx, entries);
+  sctp_nb_cnx++;
+
+  /* Add the socket to list of fd monitored by ITTI */
+  itti_subscribe_event_fd(TASK_SCTP, sd);
+
+  return sd;
 }
 
 //------------------------------------------------------------------------------
