@@ -120,9 +120,7 @@ whether the clock is internal or external is defined in the configuration files 
 ```
     NETWORK_INTERFACES :
     {
-        ENB_INTERFACE_NAME_FOR_S1_MME            = "eth0";
         ENB_IPV4_ADDRESS_FOR_S1_MME              = "**YOUR_ENB_IP_ADDR**";
-        ENB_INTERFACE_NAME_FOR_S1U               = "eth0";
         ENB_IPV4_ADDRESS_FOR_S1U                 = "**YOUR_ENB_IP_ADDR**";
         ENB_PORT_FOR_S1U                         = 2152; # Spec 2152
         ENB_IPV4_ADDRESS_FOR_X2C                 = "**YOUR_ENB_IP_ADDR**";

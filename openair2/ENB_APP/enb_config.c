@@ -1822,7 +1822,6 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
 
 int RCconfig_gtpu(void ) {
   int               num_enbs                      = 0;
-  char             *enb_interface_name_for_S1U    = NULL;
   char             *enb_ipv4_address_for_S1U      = NULL;
   uint16_t enb_port_for_S1U = 0;
   char             *address                       = NULL;

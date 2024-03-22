@@ -60,9 +60,6 @@
 
 int RCconfig_MCE(void ) {
   //int               num_enbs                      = 0;
-  //char             *enb_interface_name_for_S1U    = NULL;
-  char               *mce_interface_name_for_m2_enb = NULL;
-  char               *mce_interface_name_for_m3_mme = NULL;
   //char             *enb_ipv4_address_for_S1U      = NULL;
   char               *mce_ipv4_address_for_m2c      = NULL;
   char               *mce_ipv4_address_for_m3c      = NULL;
@@ -93,11 +90,9 @@ int RCconfig_MCE(void ) {
 
   //LOG_W(MCE_APP,"cidr %s\n",cidr);
   //LOG_W(MCE_APP,"address %s\n",address);
-  //LOG_W(MCE_APP,"mce_interface_name_for_m2_enb %s\n",mce_interface_name_for_m2_enb);
   //LOG_W(MCE_APP,"mce_ipv4_address_for_m2c %s\n",mce_ipv4_address_for_m2c);
   //LOG_W(MCE_APP,"mce_ipv4_address_for_m2c %s\n",*(MCEParams[1/*MCE_IPV4_ADDRESS_FOR_M2C_IDX*/].strptr));
   //LOG_W(MCE_APP,"mce_port_for_m2c %d\n",mce_port_for_m2c);
-  //LOG_W(MCE_APP,"mce_interface_name_for_m3_mme %s\n",mce_interface_name_for_m3_mme);
   //LOG_W(MCE_APP,"mce_ipv4_address_for_m3c %s\n",mce_ipv4_address_for_m3c);
   //LOG_W(MCE_APP,"mce_port_for_m3c %d\n",mce_port_for_m3c);
 
@@ -124,9 +119,6 @@ int RCconfig_MCE(void ) {
 int RCconfig_M3(MessageDef *msg_p, uint32_t i) {
   int l;
   //int               num_enbs                      = 0;
-  //char             *enb_interface_name_for_S1U    = NULL;
-  char               *mce_interface_name_for_m2_enb = NULL;
-  char               *mce_interface_name_for_m3_mme = NULL;
   //char             *enb_ipv4_address_for_S1U      = NULL;
   char               *mce_ipv4_address_for_m2c      = NULL;
   char               *mce_ipv4_address_for_m3c      = NULL;

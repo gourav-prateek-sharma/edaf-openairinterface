@@ -1121,22 +1121,18 @@ typedef struct srb1_params_s {
 /* S1 interface configuration parameters section name */
 #define ENB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG     "NETWORK_INTERFACES"
 
-#define ENB_INTERFACE_NAME_FOR_S1_MME_IDX          0
-#define ENB_IPV4_ADDRESS_FOR_S1_MME_IDX            1
-#define ENB_INTERFACE_NAME_FOR_S1U_IDX             2
-#define ENB_IPV4_ADDR_FOR_S1U_IDX                  3
-#define ENB_PORT_FOR_S1U_IDX                       4
-#define ENB_IPV4_ADDR_FOR_X2C_IDX                  5
-#define ENB_PORT_FOR_X2C_IDX                       6
-#define ENB_IPV4_ADDR_FOR_M2C_IDX                  7
-#define ENB_PORT_FOR_M2C_IDX                       8
-#define MCE_IPV4_ADDR_FOR_M2C_IDX                  9
-#define MCE_PORT_FOR_M2C_IDX                       10
+#define ENB_IPV4_ADDRESS_FOR_S1_MME_IDX            0
+#define ENB_IPV4_ADDR_FOR_S1U_IDX                  1
+#define ENB_PORT_FOR_S1U_IDX                       2
+#define ENB_IPV4_ADDR_FOR_X2C_IDX                  3
+#define ENB_PORT_FOR_X2C_IDX                       4
+#define ENB_IPV4_ADDR_FOR_M2C_IDX                  5
+#define ENB_PORT_FOR_M2C_IDX                       6
+#define MCE_IPV4_ADDR_FOR_M2C_IDX                  7
+#define MCE_PORT_FOR_M2C_IDX                       8
 
 /* S1 interface configuration parameters names   */
-#define ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1_MME "ENB_INTERFACE_NAME_FOR_S1_MME"
 #define ENB_CONFIG_STRING_ENB_IPV4_ADDRESS_FOR_S1_MME   "ENB_IPV4_ADDRESS_FOR_S1_MME"
-#define ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1U    "ENB_INTERFACE_NAME_FOR_S1U"
 #define ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_S1U         "ENB_IPV4_ADDRESS_FOR_S1U"
 #define ENB_CONFIG_STRING_ENB_PORT_FOR_S1U              "ENB_PORT_FOR_S1U"
 
@@ -1157,9 +1153,7 @@ typedef struct srb1_params_s {
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 // clang-format off
 #define NETPARAMS_DESC {  \
-  {ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1_MME,        NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDRESS_FOR_S1_MME,          NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
-  {ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1U,           NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_S1U,                NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
   {ENB_CONFIG_STRING_ENB_PORT_FOR_S1U,                     NULL,      0,         .u16ptr=NULL,         .defuintval=GTPV1_U_PORT_NUMBER, TYPE_UINT16,      0},      \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_X2C,                NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
@@ -1177,7 +1171,6 @@ typedef struct srb1_params_s {
 /*--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 // clang-format off
 #define GTPUPARAMS_DESC { \
-  {ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1U,           NULL,    0,            .strptr=&enb_interface_name_for_S1U,      .defstrval="lo",                  TYPE_STRING,   0},        \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_S1U,                NULL,    0,            .strptr=&enb_ipv4_address_for_S1U,        .defstrval="127.0.0.1",           TYPE_STRING,   0},        \
   {ENB_CONFIG_STRING_ENB_PORT_FOR_S1U,                     NULL,    0,            .u16ptr=&enb_port_for_S1U,               .defuintval=GTPV1_U_PORT_NUMBER,   TYPE_UINT16,   0},        \
 }

@@ -175,9 +175,7 @@ Last, the S1 interface shall be properly set.
 
     NETWORK_INTERFACES :
     {
-        ENB_INTERFACE_NAME_FOR_S1_MME            = "ens3";            // replace with the proper interface name
         ENB_IPV4_ADDRESS_FOR_S1_MME              = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
-        ENB_INTERFACE_NAME_FOR_S1U               = "ens3";            // replace with the proper interface name
         ENB_IPV4_ADDRESS_FOR_S1U                 = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
         ENB_PORT_FOR_S1U                         = 2152; # Spec 2152
         ENB_IPV4_ADDRESS_FOR_X2C                 = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
