@@ -1184,64 +1184,6 @@ typedef struct srb1_params_s {
 #define CONFIG_STRING_L1_CONFIG                            "l1_config"
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* CU/DU configuration section names*/
-#define CONFIG_STRING_DU_LIST			            "DU"
-#define CONFIG_STRING_CU_LIST			            "CU"
-#define DU_TYPE_LTE                                 0
-#define DU_TYPE_WIFI                                1
-#define ENB_CONFIG_STRING_CU_INTERFACES_CONFIG		"CU_INTERFACES"
-#define ENB_CONFIG_STRING_CU_INTERFACE_NAME_FOR_F1U "CU_INTERFACE_NAME_FOR_F1U"
-#define ENB_CONFIG_STRING_CU_IPV4_ADDRESS_FOR_F1U   "CU_IPV4_ADDRESS_FOR_F1U"
-#define ENB_CONFIG_STRING_CU_PORT_FOR_F1U           "CU_PORT_FOR_F1U"
-#define ENB_CONFIG_STRING_DU_TYPE	                "DU_TYPE"
-#define ENB_CONFIG_STRING_F1_U_CU_TRANSPORT_TYPE    "F1_U_CU_TRANSPORT_TYPE"
-#define ENB_CONFIG_STRING_DU_INTERFACES_CONFIG		"DU_INTERFACES"
-#define ENB_CONFIG_STRING_DU_INTERFACE_NAME_FOR_F1U "DU_INTERFACE_NAME_FOR_F1U"
-#define ENB_CONFIG_STRING_DU_IPV4_ADDRESS_FOR_F1U   "DU_IPV4_ADDRESS_FOR_F1U"
-#define ENB_CONFIG_STRING_DU_PORT_FOR_F1U           "DU_PORT_FOR_F1U"
-#define ENB_CONFIG_STRING_F1_U_DU_TRANSPORT_TYPE    "F1_U_DU_TRANSPORT_TYPE"
-
-#define CONFIG_STRING_CU_BALANCING      "CU_BALANCING"
-
-// clang-format off
-#define CUPARAMS_DESC { \
-  {ENB_CONFIG_STRING_CU_INTERFACE_NAME_FOR_F1U, NULL,   0,   .strptr=NULL,   .defstrval="eth0",         TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_CU_IPV4_ADDRESS_FOR_F1U,   NULL,   0,   .strptr=NULL,   .defstrval="127.0.0.1",    TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_CU_PORT_FOR_F1U,           NULL,   0,   .uptr=NULL,     .defintval=2210,           TYPE_UINT,     0}, \
-  {ENB_CONFIG_STRING_F1_U_CU_TRANSPORT_TYPE,    NULL,   0,   .strptr=NULL,   .defstrval="TCP",          TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_DU_TYPE,                   NULL,   0,   .strptr=NULL,   .defstrval="LTE",          TYPE_STRING,   0}, \
-}
-// clang-format on
-
-// clang-format off
-#define DUPARAMS_DESC { \
-  {ENB_CONFIG_STRING_DU_INTERFACE_NAME_FOR_F1U, NULL,   0,   .strptr=NULL,   .defstrval="eth0",       TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_DU_IPV4_ADDRESS_FOR_F1U,   NULL,   0,   .strptr=NULL,   .defstrval="127.0.0.1",  TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_DU_PORT_FOR_F1U,           NULL,   0,   .uptr=NULL,     .defintval=2210,         TYPE_UINT,     0}, \
-  {ENB_CONFIG_STRING_F1_U_DU_TRANSPORT_TYPE,    NULL,   0,   .strptr=NULL,   .defstrval="TCP",        TYPE_STRING,   0}, \
-}
-// clang-format on
-
-// clang-format off
-#define CU_BAL_DESC { \
-  {CONFIG_STRING_CU_BALANCING,                  NULL,   0,   .strptr=NULL,   .defstrval="ALL",        TYPE_STRING,   0}, \
-}
-// clang-format on
-
-#define CU_INTERFACE_F1U 	                     0
-#define CU_ADDRESS_F1U                           1
-#define CU_PORT_F1U 	              		     2
-#define CU_TYPE_F1U 	              		     3
-
-#define DU_INTERFACE_F1U                         0
-#define DU_ADDRESS_F1U                           1
-#define DU_PORT_F1U                              2
-#define DU_TYPE_F1U                              3
-#define DU_TECH                                  4
-
-/*----------------------------------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* MACRLC configuration section names   */
 #define CONFIG_STRING_MACRLC_LIST                          "MACRLCs"
 #define CONFIG_STRING_MACRLC_CONFIG                        "macrlc_config"
