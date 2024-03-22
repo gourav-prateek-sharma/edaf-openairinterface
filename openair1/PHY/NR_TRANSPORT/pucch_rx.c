@@ -1607,14 +1607,15 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
 
   // estimate CQI for MAC (from antenna port 0 only)
   // TODO this computation is wrong -> to be ignored at MAC for now
-  int SNRtimes10 =
+  int cqi = 0xff;
+  /*int SNRtimes10 =
       dB_fixed_times10(signal_energy_nodc((int32_t *)&rxdataF[0][soffset + (l2 * frame_parms->ofdm_symbol_size) + re_offset[0]],
                                           12 * pucch_pdu->prb_size))
       - (10 * gNB->measurements.n0_power_tot_dB);
   int cqi,bit_left;
   if (SNRtimes10 < -640) cqi=0;
   else if (SNRtimes10 >  635) cqi=255;
-  else cqi=(640+SNRtimes10)/5;
+  else cqi=(640+SNRtimes10)/5;*/
 
   uci_pdu->harq.harq_bit_len = pucch_pdu->bit_len_harq;
   uci_pdu->pduBitmap=0;
@@ -1638,8 +1639,8 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
       LOG_D(PHY, "[DLSCH/PDSCH/PUCCH2] %d.%d HARQ payload (%d) = %d\n", frame, slot, i, uci_pdu->harq.harq_payload[i]);
       decodedPayload[0]>>=8;
     }
-    bit_left = pucch_pdu->bit_len_harq-((harq_bytes-1)<<3);
-    uci_pdu->harq.harq_payload[i] = decodedPayload[0] & ((1<<bit_left)-1);
+    int bit_left = pucch_pdu->bit_len_harq - ((harq_bytes - 1) << 3);
+    uci_pdu->harq.harq_payload[i] = decodedPayload[0] & ((1 << bit_left) - 1);
     LOG_D(PHY, "[DLSCH/PDSCH/PUCCH2] %d.%d HARQ payload (%d) = %d\n", frame, slot, i, uci_pdu->harq.harq_payload[i]);
     decodedPayload[0] >>= pucch_pdu->bit_len_harq;
   }
@@ -1664,8 +1665,8 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
       uci_pdu->csi_part1.csi_part1_payload[i] = decodedPayload[0] & 255;
       decodedPayload[0]>>=8;
     }
-    bit_left = pucch_pdu->bit_len_csi_part1-((csi_part1_bytes-1)<<3);
-    uci_pdu->csi_part1.csi_part1_payload[i] = decodedPayload[0] & ((1<<bit_left)-1);
+    int bit_left = pucch_pdu->bit_len_csi_part1-((csi_part1_bytes-1)<<3);
+    uci_pdu->csi_part1.csi_part1_payload[i] = decodedPayload[0] & ((1 << bit_left) - 1);
     decodedPayload[0] = pucch_pdu->bit_len_csi_part1 < 64 ? decodedPayload[0] >> bit_left : 0;
   }
   
