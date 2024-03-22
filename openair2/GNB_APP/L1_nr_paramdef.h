@@ -38,7 +38,6 @@
 
 /* L1 configuration parameters names   */
 #define CONFIG_STRING_L1_CC                                "num_cc"
-#define CONFIG_STRING_L1_LOCAL_N_IF_NAME                   "local_n_if_name"
 #define CONFIG_STRING_L1_LOCAL_N_ADDRESS                   "local_n_address"
 #define CONFIG_STRING_L1_REMOTE_N_ADDRESS                  "remote_n_address"
 #define CONFIG_STRING_L1_LOCAL_N_PORTC                     "local_n_portc"
@@ -68,7 +67,6 @@
 #define L1PARAMS_DESC { \
   {CONFIG_STRING_L1_CC,                                NULL,       0,         .uptr=NULL,           .defintval=1,               TYPE_UINT,     0},         \
   {CONFIG_STRING_L1_TRANSPORT_N_PREFERENCE,            NULL,       0,         .strptr=NULL,         .defstrval="local_mac",     TYPE_STRING,   0},         \
-  {CONFIG_STRING_L1_LOCAL_N_IF_NAME,                   NULL,       0,         .strptr=NULL,         .defstrval="lo",            TYPE_STRING,   0},         \
   {CONFIG_STRING_L1_LOCAL_N_ADDRESS,                   NULL,       0,         .strptr=NULL,         .defstrval="127.0.0.1",     TYPE_STRING,   0},         \
   {CONFIG_STRING_L1_REMOTE_N_ADDRESS,                  NULL,       0,         .strptr=NULL,         .defstrval="127.0.0.2",     TYPE_STRING,   0},         \
   {CONFIG_STRING_L1_LOCAL_N_PORTC,                     NULL,       0,         .uptr=NULL,           .defintval=50030,           TYPE_UINT,     0},         \
@@ -90,24 +88,23 @@
 // clang-format on
 #define L1_CC_IDX                                          0
 #define L1_TRANSPORT_N_PREFERENCE_IDX                      1
-#define L1_LOCAL_N_IF_NAME_IDX                             2
-#define L1_LOCAL_N_ADDRESS_IDX                             3
-#define L1_REMOTE_N_ADDRESS_IDX                            4
-#define L1_LOCAL_N_PORTC_IDX                               5
-#define L1_REMOTE_N_PORTC_IDX                              6
-#define L1_LOCAL_N_PORTD_IDX                               7
-#define L1_REMOTE_N_PORTD_IDX                              8
-#define L1_THREAD_POOL_SIZE                                9
-#define L1_OFDM_OFFSET_DIVISOR                             10
-#define L1_PUCCH0_DTX_THRESHOLD                            11
-#define L1_PRACH_DTX_THRESHOLD                             12
-#define L1_PUSCH_DTX_THRESHOLD                             13
-#define L1_SRS_DTX_THRESHOLD                               14
-#define L1_MAX_LDPC_ITERATIONS                             15
-#define L1_RX_THREAD_CORE                                  16
-#define L1_TX_THREAD_CORE                                  17
-#define L1_TX_AMP_BACKOFF_dB                               18
-#define L1_PHASE_COMP                                      19
+#define L1_LOCAL_N_ADDRESS_IDX                             2
+#define L1_REMOTE_N_ADDRESS_IDX                            3
+#define L1_LOCAL_N_PORTC_IDX                               4
+#define L1_REMOTE_N_PORTC_IDX                              5
+#define L1_LOCAL_N_PORTD_IDX                               6
+#define L1_REMOTE_N_PORTD_IDX                              7
+#define L1_THREAD_POOL_SIZE                                8
+#define L1_OFDM_OFFSET_DIVISOR                             9
+#define L1_PUCCH0_DTX_THRESHOLD                            10
+#define L1_PRACH_DTX_THRESHOLD                             11
+#define L1_PUSCH_DTX_THRESHOLD                             12
+#define L1_SRS_DTX_THRESHOLD                               13
+#define L1_MAX_LDPC_ITERATIONS                             14
+#define L1_RX_THREAD_CORE                                  15
+#define L1_TX_THREAD_CORE                                  16
+#define L1_TX_AMP_BACKOFF_dB                               17
+#define L1_PHASE_COMP                                      18
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 #endif

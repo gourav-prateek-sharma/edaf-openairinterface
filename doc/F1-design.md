@@ -163,9 +163,7 @@ In the DU file:
   to `127.0.0.3`. This IP address is used as the CU destination IP address for
   F1AP communication.
 
-Note: all `local_*_if_name` parameters are ignored.
-
-Note 2: at the DU, you can bind to different interfaces for F1-C and F1-U with
+Note: at the DU, you can bind to different interfaces for F1-C and F1-U with
 the options `MACRLCs.[0].local_n_address` and
 `MACRLCs.[0].local_n_address_f1u`, respectively. Note that this is not foreseen
 for the CU; in the case of the CU, please use separate CU-UP and CU-CP.

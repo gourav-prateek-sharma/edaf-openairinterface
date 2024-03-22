@@ -136,7 +136,6 @@ First verify the nFAPI interface setup on the physical ethernet interface of mac
 MACRLCs = (
         {
         num_cc = 1;
-        local_s_if_name  = "ens3";             // <-- HERE
         remote_s_address = "192.168.122.169";  // <-- HERE
         local_s_address  = "192.168.122.31";   // <-- HERE
         local_s_portc    = 50001;
@@ -204,7 +203,6 @@ L1s = (
         {
         num_cc = 1;
         tr_n_preference = "nfapi";
-        local_n_if_name  = "ens3";            // <- HERE
         remote_n_address = "192.168.122.31";  // <- HERE
         local_n_address  = "192.168.122.169"; // <- HERE
         local_n_portc    = 50000;
