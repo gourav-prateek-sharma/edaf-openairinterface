@@ -618,8 +618,8 @@ Edit the sample OAI gNB configuration file and check following parameters:
 * `gNBs` section
   * The PLMN section shall match the one defined in the AMF
   * `amf_ip_address` shall be the correct AMF IP address in your system
-  * `GNB_INTERFACE_NAME_FOR_NG_AMF` and `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your DU N2 interface name and IP address
-  * `GNB_INTERFACE_NAME_FOR_NGU` and `GNB_IPV4_ADDRESS_FOR_NGU` shall match your DU N3 interface name and IP address
+  * `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your gNB N2 interface IP address
+  * `GNB_IPV4_ADDRESS_FOR_NGU` shall match your gNB N3 interface IP address
   * `prach_ConfigurationIndex`
   * `prach_msg1_FrequencyStart`
   * Adjust the frequency, bandwidth and SSB position

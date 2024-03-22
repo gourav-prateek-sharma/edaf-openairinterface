@@ -159,9 +159,7 @@ whether the clock is internal or external is defined in the configuration files 
     NETWORK_INTERFACES :
     {
 
-        GNB_INTERFACE_NAME_FOR_S1_MME            = "eth0";
         GNB_IPV4_ADDRESS_FOR_S1_MME              = "**YOUR_GNB_IP_ADDR**";
-        GNB_INTERFACE_NAME_FOR_S1U               = "eth0";
         GNB_IPV4_ADDRESS_FOR_S1U                 = "**YOUR_GNB_IP_ADDR**";
         GNB_PORT_FOR_S1U                         = 2152; # Spec 2152
         GNB_IPV4_ADDRESS_FOR_X2C                 = "**YOUR_GNB_IP_ADDR**";
