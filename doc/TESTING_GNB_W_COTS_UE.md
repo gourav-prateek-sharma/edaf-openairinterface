@@ -137,12 +137,7 @@ whether the clock is internal or external is defined in the configuration files 
     enable_x2 = "yes";
     t_reloc_prep      = 1000;      /* unit: millisecond */
     tx2_reloc_overall = 2000;      /* unit: millisecond */
-    target_enb_x2_ip_address      = (
-                                     { ipv4       = "**YOUR_ENB_IP_ADDR**";
-                                       ipv6       = "192:168:30::17";
-                                       preference = "ipv4";
-                                     }
-                                    );
+    target_enb_x2_ip_address = ({ ipv4 = "**YOUR_ENB_IP_ADDR**"; });
 
     NETWORK_INTERFACES :
     {
