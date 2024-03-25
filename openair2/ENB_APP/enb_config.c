@@ -2046,18 +2046,8 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             for (l = 0; l < M2ParamList.numelt; l++) {
               M2AP_REGISTER_ENB_REQ (msg_p).nb_m2 += 1;
               strcpy(M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4_address,*(M2ParamList.paramarray[l][ENB_M2_IPV4_ADDRESS_IDX].strptr));
-              strcpy(M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6_address,*(M2ParamList.paramarray[l][ENB_M2_IPV6_ADDRESS_IDX].strptr));
-
-              if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 0;
-              } else if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 0;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 1;
-              } else if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 1;
-              }
+              M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
+              M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 0;
             }
             // timers
             //{

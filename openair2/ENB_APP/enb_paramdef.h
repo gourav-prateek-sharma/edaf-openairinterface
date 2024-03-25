@@ -1050,8 +1050,6 @@ typedef struct srb1_params_s {
 
 
 #define ENB_CONFIG_STRING_TARGET_MCE_M2_IPV4_ADDRESS              "ipv4"
-#define ENB_CONFIG_STRING_TARGET_MCE_M2_IPV6_ADDRESS              "ipv6"
-#define ENB_CONFIG_STRING_TARGET_MCE_M2_IP_ADDRESS_PREFERENCE     "preference"
 
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -1064,14 +1062,10 @@ typedef struct srb1_params_s {
 // clang-format off
 #define M2PARAMS_DESC {  \
   {ENB_CONFIG_STRING_TARGET_MCE_M2_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-  {ENB_CONFIG_STRING_TARGET_MCE_M2_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-  {ENB_CONFIG_STRING_TARGET_MCE_M2_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 }
 // clang-format on
 
 #define ENB_M2_IPV4_ADDRESS_IDX          0
-#define ENB_M2_IPV6_ADDRESS_IDX          1
-#define ENB_M2_IP_ADDRESS_PREFERENCE_IDX 2
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
