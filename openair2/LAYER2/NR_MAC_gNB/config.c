@@ -67,6 +67,36 @@ c16_t convert_precoder_weight(double complex c_in)
   return (c16_t) {.r = (short)cr, .i = (short)ci};
 }
 
+void get_K1_K2(int N1, int N2, int *K1, int *K2, int layers)
+{
+  // num of allowed k1 and k2 according to 5.2.2.2.1-3 and -4 in 38.214
+  switch (layers) {
+    case 1:
+      *K1 = 1;
+      *K2 = 1;
+      break;
+    case 2:
+      *K2 = N2 == 1 ? 1 : 2;
+      if(N2 == N1 || N1 == 2)
+        *K1 = 2;
+      else if (N2 == 1)
+        *K1 = 4;
+      else
+        *K1 = 3;
+      break;
+    case 3:
+    case 4:
+      *K2 = N2 == 1 ? 1 : 2;
+      if (N1 == 6)
+        *K1 = 5;
+      else
+        *K1 = N1;
+      break;
+    default:
+      AssertFatal(false, "Number of layers %d not supported\n", layers);
+  }
+}
+
 nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPorts_t antenna_ports)
 {
   int num_antenna_ports = antenna_ports.N1 * antenna_ports.N2 * antenna_ports.XP;
@@ -88,16 +118,20 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   int O2 = N2 > 1 ? 4 : 1; //Vertical beam oversampling (1 or 4)
   int O1 = num_antenna_ports > 2 ? 4 : 1; //Horizontal beam oversampling (1 or 4)
 
-  int K1, K2;
-  get_K1_K2(N1, N2, &K1, &K2);
-
   int max_mimo_layers = (num_antenna_ports < NR_MAX_NB_LAYERS) ? num_antenna_ports : NR_MAX_NB_LAYERS;
   AssertFatal(max_mimo_layers <= 4, "Max number of layers supported is 4\n");
+  AssertFatal(num_antenna_ports < 16, "Max number of antenna ports supported is currently 16\n");
 
-  gNB->precoding_matrix_size[0] = N1 * O1 * N2 * O2 * 4;
-  nfapi_nr_pm_list_t mat = {.num_pm_idx = gNB->precoding_matrix_size[0]};
-  for (int i = 1; i < max_mimo_layers; i++) {
-    gNB->precoding_matrix_size[i] = 2 * N1 * O1 * N2 * O2 * K1 * K2;
+  int K1[max_mimo_layers];
+  memset(K1, 0, sizeof(K1));
+  int K2[max_mimo_layers];
+  memset(K2, 0, sizeof(K2));
+
+  nfapi_nr_pm_list_t mat = {.num_pm_idx = 0};
+  for (int i = 0; i < max_mimo_layers; i++) {
+    get_K1_K2(N1, N2, &K1[i], &K2[i], i + 1);
+    int i2_size = i == 0 ? 4 : 2;
+    gNB->precoding_matrix_size[i] = i2_size * N1 * O1 * N2 * O2 * K1[i] * K2[i];
     mat.num_pm_idx += gNB->precoding_matrix_size[i];
   }
 
@@ -106,10 +140,10 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   mat.pmi_pdu = pmi_pdu;
 
   // Generation of codebook Type1 with codebookMode 1 (num_antenna_ports < 16)
-  AssertFatal(num_antenna_ports < 16, "Max number of antenna ports supported is currently 16\n");
+
   // Generate DFT vertical beams
   // ll: index of a vertical beams vector (represented by i1_1 in TS 38.214)
-  const int max_l = N1 * O1 + (K1 - 1) * O1;
+  const int max_l = N1 * O1 + 4 * O1;  // max k1 is 4*O1
   double complex v[max_l][N1];
   for (int ll = 0; ll < max_l; ll++) { // i1_1
     for (int nn = 0; nn < N1; nn++) {
@@ -119,7 +153,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   }
   // Generate DFT Horizontal beams
   // mm: index of a Horizontal beams vector (represented by i1_2 in TS 38.214)
-  const int max_m = N2 * O2 + (K2 - 1) * O2;
+  const int max_m = N2 * O2 + O2; // max k2 is O2
   double complex u[max_m][N2];
   for (int mm = 0; mm < max_m; mm++) { // i1_2
     for (int nn = 0; nn < N2; nn++) {
@@ -158,12 +192,12 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   double complex res_code;
 
   // Table 5.2.2.2.1-5:
-  int pmiq = 0;
+  int pmiq = -1;
   // Codebook for 1-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
-    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+  for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+    for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
       for (int nn = 0; nn < 4; nn++) {
-        pmiq = ll * N2 * O2 * 4 + mm * 4 + nn;
+        pmiq++;
         pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
         pmi_pdu[pmiq].numLayers = 1;
         pmi_pdu[pmiq].num_ant_ports = num_antenna_ports;
@@ -175,7 +209,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
           weights->precoder_weight_Re = precoder_weight.r;
           weights->precoder_weight_Im = precoder_weight.i;
           LOG_D(PHY,
-                "1 Layer Precoding Matrix[0][pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                "1 Layer Precoding Matrix[pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
                 pmiq,
                 len,
                 creal(res_code),
@@ -191,7 +225,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
           weights->precoder_weight_Re = precoder_weight.r;
           weights->precoder_weight_Im = precoder_weight.i;
           LOG_D(PHY,
-                "1 Layer Precoding Matrix[0][pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                "1 Layer Precoding Matrix[pmi %d][antPort %d]= %f+j %f -> Fixed Point %d+j %d \n",
                 pmiq,
                 len,
                 creal(res_code),
@@ -208,12 +242,11 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
   // Table 5.2.2.2.1-6:
   // Codebook for 2-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
   // Compute the code book size for generating 2 layers out of Tx antenna ports
-
   // pmi=1,...,pmi_size, we construct
-  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
-    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
-      for (int k1 = 0; k1 < K1; k1++) {
-        for (int k2 = 0; k2 < K2; k2++) {
+  for (int k2 = 0; k2 < K2[1]; k2++) {
+    for (int k1 = 0; k1 < K1[1]; k1++) {
+      for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+        for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
           for (int nn = 0; nn < 2; nn++) { // i_2
             pmiq++;
             pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
@@ -238,7 +271,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
                 LOG_D(PHY,
-                      "2 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      "2 Layer Precoding Matrix[pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
                       pmiq,
                       i_rows,
                       j_col,
@@ -254,7 +287,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
                 LOG_D(PHY,
-                      "2 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      "2 Layer Precoding Matrix[pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
                       pmiq,
                       i_rows,
                       j_col,
@@ -272,15 +305,13 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
 
   if (max_mimo_layers < 3)
     return mat;
-
   // Table 5.2.2.2.1-7:
   // Codebook for 3-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-
   // pmi=1,...,pmi_size are computed as follows
-  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
-    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
-      for (int k1 = 0; k1 < K1; k1++) {
-        for (int k2 = 0; k2 < K2; k2++) {
+  for (int k2 = 0; k2 < K2[2]; k2++) {
+    for (int k1 = 0; k1 < K1[2]; k1++) {
+      for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+        for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
           for (int nn = 0; nn < 2; nn++) { // i_2
             pmiq++;
             pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
@@ -310,7 +341,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
                 LOG_D(PHY,
-                      "3 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      "3 Layer Precoding Matrix[pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
                       pmiq,
                       i_rows,
                       j_col,
@@ -326,7 +357,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
                 LOG_D(PHY,
-                      "3 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      "3 Layer Precoding Matrix[pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
                       pmiq,
                       i_rows,
                       j_col,
@@ -344,14 +375,12 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
 
   if (max_mimo_layers < 4)
     return mat;
-
   // Table 5.2.2.2.1-8:
   // Codebook for 4-layer CSI reporting using antenna ports 3000 to 2999+PCSI-RS
-
-  for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
-    for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
-      for (int k1 = 0; k1 < K1; k1++) {
-        for (int k2 = 0; k2 < K2; k2++) {
+  for (int k2 = 0; k2 < K2[3]; k2++) {
+    for (int k1 = 0; k1 < K1[3]; k1++) {
+      for (int mm = 0; mm < N2 * O2; mm++) { // i_1_2
+        for (int ll = 0; ll < N1 * O1; ll++) { // i_1_1
           for (int nn = 0; nn < 2; nn++) { // i_2
             pmiq++;
             pmi_pdu[pmiq].pm_idx = pmiq + 1; // index 0 is the identity matrix
@@ -386,7 +415,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
                 LOG_D(PHY,
-                      "4 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      "4 Layer Precoding Matrix[pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
                       pmiq,
                       i_rows,
                       j_col,
@@ -402,7 +431,7 @@ nfapi_nr_pm_list_t init_DL_MIMO_codebook(gNB_MAC_INST *gNB, nr_pdsch_AntennaPort
                 weights->precoder_weight_Re = precoder_weight.r;
                 weights->precoder_weight_Im = precoder_weight.i;
                 LOG_D(PHY,
-                      "4 Layer Precoding Matrix[1][pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
+                      "4 Layer Precoding Matrix[pmi %d][antPort %d][layerIdx %d]= %f+j %f -> Fixed Point %d+j %d \n",
                       pmiq,
                       i_rows,
                       j_col,

@@ -223,21 +223,14 @@ uint16_t get_pm_index(const gNB_MAC_INST *nrmac,
     int k1, k2;
     get_k1_k2_indices(layers, N1, N2, i13, &k1, &k2); // get indices k1 and k2 for PHY matrix (not actual k1 and k2 values)
     const int O2 = N2 == 1 ? 1 : 4;
+    int O1 = 4; //Horizontal beam oversampling = 4 for more than 2 antenna ports
     int max_i2 = 0;
     int lay_index = 0;
-    if (layers == 1) {
-      max_i2 = 4;
-      // computing precoding matrix index according to rule set in allocation function init_codebook_gNB
-      lay_index = i2 + (i12 * max_i2) + (i11 * max_i2 * N2 * O2);
-    }
-    else {
-      max_i2 = 2;
-      // num of allowed k1 and k2 according to 5.2.2.2.1-3 and -4 in 38.214
-      int K1, K2;
-      get_K1_K2(N1, N2, &K1, &K2);
-      // computing precoding matrix index according to rule set in allocation function init_codebook_gNB
-      lay_index = i2 + (k2 * max_i2) + (k1 * max_i2 * K2) + (i12 * max_i2 * K2 * K1) + (i11 * max_i2 * K2 * K1 * N2 * O2);
-    }
+    max_i2 = layers == 1 ? 4 : 2;
+    int K1, K2;
+    get_K1_K2(N1, N2, &K1, &K2, layers);
+    // computing precoding matrix index according to rule set in allocation function init_codebook_gNB
+    lay_index = i2 + (i11 * max_i2) + (i12 * max_i2 * N1 * O1) + (k1 * max_i2 * N1 * O1 * N2 * O2) + (k2 * max_i2 * N1 * O1 * N2 * O2 * K1);
     return 1 + prev_layers_size + lay_index;
   }
 }
