@@ -286,28 +286,17 @@ typedef enum {
 
 
 #define GNB_CONFIG_STRING_AMF_IPV4_ADDRESS              "ipv4"
-#define GNB_CONFIG_STRING_AMF_IPV6_ADDRESS              "ipv6"
-#define GNB_CONFIG_STRING_AMF_IP_ADDRESS_ACTIVE         "active"
-#define GNB_CONFIG_STRING_AMF_IP_ADDRESS_PREFERENCE     "preference"
-#define GNB_CONFIG_STRING_AMF_BROADCAST_PLMN_INDEX      "broadcast_plmn_index"
-
 
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            MME configuration parameters                                                             */
 /*   optname                                          helpstr   paramflags    XXXptr       defXXXval         type           numelt     */
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
 #define GNBNGPARAMS_DESC {  \
-{GNB_CONFIG_STRING_AMF_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{GNB_CONFIG_STRING_AMF_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{GNB_CONFIG_STRING_AMF_IP_ADDRESS_ACTIVE,              NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{GNB_CONFIG_STRING_AMF_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
+  {GNB_CONFIG_STRING_AMF_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 }
 
 #define GNB_AMF_IPV4_ADDRESS_IDX          0
-#define GNB_AMF_IPV6_ADDRESS_IDX          1
-#define GNB_AMF_IP_ADDRESS_ACTIVE_IDX     2
-#define GNB_AMF_IP_ADDRESS_PREFERENCE_IDX 3
-#define GNB_AMF_BROADCAST_PLMN_INDEX      4
+
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 /* SCTP configuration parameters section name */
