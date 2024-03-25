@@ -300,6 +300,13 @@ void configure_initial_pucch(PUCCH_sched_t *pucch, int res_ind);
 void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac);
 void nr_ue_send_synch_request(NR_UE_MAC_INST_t *mac, module_id_t module_id, int cc_id, int cell_id);
 
+/**
+ * @brief   Get UE sync state
+ * @param   mod_id      UE ID
+ * @return      UE sync state
+ */
+NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id);
+
 void init_RA(NR_UE_MAC_INST_t *mac,
              NR_PRACH_RESOURCES_t *prach_resources,
              NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon,
