@@ -150,24 +150,15 @@ int RCconfig_M3(MessageDef *msg_p, uint32_t i) {
   //printf("M3ParamList.numelt %d\n",M3ParamList.numelt);
   M3AP_REGISTER_MCE_REQ (msg_p).nb_m3 = 0;
   for (l = 0; l < M3ParamList.numelt; l++) {
-	M3AP_REGISTER_MCE_REQ (msg_p).nb_m3 += 1;
-	M3AP_REGISTER_MCE_REQ (msg_p).MCE_name         = strdup(*(M3ParamList.paramarray[l][MCE_MCE_NAME_IDX].strptr));
+    M3AP_REGISTER_MCE_REQ(msg_p).nb_m3 += 1;
+    M3AP_REGISTER_MCE_REQ(msg_p).MCE_name = strdup(*(M3ParamList.paramarray[l][MCE_MCE_NAME_IDX].strptr));
 
-        strcpy(M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv4_address,*(M3ParamList.paramarray[l][MCE2_M3_IPV4_ADDRESS_IDX].strptr));
-        strcpy(M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv6_address,*(M3ParamList.paramarray[l][MCE2_M3_IPV6_ADDRESS_IDX].strptr));
-
-        if (strcmp(*(M3ParamList.paramarray[l][MCE2_M3_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-		M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv4 = 1;
-		M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv6 = 0;
-	} else if (strcmp(*(M3ParamList.paramarray[l][MCE2_M3_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-		M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv4 = 0;
-		M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv6 = 1;
-	} else if (strcmp(*(M3ParamList.paramarray[l][MCE2_M3_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-		M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv4 = 1;
-		M3AP_REGISTER_MCE_REQ (msg_p).target_mme_m3_ip_address[l].ipv6 = 1;
-        }
-	M3AP_REGISTER_MCE_REQ (msg_p).sctp_out_streams = 2;
-	M3AP_REGISTER_MCE_REQ (msg_p).sctp_in_streams  = 2;
+    strcpy(M3AP_REGISTER_MCE_REQ(msg_p).target_mme_m3_ip_address[l].ipv4_address,
+           *(M3ParamList.paramarray[l][MCE2_M3_IPV4_ADDRESS_IDX].strptr));
+    M3AP_REGISTER_MCE_REQ(msg_p).target_mme_m3_ip_address[l].ipv4 = 1;
+    M3AP_REGISTER_MCE_REQ(msg_p).target_mme_m3_ip_address[l].ipv6 = 0;
+    M3AP_REGISTER_MCE_REQ(msg_p).sctp_out_streams = 2;
+    M3AP_REGISTER_MCE_REQ(msg_p).sctp_in_streams = 2;
   }
 
   sprintf(aprefix,"%s.[%i].%s","MCEs",0,MCE_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);

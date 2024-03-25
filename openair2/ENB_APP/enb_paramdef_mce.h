@@ -96,18 +96,12 @@
 #define MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS                "target_mme_m3_ip_address"
 /* M3 configuration parameters names   */
 #define MCE_CONFIG_STRING_TARGET_MME_M3_IPV4_ADDRESS              "ipv4"
-#define MCE_CONFIG_STRING_TARGET_MME_M3_IPV6_ADDRESS              "ipv6"
-#define MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS_PREFERENCE     "preference"
 /*   optname                                          helpstr   paramflags    XXXptr       defXXXval         type           numelt     */
 #define M3PARAMS_DESC {  \
-{MCE_CONFIG_STRING_TARGET_MME_M3_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{MCE_CONFIG_STRING_TARGET_MME_M3_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
+  {MCE_CONFIG_STRING_TARGET_MME_M3_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 }
 
 #define MCE2_M3_IPV4_ADDRESS_IDX          0
-#define MCE2_M3_IPV6_ADDRESS_IDX          1
-#define MCE2_M3_IP_ADDRESS_PREFERENCE_IDX 2
 
 
 /*-----------------------------------------------------------------------------------------------------------------------------------*/
