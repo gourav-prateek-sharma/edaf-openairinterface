@@ -107,12 +107,7 @@ whether the clock is internal or external is defined in the configuration files 
 - look for MME IP address, and update the **ipv4 field** with the IP address of the **EPC** server
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "**YOUR_EPC_IP_ADDR**";
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "**YOUR_EPC_IP_ADDR**"; });
 
 ```
 
@@ -133,12 +128,7 @@ whether the clock is internal or external is defined in the configuration files 
 - look for MME IP address, and update the **ipv4 field** with the IP address of the **EPC** server
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "**YOUR_EPC_IP_ADDR**";
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "**YOUR_EPC_IP_ADDR**"; });
 ```
 - look for X2 IP address, and update the **4 fields** with the IP address of the **eNB** server / **gNB** server as below  (notice : even if -in principle- S1 MME is not required for gNB setting)
 ```

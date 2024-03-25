@@ -165,12 +165,7 @@ Last, the S1 interface shall be properly set.
 
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "CI_MME_IP_ADDR"; // replace with 192.168.122.195
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "CI_MME_IP_ADDR"; }); // replace with 192.168.122.195
 
     NETWORK_INTERFACES :
     {
