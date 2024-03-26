@@ -57,7 +57,7 @@ int cnt=0;
 typedef struct NR_UE_SSB {
   uint i_ssb; // i_ssb between 0 and 7 (it corresponds to ssb_index only for Lmax=4,8)
   uint n_hf; // n_hf = 0,1 for Lmax =4 or n_hf = 0 for Lmax =8,64
-  uint32_t metric; // metric to order SSB hypothesis
+  double metric; // metric to order SSB hypothesis
 } NR_UE_SSB;
 
 static int ssb_sort(const void *a, const void *b)
@@ -81,12 +81,11 @@ static bool nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
   for (int hf = 0; hf < N_hf; hf++) {
     for (int l = 0; l < N_L; l++) {
       // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-      c32_t cumul = {0};
+      cd_t cumul = {0};
       for (int i = pbch_initial_symbol; i < pbch_initial_symbol + 3; i++) {
         c32_t meas = nr_pbch_dmrs_correlation(ue, proc, i, i - pbch_initial_symbol, ue->nr_gold_pbch[hf][l], rxdataF);
         csum(cumul, cumul, meas);
       }
-      // initialization of structure
       *current_ssb = (NR_UE_SSB){.i_ssb = l, .n_hf = hf, .metric = squaredMod(cumul)};
       current_ssb++;
     }
@@ -126,12 +125,13 @@ static bool nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
                      1,
                      1);
       }
-      return false;
+      LOG_I(PHY, "[UE%d] Initial sync: pbch decoded sucessfully, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
+      return true;
     }
   }
 
   LOG_W(PHY, "[UE%d] Initial sync: pbch not decoded, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
-  return true;
+  return false;
 }
 
 nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int n_frames, int sa)
