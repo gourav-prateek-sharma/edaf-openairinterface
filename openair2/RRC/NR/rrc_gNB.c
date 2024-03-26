@@ -1561,7 +1561,6 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
   UE->ue_reconfiguration_counter++;
   LOG_I(NR_RRC, "UE %d: Receive RRC Reconfiguration Complete message (xid %d)\n", UE->rrc_ue_id, xid);
 
-  bool successful_reconfig = true;
   switch (UE->xids[xid]) {
     case RRC_PDUSESSION_RELEASE: {
       gtpv1u_gnb_delete_tunnel_req_t req = {0};
@@ -1585,11 +1584,9 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       break;
     case RRC_ACTION_NONE:
       LOG_E(RRC, "UE %d: Received RRC Reconfiguration Complete with xid %d while no transaction is ongoing\n", UE->rrc_ue_id, xid);
-      successful_reconfig = false;
       break;
     default:
       LOG_E(RRC, "UE %d: Received unexpected transaction type %d for xid %d\n", UE->rrc_ue_id, UE->xids[xid], xid);
-      successful_reconfig = false;
       break;
   }
   UE->xids[xid] = RRC_ACTION_NONE;
@@ -1598,21 +1595,6 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       LOG_I(RRC, "UE %d: transaction %d still ongoing for action %d\n", UE->rrc_ue_id, i, UE->xids[i]);
     }
   }
-
-  gNB_RRC_INST *rrc = RC.nrrrc[0];
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
-  RETURN_IF_INVALID_ASSOC_ID(ue_data);
-  f1ap_ue_context_modif_req_t ue_context_modif_req = {
-    .gNB_CU_ue_id = UE->rrc_ue_id,
-    .gNB_DU_ue_id = ue_data.secondary_ue,
-    .plmn.mcc = rrc->configuration.mcc[0],
-    .plmn.mnc = rrc->configuration.mnc[0],
-    .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
-    .nr_cellid = rrc->nr_cellid,
-    .servCellId = 0, /* TODO: correct value? */
-    .ReconfigComplOutcome = successful_reconfig ? RRCreconf_success : RRCreconf_failure,
-  };
-  rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
 
   /* if we did not receive any UE Capabilities, let's do that now. It should
    * only happen on the first time a reconfiguration arrives. Afterwards, we
