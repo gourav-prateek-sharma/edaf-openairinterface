@@ -1450,16 +1450,13 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
                    uint8_t slot,
                    unsigned char harq_pid)
 {
-  uint8_t aarx;
-  uint32_t bwp_start_subcarrier;
-
   NR_DL_FRAME_PARMS *frame_parms = &gNB->frame_parms;
   nfapi_nr_pusch_pdu_t *rel15_ul = &gNB->ulsch[ulsch_id].harq_process->ulsch_pdu;
 
   NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ulsch_id];
   pusch_vars->dmrs_symbol = INVALID_VALUE;
   gNB->nbSymb = 0;
-  bwp_start_subcarrier = ((rel15_ul->rb_start + rel15_ul->bwp_start)*NR_NB_SC_PER_RB + frame_parms->first_carrier_offset) % frame_parms->ofdm_symbol_size;
+  uint32_t bwp_start_subcarrier = ((rel15_ul->rb_start + rel15_ul->bwp_start) * NR_NB_SC_PER_RB + frame_parms->first_carrier_offset) % frame_parms->ofdm_symbol_size;
   LOG_D(PHY,"pusch %d.%d : bwp_start_subcarrier %d, rb_start %d, first_carrier_offset %d\n", frame,slot,bwp_start_subcarrier, rel15_ul->rb_start, frame_parms->first_carrier_offset);
   LOG_D(PHY,"pusch %d.%d : ul_dmrs_symb_pos %x\n",frame,slot,rel15_ul->ul_dmrs_symb_pos);
 
@@ -1477,11 +1474,12 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
       if (pusch_vars->dmrs_symbol == INVALID_VALUE)
         pusch_vars->dmrs_symbol = symbol;
 
-      for (int nl=0; nl<rel15_ul->nrOfLayers; nl++) {
+      for (int nl = 0; nl < rel15_ul->nrOfLayers; nl++) {
         uint32_t nvar_tmp = 0;
         nr_pusch_channel_estimation(gNB,
                                     slot,
-                                    get_dmrs_port(nl,rel15_ul->dmrs_ports),
+                                    nl,
+                                    get_dmrs_port(nl, rel15_ul->dmrs_ports),
                                     symbol,
                                     ulsch_id,
                                     bwp_start_subcarrier,
@@ -1502,10 +1500,8 @@ int nr_rx_pusch_tp(PHY_VARS_gNB *gNB,
                   frame_parms->nb_antennas_rx,
                   frame_parms->N_RB_UL,
                   false);
-      for (aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) 
-      {
-        if (symbol == rel15_ul->start_symbol_index) 
-        {
+      for (int aarx = 0; aarx < frame_parms->nb_antennas_rx; aarx++) {
+        if (symbol == rel15_ul->start_symbol_index) {
           pusch_vars->ulsch_power[aarx] = 0;
           pusch_vars->ulsch_noise_power[aarx] = 0;
         }

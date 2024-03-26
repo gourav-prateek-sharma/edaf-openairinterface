@@ -43,6 +43,7 @@
 
 int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                                 unsigned char Ns,
+                                int nl,
                                 unsigned short p,
                                 unsigned char symbol,
                                 int ul_id,
