@@ -424,13 +424,12 @@ void end_configmodule(configmodule_interface_t *cfgptr)
     
     cfgptr->numptrs=0;
     pthread_mutex_unlock(&cfgptr->memBlocks_mutex);
-    if ( cfgptr->cfgmode )
+    if (cfgptr->cfgmode)
       free(cfgptr->cfgmode);
 
-    if (  cfgptr->argv_info )
-      free( cfgptr->argv_info );
+    if (cfgptr->argv_info)
+      free(cfgptr->argv_info);
 
     free(cfgptr);
-    cfgptr=NULL;
   }
 }

@@ -1336,7 +1336,6 @@ void NFAPI_NR_DMRS_TYPE1_average_prb(NR_DL_FRAME_PARMS *frame_parms,
   for (int i = 0; i < 2 * P_average; i++) {
     dl_ch[i] = ch;
   }
-  dl_ch += 2 * P_average;
 #else
   dl_ch[3].r += (ch.r * 1365) >> 15; // 1/12*16384
   dl_ch[3].i += (ch.i * 1365) >> 15; // 1/12*16384
@@ -1488,7 +1487,6 @@ void NFAPI_NR_DMRS_TYPE2_average_prb(NR_DL_FRAME_PARMS *frame_parms,
   for (int i = 0; i < 3 * P_average; i++) {
     dl_ch[i] = ch;
   }
-  dl_ch += 3 * P_average;
 #else
   dl_ch[3].r += (ch.r * 1365) >> 15; // 1/12*16384
   dl_ch[3].i += (ch.i * 1365) >> 15; // 1/12*16384

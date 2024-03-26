@@ -97,7 +97,6 @@ static void free_uci_inds(nfapi_nr_uci_indication_t *uci_ind)
     free(uci_ind->uci_list);
     uci_ind->uci_list = NULL;
     free(uci_ind);
-    uci_ind = NULL;
 }
 
 int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response) {
