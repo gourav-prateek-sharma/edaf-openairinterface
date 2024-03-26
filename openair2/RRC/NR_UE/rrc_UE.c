@@ -1012,8 +1012,6 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
                                                   uint32_t header,
                                                   uint32_t count)
 {
-  uint8_t security_mode;
-
   LOG_I(NR_RRC, "Receiving from SRB1 (DL-DCCH), Processing securityModeCommand\n");
 
   AssertFatal(securityModeCommand->criticalExtensions.present == NR_SecurityModeCommand__criticalExtensions_PR_securityModeCommand,
@@ -1060,7 +1058,7 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
   log_dump(NR_RRC, ue_rrc->kgnb, 32, LOG_DUMP_CHAR, "deriving kRRCenc, kRRCint and kUPenc from KgNB=");
 
   /* for SecurityModeComplete, ciphering is not activated yet, only integrity */
-  security_mode = ue_rrc->integrityProtAlgorithm << 4;
+  uint8_t security_mode = ue_rrc->integrityProtAlgorithm << 4;
   // configure lower layers to apply SRB integrity protection and ciphering
   for (int i = 1; i < NR_NUM_SRB; i++) {
     if (ue_rrc->Srb[i] == RB_ESTABLISHED)
