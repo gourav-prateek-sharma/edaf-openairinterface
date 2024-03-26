@@ -181,24 +181,24 @@ static void nr_dlsch_channel_level_median(uint32_t rx_size_symbol,
     @param phy_measurements Pointer to UE PHY measurements
 */
 
-void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
-                                   int nbRx,
-                                   c16_t rxdataF_ext[][rx_size_symbol],
-                                   int32_t dl_ch_estimates_ext[][rx_size_symbol],
-                                   int32_t dl_ch_mag[][nbRx][rx_size_symbol],
-                                   int32_t dl_ch_magb[][nbRx][rx_size_symbol],
-                                   int32_t dl_ch_magr[][nbRx][rx_size_symbol],
-                                   int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
-                                   int ***rho,
-                                   NR_DL_FRAME_PARMS *frame_parms,
-                                   uint8_t n_layers,
-                                   unsigned char symbol,
-                                   int length,
-                                   uint8_t first_symbol_flag,
-                                   unsigned char mod_order,
-                                   unsigned short nb_rb,
-                                   unsigned char output_shift,
-                                   PHY_NR_MEASUREMENTS *measurements);
+static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
+                                          int nbRx,
+                                          c16_t rxdataF_ext[][rx_size_symbol],
+                                          int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                                          int32_t dl_ch_mag[][nbRx][rx_size_symbol],
+                                          int32_t dl_ch_magb[][nbRx][rx_size_symbol],
+                                          int32_t dl_ch_magr[][nbRx][rx_size_symbol],
+                                          int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                                          int ***rho,
+                                          NR_DL_FRAME_PARMS *frame_parms,
+                                          uint8_t n_layers,
+                                          unsigned char symbol,
+                                          int length,
+                                          bool first_symbol_flag,
+                                          unsigned char mod_order,
+                                          unsigned short nb_rb,
+                                          unsigned char output_shift,
+                                          PHY_NR_MEASUREMENTS *measurements);
 
 /** \brief This function computes the average channel level over all allocated RBs and antennas (TX/RX) in order to compute output shift for compensated signal
     @param dl_ch_estimates_ext Channel estimates in allocated RBs
@@ -242,7 +242,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                 const UE_nr_rxtx_proc_t *proc,
                 NR_UE_DLSCH_t dlsch[2],
                 unsigned char symbol,
-                unsigned char first_symbol_flag,
+                bool first_symbol_flag,
                 unsigned char harq_pid,
                 uint32_t pdsch_est_size,
                 int32_t dl_ch_estimates[][pdsch_est_size],
@@ -434,7 +434,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     //----------------------------------------------------------
     if (meas_enabled)
       start_meas(&meas);
-    if (first_symbol_flag == 1) {
+    if (first_symbol_flag) {
       int32_t avg[MAX_ANT][MAX_ANT];
       nr_dlsch_channel_level(rx_size_symbol, dl_ch_estimates_ext, frame_parms, nl, avg, symbol, nb_re_pdsch, nb_rb_pdsch);
       int avgs = 0;
@@ -734,24 +734,24 @@ void nr_dlsch_deinterleaving(uint8_t symbol,
 // Pre-processing for LLR computation
 //==============================================================================================
 
-void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
-                                   int nbRx,
-                                   c16_t rxdataF_ext[][rx_size_symbol],
-                                   int32_t dl_ch_estimates_ext[][rx_size_symbol],
-                                   int32_t dl_ch_mag[][nbRx][rx_size_symbol],
-                                   int32_t dl_ch_magb[][nbRx][rx_size_symbol],
-                                   int32_t dl_ch_magr[][nbRx][rx_size_symbol],
-                                   int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
-                                   int ***rho,
-                                   NR_DL_FRAME_PARMS *frame_parms,
-                                   uint8_t n_layers,
-                                   unsigned char symbol,
-                                   int length,
-                                   uint8_t first_symbol_flag,
-                                   unsigned char mod_order,
-                                   unsigned short nb_rb,
-                                   unsigned char output_shift,
-                                   PHY_NR_MEASUREMENTS *measurements)
+static void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
+                                          int nbRx,
+                                          c16_t rxdataF_ext[][rx_size_symbol],
+                                          int32_t dl_ch_estimates_ext[][rx_size_symbol],
+                                          int32_t dl_ch_mag[][nbRx][rx_size_symbol],
+                                          int32_t dl_ch_magb[][nbRx][rx_size_symbol],
+                                          int32_t dl_ch_magr[][nbRx][rx_size_symbol],
+                                          int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
+                                          int ***rho,
+                                          NR_DL_FRAME_PARMS *frame_parms,
+                                          uint8_t n_layers,
+                                          unsigned char symbol,
+                                          int length,
+                                          bool first_symbol_flag,
+                                          unsigned char mod_order,
+                                          unsigned short nb_rb,
+                                          unsigned char output_shift,
+                                          PHY_NR_MEASUREMENTS *measurements)
 {
 
 
@@ -1034,7 +1034,7 @@ void nr_dlsch_channel_compensation(uint32_t rx_size_symbol,
             dl_ch128_2+=3;
             rho128+=3;
           }
-          if (first_symbol_flag==1) {
+          if (first_symbol_flag) {
             //rho_nm = H_arx_n.conj(H_arx_m)
             //rho_rx_corr[arx][nm] = |H_arx_n|^2.|H_arx_m|^2 &rho[aarx][l*n_layers+atx][symbol*nb_rb*12]
             measurements->rx_correlation[0][aarx][l * n_layers + atx] = signal_energy(&rho[aarx][l * n_layers + atx][symbol * nb_rb * 12],length);

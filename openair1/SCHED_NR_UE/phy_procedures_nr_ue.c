@@ -489,8 +489,6 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
 {
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
-  int m;
-  int first_symbol_flag=0;
 
   // We handle only one CW now
   if (!(NR_MAX_NB_LAYERS>4)) {
@@ -523,13 +521,14 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     __attribute__((aligned(32))) int32_t rxdataF_comp[dlsch[0].Nl][ue->frame_parms.nb_antennas_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT];
     memset(rxdataF_comp, 0, sizeof(rxdataF_comp));
 
-    for (m = s0; m < (s0 +s1); m++) {
+    for (int m = s0; m < (s0 +s1); m++) {
       if (dlsch0->dlsch_config.dlDmrsSymbPos & (1 << m)) {
-        for (uint8_t aatx=0; aatx<dlsch0->Nl; aatx++) {//for MIMO Config: it shall loop over no_layers
-          LOG_D(PHY,"PDSCH Channel estimation gNB id %d, PDSCH antenna port %d, slot %d, symbol %d\n",0,aatx,nr_slot_rx,m);
+        for (int nl = 0; nl < dlsch0->Nl; nl++) { //for MIMO Config: it shall loop over no_layers
+          LOG_D(PHY,"PDSCH Channel estimation layer %d, slot %d, symbol %d\n", nl, nr_slot_rx, m);
           nr_pdsch_channel_estimation(ue,
                                       proc,
-                                      get_dmrs_port(aatx,dlsch0->dlsch_config.dmrs_ports),
+                                      nl,
+                                      get_dmrs_port(nl,dlsch0->dlsch_config.dmrs_ports),
                                       m,
                                       dlsch0->dlsch_config.nscid,
                                       dlsch0->dlsch_config.dlDmrsScramblingId,
@@ -546,9 +545,9 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
           int nr_frame_rx = proc->frame_rx;
           char filename[100];
           for (uint8_t aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
-            sprintf(filename,"PDSCH_CHANNEL_frame%d_slot%d_sym%d_port%d_rx%d.m", nr_frame_rx, nr_slot_rx, m, aatx,aarx);
+            sprintf(filename,"PDSCH_CHANNEL_frame%d_slot%d_sym%d_port%d_rx%d.m", nr_frame_rx, nr_slot_rx, m, nl, aarx);
             int **dl_ch_estimates = ue->pdsch_vars[gNB_id]->dl_ch_estimates;
-            LOG_M(filename,"channel_F",&dl_ch_estimates[aatx*ue->frame_parms.nb_antennas_rx+aarx][ue->frame_parms.ofdm_symbol_size*m],ue->frame_parms.ofdm_symbol_size, 1, 1);
+            LOG_M(filename,"channel_F",&dl_ch_estimates[nl*ue->frame_parms.nb_antennas_rx+aarx][ue->frame_parms.ofdm_symbol_size*m],ue->frame_parms.ofdm_symbol_size, 1, 1);
           }
 #endif
         }
@@ -582,12 +581,10 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
 
     int32_t log2_maxh = 0;
     start_meas(&ue->rx_pdsch_stats);
-    for (m = s0; m < (s1 + s0); m++) {
- 
-      if (m==first_symbol_with_data)
-        first_symbol_flag = 1;
-      else
-        first_symbol_flag = 0;
+    for (int m = s0; m < (s1 + s0); m++) {
+      bool first_symbol_flag = false;
+      if (m == first_symbol_with_data)
+        first_symbol_flag = true;
 
       uint8_t slot = 0;
       if(m >= ue->frame_parms.symbols_per_slot>>1)
