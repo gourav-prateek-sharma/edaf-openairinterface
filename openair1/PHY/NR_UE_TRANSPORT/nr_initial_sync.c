@@ -44,6 +44,7 @@
 #include "PHY/NR_REFSIG/pss_nr.h"
 #include "PHY/NR_REFSIG/sss_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
+#include "PHY/TOOLS/tools_defs.h"
 
 //static  nfapi_nr_config_request_t config_t;
 //static  nfapi_nr_config_request_t* config =&config_t;
@@ -52,11 +53,22 @@ int cnt=0;
 // #define DEBUG_INITIAL_SYNCH
 #define DUMP_PBCH_CH_ESTIMATES 0
 
+// structure used for multiple SSB detection
+typedef struct NR_UE_SSB {
+  uint i_ssb; // i_ssb between 0 and 7 (it corresponds to ssb_index only for Lmax=4,8)
+  uint n_hf; // n_hf = 0,1 for Lmax =4 or n_hf = 0 for Lmax =8,64
+  uint32_t metric; // metric to order SSB hypothesis
+} NR_UE_SSB;
 
-int nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
-                      PHY_VARS_NR_UE *ue,
-                      int pbch_initial_symbol,
-                      c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+static int ssb_sort(const void *a, const void *b)
+{
+  return ((NR_UE_SSB *)b)->metric - ((NR_UE_SSB *)a)->metric;
+}
+
+static bool nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
+                              PHY_VARS_NR_UE *ue,
+                              int pbch_initial_symbol,
+                              c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
 {
   NR_DL_FRAME_PARMS *frame_parms = &ue->frame_parms;
 
@@ -64,54 +76,62 @@ int nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
   const int N_hf = (frame_parms->Lmax == 4) ? 2 : 1;
   NR_UE_SSB best_ssb[N_L * N_hf];
   NR_UE_SSB *current_ssb = best_ssb;
-  // loops over possible pbch dmrs cases to retrive best estimated i_ssb (and n_hf for Lmax=4) for multiple ssb detection
+  // loops over possible pbch dmrs cases to retrieve best estimated i_ssb (and n_hf for Lmax=4) for multiple ssb detection
+  start_meas(&ue->dlsch_channel_estimation_stats);
   for (int hf = 0; hf < N_hf; hf++) {
-    for (int l = 0; l < N_L ; l++) {
-      // initialization of structure
-      *current_ssb = (NR_UE_SSB){.i_ssb = l, .n_hf = hf};
-      start_meas(&ue->dlsch_channel_estimation_stats);
+    for (int l = 0; l < N_L; l++) {
       // computing correlation between received DMRS symbols and transmitted sequence for current i_ssb and n_hf
-      for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
-        nr_pbch_dmrs_correlation(ue, proc, i, i - pbch_initial_symbol, current_ssb, rxdataF);
-      stop_meas(&ue->dlsch_channel_estimation_stats);
+      c32_t cumul = {0};
+      for (int i = pbch_initial_symbol; i < pbch_initial_symbol + 3; i++) {
+        c32_t meas = nr_pbch_dmrs_correlation(ue, proc, i, i - pbch_initial_symbol, ue->nr_gold_pbch[hf][l], rxdataF);
+        csum(cumul, cumul, meas);
+      }
+      // initialization of structure
+      *current_ssb = (NR_UE_SSB){.i_ssb = l, .n_hf = hf, .metric = squaredMod(cumul)};
       current_ssb++;
     }
   }
+  qsort(best_ssb, N_L * N_hf, sizeof(NR_UE_SSB), ssb_sort);
+  stop_meas(&ue->dlsch_channel_estimation_stats);
 
-  for (NR_UE_SSB *temp_ptr = best_ssb; ret != 0 && temp_ptr < best_ssb + N_L * N_hf; temp_ptr++) {
+  const int nb_ant = frame_parms->nb_antennas_rx;
+  for (NR_UE_SSB *ssb = best_ssb; ssb < best_ssb + N_L * N_hf; ssb++) {
     start_meas(&ue->dlsch_channel_estimation_stats);
     // computing channel estimation for selected best ssb
     const int estimateSz = frame_parms->symbols_per_slot * frame_parms->ofdm_symbol_size;
-    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates[frame_parms->nb_antennas_rx][estimateSz];
-    __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[frame_parms->nb_antennas_rx][frame_parms->ofdm_symbol_size];
+    __attribute__((aligned(32))) c16_t dl_ch_estimates[nb_ant][estimateSz];
+    __attribute__((aligned(32))) c16_t dl_ch_estimates_time[nb_ant][frame_parms->ofdm_symbol_size];
 
     for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
-      nr_pbch_channel_estimation(ue,estimateSz, dl_ch_estimates, dl_ch_estimates_time, 
-                                 proc,i,i-pbch_initial_symbol,temp_ptr->i_ssb,temp_ptr->n_hf,rxdataF);
+      nr_pbch_channel_estimation(ue,
+                                 estimateSz,
+                                 dl_ch_estimates,
+                                 dl_ch_estimates_time,
+                                 proc,
+                                 i,
+                                 i - pbch_initial_symbol,
+                                 ssb->i_ssb,
+                                 ssb->n_hf,
+                                 rxdataF);
 
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPbch_t result = {0};
-
-    int pbch_res = nr_rx_pbch(ue, proc, estimateSz, dl_ch_estimates, frame_parms, temp_ptr->i_ssb, &result, rxdataF);
-    ret = pbch_res == 0;
-
-    if (DUMP_PBCH_CH_ESTIMATES && ret) {
-      write_output("pbch_ch_estimates.m", "pbch_ch_estimates", dl_ch_estimates, frame_parms->nb_antennas_rx*estimateSz, 1, 1);
-      write_output("pbch_ch_estimates_time.m",
-                   "pbch_ch_estimates_time",
-                   dl_ch_estimates_time,
-                   frame_parms->nb_antennas_rx * frame_parms->ofdm_symbol_size,
-                   1,
-                   1);
+    if (0 == nr_rx_pbch(ue, proc, estimateSz, dl_ch_estimates, frame_parms, ssb->i_ssb, &result, rxdataF)) {
+      if (DUMP_PBCH_CH_ESTIMATES) {
+        write_output("pbch_ch_estimates.m", "pbch_ch_estimates", dl_ch_estimates, nb_ant * estimateSz, 1, 1);
+        write_output("pbch_ch_estimates_time.m",
+                     "pbch_ch_estimates_time",
+                     dl_ch_estimates_time,
+                     nb_ant * frame_parms->ofdm_symbol_size,
+                     1,
+                     1);
+      }
+      return false;
     }
   }
 
-  if (ret == 0) {
-    LOG_I(PHY, "[UE%d] Initial sync: pbch decoded sucessfully, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
-  } else {
-    LOG_W(PHY, "[UE%d] Initial sync: pbch not decoded, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
-  }
-  return ret;
+  LOG_W(PHY, "[UE%d] Initial sync: pbch not decoded, ssb index %d\n", ue->Mod_id, frame_parms->ssb_index);
+  return true;
 }
 
 nr_initial_sync_t nr_initial_sync(UE_nr_rxtx_proc_t *proc, PHY_VARS_NR_UE *ue, int n_frames, int sa)
