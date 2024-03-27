@@ -111,7 +111,6 @@
     <svr_id>porcepix-cn4g</svr_id>
     <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
     <iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-    <iperf_profile>single-ue</iperf_profile>
    </testCase>
 
    <testCase id="070001">
@@ -122,7 +121,6 @@
      <svr_id>porcepix-cn4g</svr_id>
      <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
      <iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-     <iperf_profile>single-ue</iperf_profile>
    </testCase>
 
   <testCase id="010010">

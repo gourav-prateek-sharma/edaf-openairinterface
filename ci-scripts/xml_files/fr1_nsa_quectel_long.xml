@@ -124,7 +124,6 @@
 		<iperf_args>-u -b 20M -t 600 -R</iperf_args>
 		<id>idefix</id>
 		<iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 
 	<testCase id="070001">
@@ -133,7 +132,6 @@
 		<iperf_args>-u -b 3M -t 600</iperf_args>
 		<id>idefix</id>
 		<iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 
 

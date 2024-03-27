@@ -93,7 +93,6 @@
                 <svr_id>rfsim5g_gnb_nos1</svr_id>
                 <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
-                <iperf_profile>single-ue</iperf_profile>
         </testCase>
 
         <testCase id="030012">
@@ -104,7 +103,6 @@
                 <svr_id>rfsim5g_gnb_nos1</svr_id>
                 <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
-                <iperf_profile>single-ue</iperf_profile>
         </testCase>
 
         <testCase id="100011">

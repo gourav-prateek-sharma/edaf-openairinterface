@@ -132,7 +132,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 	<testCase id="071001">
 		<class>Iperf</class>
@@ -141,7 +140,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 	<testCase id="071002">
 		<class>Iperf</class>
@@ -150,7 +148,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 	<testCase id="071003">
 		<class>Iperf</class>
@@ -159,7 +156,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 	<testCase id="071004">
 		<class>Iperf</class>
@@ -168,7 +164,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>10</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>90</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 	<testCase id="071005">
 		<class>Iperf</class>
@@ -177,7 +172,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>50</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>50</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 
 

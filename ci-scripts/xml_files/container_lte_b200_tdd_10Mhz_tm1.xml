@@ -122,7 +122,6 @@ Replaces xml_files/enb_usrp210_band40_test_10mhz_tm1.xml
         <desc>iperf (10MHz - DL/13.5Mbps/UDP)(30 sec)(single-ue)</desc>
         <iperf_args>-u -b 13.5M -t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
         <id>adb_ue_1</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>
@@ -142,7 +141,6 @@ Replaces xml_files/enb_usrp210_band40_test_10mhz_tm1.xml
         <desc>iperf (10MHz - DL/TCP)(30 sec)(single-ue)</desc>
         <iperf_args>-t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
         <id>adb_ue_1</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>
@@ -171,7 +169,6 @@ Replaces xml_files/enb_usrp210_band40_test_10mhz_tm1.xml
         <desc>iperf (10MHz - UL/2Mbps/UDP)(30 sec)(single-ue)</desc>
         <iperf_args>-u -b 2M -t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
         <id>adb_ue_1</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>
@@ -191,7 +188,6 @@ Replaces xml_files/enb_usrp210_band40_test_10mhz_tm1.xml
         <desc>iperf (10MHz - UL/TCP)(30 sec)(single-ue)</desc>
         <iperf_args>-t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
         <id>adb_ue_1</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>

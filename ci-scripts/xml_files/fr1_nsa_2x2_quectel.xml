@@ -163,7 +163,6 @@
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>15</iperf_packetloss_threshold>
 		<iperf_bitrate_threshold>85</iperf_bitrate_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 
 	<testCase id="070001">
@@ -172,7 +171,6 @@
 		<iperf_args>-u -b 3M -t 60</iperf_args>
 		<id>nrmodule2_quectel</id>
 		<iperf_packetloss_threshold>5</iperf_packetloss_threshold>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 
 	<testCase id="070002">
@@ -180,7 +178,6 @@
 		<desc>iperf (BIDIR TCP)(10 sec)(single-ue profile)</desc>
 		<iperf_args>-t 10 --bidir</iperf_args>
 		<id>nrmodule2_quectel</id>
-		<iperf_profile>single-ue</iperf_profile>
 	</testCase>
 
 

@@ -137,7 +137,6 @@
     <svr_id>sabox-nepes</svr_id>
     <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
     <iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-    <iperf_profile>single-ue</iperf_profile>
   </testCase>
 
   <testCase id="270001">
@@ -148,7 +147,6 @@
     <svr_id>sabox-nepes</svr_id>
     <iperf_packetloss_threshold>1</iperf_packetloss_threshold>
     <iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-    <iperf_profile>single-ue</iperf_profile>
   </testCase>
 
   <testCase id="270002">
@@ -157,7 +155,6 @@
     <iperf_args>-t 10 --bidir</iperf_args>
     <id>idefix</id>
     <svr_id>sabox-nepes</svr_id>
-    <iperf_profile>single-ue</iperf_profile>
   </testCase>
 
   <testCase id="270003">
