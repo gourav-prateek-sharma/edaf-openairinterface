@@ -70,7 +70,6 @@ static const uint8_t DELTA[4] = {2, 3, 4, 6};
 
 static const float ssb_per_rach_occasion[8] = {0.125, 0.25, 0.5, 1, 2, 4, 8};
 
-__attribute__ ((unused))
 static int16_t ssb_index_from_prach(module_id_t module_idP,
                                     frame_t frameP,
                                     sub_frame_t slotP,
@@ -526,6 +525,9 @@ void nr_initiate_ra_proc(module_id_t module_idP,
   NR_ServingCellConfigCommon_t *scc = cc->ServingCellConfigCommon;
   configure_UE_BWP(nr_mac, scc, NULL, ra, NULL, -1, -1);
 
+  uint8_t beam_index = ssb_index_from_prach(module_idP, frameP, slotP, preamble_index, freq_index, symbol);
+  ra->beam_id = cc->ssb_index[beam_index];
+
   NR_SCHED_UNLOCK(&nr_mac->sched_lock);
 
   VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_INITIATE_RA_PROC, 0);
@@ -544,6 +546,20 @@ static void start_ra_contention_resolution_timer(NR_RA_t *ra, const long ra_Cont
         ((int)ra_ContentionResolutionTimer + 1) * 8,
         K2,
         ra->contention_resolution_timer);
+}
+
+static bool beam_is_active(const NR_TDD_UL_DL_Pattern_t *tdd, int mu, const int16_t *tdd_beam_association, int slot, int16_t ra_beam)
+{
+  if (tdd_beam_association == NULL) // no beams configured
+    return true;
+  DevAssert(tdd != NULL);
+
+  const int n_slots_frame = nr_slots_per_frame[mu];
+  uint8_t tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
+  int num_tdd_period = slot / tdd_period_slot;
+  int16_t current_beam = tdd_beam_association[num_tdd_period];
+  return current_beam == -1 /* no beams */
+         || current_beam == ra_beam;
 }
 
 static void nr_generate_Msg3_retransmission(module_id_t module_idP,
@@ -567,19 +583,11 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
 
   if (is_xlsch_in_slot(nr_mac->ulsch_slot_bitmap[sched_slot / 64], sched_slot)) {
     // beam association for FR2
-    int16_t *tdd_beam_association = nr_mac->tdd_beam_association;
     if (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] >= 257) {
       // FR2
-      const int n_slots_frame = nr_slots_per_frame[mu];
       const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-      AssertFatal(tdd,"Dynamic TDD not handled yet\n");
-      uint8_t tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
-      int num_tdd_period = sched_slot/tdd_period_slot;
-
-      if((tdd_beam_association[num_tdd_period]!=-1)&&(tdd_beam_association[num_tdd_period]!=ra->beam_id))
-        return; // can't schedule retransmission in this slot
-      else
-        tdd_beam_association[num_tdd_period] = ra->beam_id;
+      if (!beam_is_active(tdd, mu, nr_mac->tdd_beam_association, sched_slot, ra->beam_id))
+        return;
     }
 
     int fh = 0;
@@ -801,18 +809,6 @@ static void nr_get_Msg3alloc(module_id_t module_id,
   int abs_slot = current_slot + k2 + DELTA[mu];
   ra->Msg3_slot = abs_slot % n_slots_frame;
   ra->Msg3_frame = (current_frame + (abs_slot / n_slots_frame)) % 1024;
-
-  // beam association for FR2
-  if (*scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0] >= 257) {
-    const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
-    AssertFatal(tdd,"Dynamic TDD not handled yet\n");
-    uint8_t tdd_period_slot = n_slots_frame/get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
-    int num_tdd_period = ra->Msg3_slot/tdd_period_slot;
-    if((tdd_beam_association[num_tdd_period]!=-1)&&(tdd_beam_association[num_tdd_period]!=ra->beam_id))
-      AssertFatal(1==0,"Cannot schedule MSG3\n");
-    else
-      tdd_beam_association[num_tdd_period] = ra->beam_id;
-  }
 
   LOG_I(NR_MAC,
         "[RAPROC] Msg3 scheduled at %d.%d (%d.%d k2 %ld TDA %u)\n",
@@ -1199,9 +1195,11 @@ static void nr_generate_Msg2(module_id_t module_idP,
 
   if (!check_msg2_monitoring(ra, dl_bwp->scs, frameP, slotP))
     return;
-
   const NR_UE_UL_BWP_t *ul_bwp = &ra->UL_BWP;
   const NR_TDD_UL_DL_Pattern_t *tdd = scc->tdd_UL_DL_ConfigurationCommon ? &scc->tdd_UL_DL_ConfigurationCommon->pattern1 : NULL;
+  if (!beam_is_active(tdd, ul_bwp->scs, nr_mac->tdd_beam_association, slotP, ra->beam_id))
+    return;
+
   ra->Msg3_tda_id = get_feasible_msg3_tda(cc->frame_type,
                                           DELTA[ul_bwp->scs],
                                           nr_mac->ulsch_slot_bitmap,
