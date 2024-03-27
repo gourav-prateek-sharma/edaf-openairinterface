@@ -651,7 +651,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
     pusch_config_pdu->scid = 0;
     pusch_config_pdu->data_scrambling_id = mac->physCellId;
-    if (pusch_Config->dataScramblingIdentityPUSCH
+    if (pusch_Config
+        && pusch_Config->dataScramblingIdentityPUSCH
         && rnti_type == TYPE_C_RNTI_
         && !(dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common))
       pusch_config_pdu->data_scrambling_id = *pusch_Config->dataScramblingIdentityPUSCH;
@@ -710,8 +711,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     }
 
     /* FREQ_HOPPING_FLAG */
-    if ((pusch_Config != NULL)
-        && (pusch_Config->frequencyHopping != NULL)
+    if (pusch_Config
+        && pusch_Config->frequencyHopping
         && (pusch_Config->resourceAllocation != NR_PUSCH_Config__resourceAllocation_resourceAllocationType0)) {
       pusch_config_pdu->frequency_hopping = dci->frequency_hopping_flag.val;
     }
