@@ -10,9 +10,10 @@ die() {
   exit 1
 }
 
+# for mounting into docker, need absolute path -> realpath
 IMAGE=$1
-COREDUMP=$2
-SOURCES=$3
+COREDUMP=$(realpath $2)
+SOURCES=$(realpath $3)
 
 set -x
 
@@ -32,6 +33,9 @@ docker image inspect $IMAGE > /dev/null || exit 1
 if [ $(grep "oai-gnb:" <<< $IMAGE) ] || [ $(grep "oai-gnb-aerial:" <<< $IMAGE) ]; then
   EXEC=bin/nr-softmodem
   TYPEPATH=oai-gnb
+elif [ $(grep "oai-gnb-aw2s:" <<< $IMAGE) ]; then
+  EXEC=bin/nr-softmodem
+  TYPEPATH=oai-gnb-aw2s
 elif [ $(grep "oai-nr-ue:" <<< $IMAGE) ]; then
   EXEC=bin/nr-uesoftmodem
   TYPEPATH=oai-nr-ue
