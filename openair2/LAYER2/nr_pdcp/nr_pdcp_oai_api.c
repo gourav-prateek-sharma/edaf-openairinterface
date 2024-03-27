@@ -1050,8 +1050,8 @@ void nr_pdcp_config_set_security(ue_id_t ue_id,
   rb = nr_pdcp_get_rb(ue, rb_id, true);
 
   if (rb == NULL) {
-    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %ld)\n", ue_id, rb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %ld)\n", ue_id, rb_id);
     return;
   }
 
@@ -1079,8 +1079,8 @@ bool nr_pdcp_check_integrity_srb(ue_id_t ue_id,
   rb = nr_pdcp_get_rb(ue, srb_id, true);
 
   if (rb == NULL) {
-    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %d)\n", ue_id, srb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %d)\n", ue_id, srb_id);
     return false;
   }
 
@@ -1109,8 +1109,8 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
   rb = nr_pdcp_get_rb(ue, rb_id, true);
 
   if (rb == NULL) {
-    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %ld)\n", ue_id, rb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "no SRB found (ue_id %ld, rb_id %ld)\n", ue_id, rb_id);
     return 0;
   }
 
@@ -1136,8 +1136,8 @@ void nr_pdcp_suspend_srb(ue_id_t ue_id, int srb_id)
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_entity_t *srb = nr_pdcp_get_rb(ue, srb_id, true);
   if (srb == NULL) {
-    LOG_E(PDCP, "Trying to suspend SRB with ID %d but it is not established\n", srb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "Trying to suspend SRB with ID %d but it is not established\n", srb_id);
     return;
   }
   srb->suspend_entity(srb);
@@ -1151,8 +1151,8 @@ void nr_pdcp_suspend_drb(ue_id_t ue_id, int drb_id)
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_entity_t *drb = nr_pdcp_get_rb(ue, drb_id, false);
   if (drb == NULL) {
-    LOG_E(PDCP, "Trying to suspend DRB with ID %d but it is not established\n", drb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "Trying to suspend DRB with ID %d but it is not established\n", drb_id);
     return;
   }
   drb->suspend_entity(drb);
@@ -1166,8 +1166,8 @@ void nr_pdcp_reconfigure_srb(ue_id_t ue_id, int srb_id, long t_Reordering)
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_entity_t *srb = nr_pdcp_get_rb(ue, srb_id, true);
   if (srb == NULL) {
-    LOG_E(PDCP, "Trying to reconfigure SRB with ID %d but it is not established\n", srb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "Trying to reconfigure SRB with ID %d but it is not established\n", srb_id);
     return;
   }
   int decoded_t_reordering = decode_t_reordering(t_Reordering);
@@ -1184,8 +1184,8 @@ void nr_pdcp_reconfigure_drb(ue_id_t ue_id, int drb_id, NR_PDCP_Config_t *pdcp_c
   nr_pdcp_ue_t *ue = nr_pdcp_manager_get_ue(nr_pdcp_ue_manager, ue_id);
   nr_pdcp_entity_t *drb = nr_pdcp_get_rb(ue, drb_id, false);
   if (drb == NULL) {
-    LOG_E(PDCP, "Trying to reconfigure DRB with ID %d but it is not established\n", drb_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "Trying to reconfigure DRB with ID %d but it is not established\n", drb_id);
     return;
   }
   if (pdcp_config) {
@@ -1298,8 +1298,8 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
   rb = nr_pdcp_get_rb(ue, rb_id, false);
 
   if (rb == NULL) {
-    LOG_E(PDCP, "[UE %lx] DRB %ld not found\n", rb_id, ue_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    LOG_E(PDCP, "[UE %lx] DRB %ld not found\n", ue_id, rb_id);
     return 0;
   }
 
