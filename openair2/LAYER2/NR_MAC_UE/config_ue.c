@@ -1433,6 +1433,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
       nr_ue_send_synch_request(mac, module_id, 0, -1);
       break;
     case DETACH:
+      LOG_A(NR_MAC, "Received detach indication\n");
       reset_ra(mac, cause);
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
