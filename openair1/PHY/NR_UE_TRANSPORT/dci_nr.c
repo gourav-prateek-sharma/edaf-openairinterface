@@ -727,18 +727,18 @@ void nr_dci_decoding_procedure(PHY_VARS_NR_UE *ue,
     
     for (int k = 0; k < rel15->num_dci_options; k++) {
       // skip this candidate if we've already found one with the
-      // same rnti and format at a different aggregation level
+      // same rnti and size at a different aggregation level
+      int dci_length = rel15->dci_length_options[k];
       int ind;
       for (ind = 0; ind < dci_ind->number_of_dcis; ind++) {
-        if (rel15->rnti == dci_ind->dci_list[ind].rnti && rel15->dci_format_options[k] == dci_ind->dci_list[ind].dci_format) {
+        if (rel15->rnti == dci_ind->dci_list[ind].rnti && dci_length == dci_ind->dci_list[ind].payloadSize) {
           break;
         }
       }
       if (ind < dci_ind->number_of_dcis)
         continue;
-      int dci_length = rel15->dci_length_options[k];
-      uint64_t dci_estimation[2]= {0};
 
+      uint64_t dci_estimation[2] = {0};
       LOG_D(NR_PHY_DCI,
             "(%i.%i) Trying DCI candidate %d of %d number of candidates, CCE %d (%d), L %d, length %d, format %d\n",
             proc->frame_rx,
