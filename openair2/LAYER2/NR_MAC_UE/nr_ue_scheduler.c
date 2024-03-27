@@ -1917,6 +1917,7 @@ void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac)
 {
   // Clear all the lists and maps
   const int bwp_id = mac->current_UL_BWP->bwp_id;
+  free_rach_structures(mac, bwp_id);
   memset(&mac->ssb_list[bwp_id], 0, sizeof(ssb_list_info_t));
   memset(&mac->prach_assoc_pattern[bwp_id], 0, sizeof(prach_association_pattern_t));
 
