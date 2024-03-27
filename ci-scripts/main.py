@@ -376,20 +376,6 @@ def GetParametersFromXML(action):
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
 
-	elif action == 'IperfFromContainer':
-		string_field = test.findtext('server_container_name')
-		if (string_field is not None):
-			CONTAINERS.svrContName = string_field
-		string_field = test.findtext('server_options')
-		if (string_field is not None):
-			CONTAINERS.svrOptions = string_field
-		string_field = test.findtext('client_container_name')
-		if (string_field is not None):
-			CONTAINERS.cliContName = string_field
-		string_field = test.findtext('client_options')
-		if (string_field is not None):
-			CONTAINERS.cliOptions = string_field
-
 	elif action == 'Run_LDPCTest' or action == 'Run_NRulsimTest' or action == 'Run_LDPCt1Test':
 		ldpc.runargs = test.findtext('physim_run_args')
 
