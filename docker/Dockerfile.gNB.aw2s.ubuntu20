@@ -51,6 +51,7 @@ RUN apt-get update && \
         libblas3 \
         libatlas3-base \
         libconfig9 \
+        gdb \
         openssl \
         net-tools \
         iproute2 \
