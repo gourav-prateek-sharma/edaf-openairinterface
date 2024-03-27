@@ -144,7 +144,6 @@ Replaces xml_files/enb_usrp210_band40_test_20mhz_tm1_default_scheduler.xml
         <class>Iperf</class>
         <desc>iperf (20MHz - DL/TCP)(30 sec)(single-ue)</desc>
         <iperf_args>-t 30 -R</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <id>adb_ue_1</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>
@@ -191,7 +190,6 @@ Replaces xml_files/enb_usrp210_band40_test_20mhz_tm1_default_scheduler.xml
         <class>Iperf</class>
         <desc>iperf (20MHz - UL/TCP)(30 sec)(single-ue)</desc>
         <iperf_args>-t 30</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <id>adb_ue_1</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>
@@ -200,7 +198,6 @@ Replaces xml_files/enb_usrp210_band40_test_20mhz_tm1_default_scheduler.xml
         <class>Iperf</class>
         <desc>iperf (20MHz - UL/TCP)(30 sec)</desc>
         <iperf_args>-t 30</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <id>adb_ue_1 adb_ue_2</id>
         <svr_id>ltebox-nano</svr_id>
     </testCase>
