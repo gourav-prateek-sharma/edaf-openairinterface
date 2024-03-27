@@ -91,9 +91,7 @@ bool nr_pdcp_check_integrity_srb(ue_id_t ue_id,
                                  int srb_id,
                                  const uint8_t *msg,
                                  int msg_size,
-                                 uint32_t mac,
-                                 uint32_t header,
-                                 uint32_t count);
+                                 const nr_pdcp_integrity_data_t *msg_integrity);
 
 bool cu_f1u_data_req(protocol_ctxt_t  *ctxt_pP,
                      const srb_flag_t srb_flagP,

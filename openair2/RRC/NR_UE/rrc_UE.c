@@ -1008,9 +1008,7 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
                                                   int srb_id,
                                                   const uint8_t *msg,
                                                   int msg_size,
-                                                  uint32_t mac,
-                                                  uint32_t header,
-                                                  uint32_t count)
+                                                  const nr_pdcp_integrity_data_t *msg_integrity)
 {
   LOG_I(NR_RRC, "Receiving from SRB1 (DL-DCCH), Processing securityModeCommand\n");
 
@@ -1072,7 +1070,7 @@ static void nr_rrc_ue_process_securityModeCommand(NR_UE_RRC_INST_t *ue_rrc,
 
   // the SecurityModeCommand message needs to pass the integrity protection check
   // for the UE to declare AS security to be activated
-  bool integrity_pass = nr_pdcp_check_integrity_srb(ue_rrc->ue_id, srb_id, msg, msg_size, mac, header, count);
+  bool integrity_pass = nr_pdcp_check_integrity_srb(ue_rrc->ue_id, srb_id, msg, msg_size, msg_integrity);
   if (!integrity_pass) {
     /* - continue using the configuration used prior to the reception of the SecurityModeCommand message, i.e.
      *   neither apply integrity protection nor ciphering.
@@ -1589,10 +1587,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
                                  const uint8_t *const Buffer,
                                  size_t Buffer_size,
                                  const uint8_t gNB_indexP,
-                                 uint32_t mac,
-                                 uint32_t header,
-                                 uint32_t count)
-
+                                 const nr_pdcp_integrity_data_t *msg_integrity)
 {
   NR_DL_DCCH_Message_t *dl_dcch_msg = NULL;
   if (Srb_id != 1 && Srb_id != 2) {
@@ -1676,7 +1671,7 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
         case NR_DL_DCCH_MessageType__c1_PR_securityModeCommand:
           LOG_I(NR_RRC, "Received securityModeCommand (gNB %d)\n", gNB_indexP);
           nr_rrc_ue_process_securityModeCommand(rrc, c1->choice.securityModeCommand,
-                                                Srb_id, Buffer, Buffer_size, mac, header, count);
+                                                Srb_id, Buffer, Buffer_size, msg_integrity);
           break;
       }
     } break;
@@ -1782,9 +1777,7 @@ void *rrc_nrue(void *notUsed)
 			  NR_RRC_DCCH_DATA_IND(msg_p).sdu_p,
 			  NR_RRC_DCCH_DATA_IND(msg_p).sdu_size,
 			  NR_RRC_DCCH_DATA_IND(msg_p).gNB_index,
-			  NR_RRC_DCCH_DATA_IND(msg_p).mac,
-			  NR_RRC_DCCH_DATA_IND(msg_p).header,
-			  NR_RRC_DCCH_DATA_IND(msg_p).count);
+			  &NR_RRC_DCCH_DATA_IND(msg_p).msg_integrity);
     break;
 
   case NAS_KENB_REFRESH_REQ:

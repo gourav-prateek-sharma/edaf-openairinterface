@@ -659,7 +659,7 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
 
 static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
                             char *buf, int size,
-                            uint32_t mac, uint32_t header, uint32_t count)
+                            const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue = _ue;
   int rb_id;
@@ -743,7 +743,7 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
 
 static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
                             char *buf, int size,
-                            uint32_t mac, uint32_t header, uint32_t count)
+                            const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue = _ue;
   int srb_id;
@@ -784,9 +784,7 @@ srb_found:
     NR_RRC_DCCH_DATA_IND(message_p).dcch_index = srb_id;
     NR_RRC_DCCH_DATA_IND(message_p).sdu_p = rrc_buffer_p;
     NR_RRC_DCCH_DATA_IND(message_p).sdu_size = size;
-    NR_RRC_DCCH_DATA_IND(message_p).mac = mac;
-    NR_RRC_DCCH_DATA_IND(message_p).header = header;
-    NR_RRC_DCCH_DATA_IND(message_p).count = count;
+    memcpy(&NR_RRC_DCCH_DATA_IND(message_p).msg_integrity, msg_integrity, sizeof(*msg_integrity));
     ue_id_t ue_id = ue->ue_id;
     itti_send_msg_to_task(TASK_RRC_NRUE, ue_id, message_p);
   }
@@ -1069,9 +1067,7 @@ bool nr_pdcp_check_integrity_srb(ue_id_t ue_id,
                                  int srb_id,
                                  const uint8_t *msg,
                                  int msg_size,
-                                 uint32_t mac,
-                                 uint32_t header,
-                                 uint32_t count)
+                                 const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue;
   nr_pdcp_entity_t *rb;
@@ -1088,7 +1084,7 @@ bool nr_pdcp_check_integrity_srb(ue_id_t ue_id,
     return false;
   }
 
-  bool ret = rb->check_integrity(rb, msg, msg_size, mac, header, count);
+  bool ret = rb->check_integrity(rb, msg, msg_size, msg_integrity);
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 

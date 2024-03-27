@@ -55,8 +55,6 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   int              sdap_header_size = 0;
   int              rx_deliv_sn;
   uint32_t         rx_deliv_hfn;
-  uint32_t         mac = 0;
-  uint32_t         header = 0;
 
   if (entity->entity_suspended) {
     LOG_W(PDCP, "PDCP entity %d is suspended. Quit RX procedure.\n", entity->rb_id);
@@ -123,19 +121,14 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
   rcvd_count = (rcvd_hfn << entity->sn_size) | rcvd_sn;
 
+  nr_pdcp_integrity_data_t msg_integrity = { 0 };
+
   /* the MAC-I/header/rcvd_count is needed by some RRC procedures, store it */
   if (entity->has_integrity || entity->type == NR_PDCP_SRB) {
-    mac = (uint32_t)buffer[size-4]
-        | ((uint32_t)buffer[size-3] << 8)
-        | ((uint32_t)buffer[size-2] << 16)
-        | ((uint32_t)buffer[size-1] << 24);
-
-    /* higher byte of 'header' is its size, next 2 or 3 bytes are the header */
-    header = (uint32_t)header_size << 24;
-    if (header_size == 2)
-      header |= (buffer[0] << 16) | (buffer[1] << 8);
-    else
-      header |= (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
+    msg_integrity.count = rcvd_count;
+    memcpy(msg_integrity.mac, &buffer[size-4], 4);
+    msg_integrity.header_size = header_size;
+    memcpy(msg_integrity.header, buffer, header_size);
   }
 
   if (entity->has_ciphering)
@@ -170,7 +163,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   sdu = nr_pdcp_new_sdu(rcvd_count,
                         (char *)buffer + header_size,
                         size - header_size - integrity_size,
-                        mac, header);
+                        &msg_integrity);
   entity->rx_list = nr_pdcp_sdu_list_add(entity->rx_list, sdu);
   entity->rx_size += size-header_size;
 
@@ -187,7 +180,7 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
       nr_pdcp_sdu_t *cur = entity->rx_list;
       entity->deliver_sdu(entity->deliver_sdu_data, entity,
                           cur->buffer, cur->size,
-                          cur->mac, cur->header, cur->count);
+                          &cur->msg_integrity);
       entity->rx_list = cur->next;
       entity->rx_size -= cur->size;
       entity->stats.txsdu_pkts++;
@@ -299,33 +292,26 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
 static bool nr_pdcp_entity_check_integrity(struct nr_pdcp_entity_t *entity,
                                            const uint8_t *buffer,
                                            int buffer_size,
-                                           uint32_t mac,
-                                           uint32_t header,
-                                           uint32_t count)
+                                           const nr_pdcp_integrity_data_t *msg_integrity)
 {
   if (!entity->has_integrity)
     return false;
 
-  int header_size = (header >> 24) & 0xff;
+  int header_size = msg_integrity->header_size;
 
   uint8_t b[buffer_size + header_size];
 
-  b[0] = (header >> 16) & 0xff;
-  b[1] = (header >> 8) & 0xff;
-  if (header_size == 3)
-    b[2] = header & 0xff;
+  for (int i = 0; i < header_size; i++)
+    b[i] = msg_integrity->header[i];
+
   memcpy(b + header_size, buffer, buffer_size);
 
-  unsigned char integrity[4];
-  entity->integrity(entity->integrity_context, integrity,
+  unsigned char mac[4];
+  entity->integrity(entity->integrity_context, mac,
                     b, buffer_size + header_size,
-                    entity->rb_id, count, entity->is_gnb ? 0 : 1);
-  uint32_t nmac = (uint32_t)integrity[0]
-                | ((uint32_t)integrity[1] << 8)
-                | ((uint32_t)integrity[2] << 16)
-                | ((uint32_t)integrity[3] << 24);
+                    entity->rb_id, msg_integrity->count, entity->is_gnb ? 0 : 1);
 
-  return nmac == mac;
+  return memcmp(mac, msg_integrity->mac, 4) == 0;
 }
 
 /* may be called several times, take care to clean previous settings */
@@ -410,7 +396,7 @@ static void check_t_reordering(nr_pdcp_entity_t *entity)
     nr_pdcp_sdu_t *cur = entity->rx_list;
     entity->deliver_sdu(entity->deliver_sdu_data, entity,
                         cur->buffer, cur->size,
-                        cur->mac, cur->header, cur->count);
+                        &cur->msg_integrity);
     entity->rx_list = cur->next;
     entity->rx_size -= cur->size;
     entity->stats.txsdu_pkts++;
@@ -424,7 +410,7 @@ static void check_t_reordering(nr_pdcp_entity_t *entity)
     nr_pdcp_sdu_t *cur = entity->rx_list;
     entity->deliver_sdu(entity->deliver_sdu_data, entity,
                         cur->buffer, cur->size,
-                        cur->mac, cur->header, cur->count);
+                        &cur->msg_integrity);
     entity->rx_list = cur->next;
     entity->rx_size -= cur->size;
     entity->stats.txsdu_pkts++;
@@ -455,7 +441,7 @@ static void deliver_all_sdus(nr_pdcp_entity_t *entity)
     nr_pdcp_sdu_t *cur = entity->rx_list;
     entity->deliver_sdu(entity->deliver_sdu_data, entity,
                         cur->buffer, cur->size,
-                        cur->mac, cur->header, cur->count);
+                        &cur->msg_integrity);
     entity->rx_list = cur->next;
     entity->rx_size -= cur->size;
     entity->stats.txsdu_pkts++;
@@ -577,7 +563,7 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     bool has_sdap_tx,
     void (*deliver_sdu)(void *deliver_sdu_data, struct nr_pdcp_entity_t *entity,
                         char *buf, int size,
-                        uint32_t mac, uint32_t header, uint32_t count),
+                        const nr_pdcp_integrity_data_t *msg_integrity),
     void *deliver_sdu_data,
     void (*deliver_pdu)(void *deliver_pdu_data, ue_id_t ue_id, int rb_id,
                         char *buf, int size, int sdu_id),
