@@ -1135,7 +1135,7 @@ class OaiCiTest():
 					logging.debug(f'\033[94m{mibMsg}\033[0m')
 					frequency_found = True
 				except Exception as e:
-					logging.error(f'\033[91m Measured Carrier Frequency not found \033[0m')
+					logging.error(f'\033[91m UE did not find PBCH\033[0m')
 			result = re.search("PLMN MCC (?P<mcc>\d{1,3}), MNC (?P<mnc>\d{1,3}), TAC", str(line))
 			if result is not None and (not plmn_found):
 				try:
