@@ -1291,32 +1291,29 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     nr_trigger_sr(mac);
 
   // update Bj for all active lcids before LCP procedure
-  LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
-  for (int i = 0; i < mac->lc_ordered_list.count; i++) {
-    nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
-    int lcid = lc_info->lcid;
-    // max amount of data that can be buffered/accumulated in a logical channel buffer
-    uint32_t bucketSize_max = lc_info->bucket_size;
-
-    /*
-      measure Bj
-      increment the value of Bj by product PBR  * T
-    */
-    NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
-    int32_t bj = sched_info->Bj;
-    if (lc_info->pbr < UINT_MAX) {
-      uint32_t slots_elapsed = nr_timer_elapsed_time(sched_info->Bj_timer); // slots elapsed since Bj was last incremented
-      // it is safe to divide by 1k since pbr in lc_info is computed multiplying by 1000 the RRC value to convert kB/s to B/s
-      uint32_t pbr_ms = lc_info->pbr / 1000;
-      bj += ((pbr_ms * slots_elapsed) >> mac->current_UL_BWP->scs); // each slot length is 1/scs ms
+  if (mac->current_UL_BWP) {
+    LOG_D(NR_MAC, "%4d.%2d Logical Channel Prioritization\n", frame_tx, slot_tx);
+    for (int i = 0; i < mac->lc_ordered_list.count; i++) {
+      nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
+      int lcid = lc_info->lcid;
+      // max amount of data that can be buffered/accumulated in a logical channel buffer
+      uint32_t bucketSize_max = lc_info->bucket_size;
+      //  measure Bj increment the value of Bj by product PBR  * T
+      NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
+      int32_t bj = sched_info->Bj;
+      if (lc_info->pbr < UINT_MAX) {
+        uint32_t slots_elapsed = nr_timer_elapsed_time(sched_info->Bj_timer); // slots elapsed since Bj was last incremented
+        // it is safe to divide by 1k since pbr in lc_info is computed multiplying by 1000 the RRC value to convert kB/s to B/s
+        uint32_t pbr_ms = lc_info->pbr / 1000;
+        bj += ((pbr_ms * slots_elapsed) >> mac->current_UL_BWP->scs); // each slot length is 1/scs ms
+      }
+      else
+        bj = INT_MAX;
+      // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
+      sched_info->Bj = min(bj, bucketSize_max);
+      // reset bj timer
+      nr_timer_start(&sched_info->Bj_timer);
     }
-    else
-      bj = INT_MAX;
-
-    // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
-    sched_info->Bj = min(bj, bucketSize_max);
-    // reset bj timer
-    nr_timer_start(&sched_info->Bj_timer);
   }
 
   if(mac->state >= UE_PERFORMING_RA)
