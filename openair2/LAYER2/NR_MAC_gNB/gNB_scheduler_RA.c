@@ -1311,13 +1311,14 @@ static void nr_generate_Msg2(module_id_t module_idP,
   pdsch_pdu_rel15->precodingAndBeamforming.prgs_list[0].dig_bf_interface_list[0].beam_idx = 0;
 
   LOG_A(NR_MAC,
-        "UE %04x: %d.%d Generating RA-Msg2 DCI, RA RNTI 0x%x, state %d, CoreSetType %d\n",
+        "UE %04x: %d.%d Generating RA-Msg2 DCI, RA RNTI 0x%x, state %d, CoreSetType %d, RAPID %d\n",
         ra->rnti,
         frameP,
         slotP,
         ra->RA_rnti,
         ra->ra_state,
-        pdcch_pdu_rel15->CoreSetType);
+        pdcch_pdu_rel15->CoreSetType,
+        ra->preamble_index);
 
   // SCF222: PDU index incremented for each PDSCH PDU sent in TX control message. This is used to associate control
   // information to data and is reset every slot.
