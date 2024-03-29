@@ -130,12 +130,13 @@ int RCconfig_M3(MessageDef *msg_p, uint32_t i) {
 
 
   char mcepath[MAX_OPTNAME_SIZE*2 + 8];
-  paramdef_t   MCEParams[] = MCE_NETPARAMS_DESC;
   paramdef_t M3Params[]  = M3PARAMS_DESC;
   paramdef_t MCCHParams[]  = MCCH_PARAMS_DESC;
+  paramdef_t MCENameParams[] = MCE_PARAMS_DESC;
 
   sprintf(mcepath,"%s.[%i].%s","MCEs",0,MCE_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
-  config_get(config_get_if(), MCEParams, sizeofArray(MCEParams), mcepath);
+  config_get(config_get_if(), MCENameParams, sizeofArray(MCENameParams), mcepath);
+  M3AP_REGISTER_MCE_REQ(msg_p).MCE_name = strdup(*(MCENameParams[MCE_MCE_NAME_IDX].strptr));
 
   paramlist_def_t M3ParamList = {MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS,NULL,0};
   paramlist_def_t MCCHParamList = {MCE_CONFIG_STRING_MCCH_CONFIG_PER_MBSFN_AREA,NULL,0};
@@ -151,8 +152,6 @@ int RCconfig_M3(MessageDef *msg_p, uint32_t i) {
   M3AP_REGISTER_MCE_REQ (msg_p).nb_m3 = 0;
   for (l = 0; l < M3ParamList.numelt; l++) {
     M3AP_REGISTER_MCE_REQ(msg_p).nb_m3 += 1;
-    M3AP_REGISTER_MCE_REQ(msg_p).MCE_name = strdup(*(M3ParamList.paramarray[l][MCE_MCE_NAME_IDX].strptr));
-
     strcpy(M3AP_REGISTER_MCE_REQ(msg_p).target_mme_m3_ip_address[l].ipv4_address,
            *(M3ParamList.paramarray[l][MCE2_M3_IPV4_ADDRESS_IDX].strptr));
     M3AP_REGISTER_MCE_REQ(msg_p).target_mme_m3_ip_address[l].ipv4 = 1;
@@ -162,6 +161,7 @@ int RCconfig_M3(MessageDef *msg_p, uint32_t i) {
   }
 
   sprintf(aprefix,"%s.[%i].%s","MCEs",0,MCE_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
+  paramdef_t   MCEParams[] = MCE_NETPARAMS_DESC;
   config_get(config_get_if(), MCEParams, sizeofArray(MCEParams), aprefix);
   M3AP_REGISTER_MCE_REQ (msg_p).mme_port_for_M3C = (uint32_t)*(MCEParams[MCE2_PORT_FOR_M3C_IDX].uptr);
 
