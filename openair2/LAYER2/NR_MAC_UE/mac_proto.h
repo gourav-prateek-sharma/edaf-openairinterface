@@ -312,6 +312,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
 
 int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac);
 void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id);
+void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac);
 void nr_Msg1_transmitted(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, slot_t slotP, uint8_t gNB_id);
 void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);
@@ -335,7 +336,7 @@ void remove_ul_config_last_item(fapi_nr_ul_config_request_pdu_t *pdu);
 fapi_nr_ul_config_request_pdu_t *fapiLockIterator(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx);
 
 void release_ul_config(fapi_nr_ul_config_request_pdu_t *pdu, bool clearIt);
-
+void clear_ul_config_request(NR_UE_MAC_INST_t *mac, int scs);
 int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm);
 
 // PUSCH scheduler:

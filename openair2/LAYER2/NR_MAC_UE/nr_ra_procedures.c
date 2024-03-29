@@ -61,7 +61,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
 {
   mac->state = UE_PERFORMING_RA;
   RA_config_t *ra = &mac->ra;
-  ra->RA_active = 1;
+  ra->RA_active = true;
   ra->ra_PreambleIndex = -1;
   ra->RA_usedGroupA = 1;
   ra->RA_RAPID_found = 0;
@@ -582,17 +582,25 @@ void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, s
   ra->ra_state = nrRA_WAIT_CONTENTION_RESOLUTION;
 }
 
-void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
+static uint8_t *fill_msg3_crnti_pdu(RA_config_t *ra, uint8_t *pdu, uint16_t crnti)
+{
+  // RA triggered by UE MAC with C-RNTI in MAC CE
+  LOG_D(NR_MAC, "Generating MAC CE with C-RNTI for MSG3 %x\n", crnti);
+  *(NR_MAC_SUBHEADER_FIXED *)pdu = (NR_MAC_SUBHEADER_FIXED){.LCID = UL_SCH_LCID_C_RNTI, .R = 0};
+  pdu += sizeof(NR_MAC_SUBHEADER_FIXED);
+
+  // C-RNTI MAC CE (2 octets)
+  uint16_t rnti_pdu = ((crnti & 0xFF) << 8) | ((crnti >> 8) & 0xFF);
+  memcpy(pdu, &rnti_pdu, sizeof(rnti_pdu));
+  pdu += sizeof(rnti_pdu);
+  ra->t_crnti = crnti;
+  return pdu;
+}
+
+static uint8_t *fill_msg3_pdu_from_rlc(NR_UE_MAC_INST_t *mac, uint8_t *pdu, int TBS_max)
 {
   RA_config_t *ra = &mac->ra;
-
-  // we already stored MSG3 in the buffer, we can use that
-  if (ra->Msg3_buffer) {
-    buf = ra->Msg3_buffer;
-    return;
-  }
-
-  uint8_t *pdu = buf;
+  // regular MSG3 with PDU coming from higher layers
   *(NR_MAC_SUBHEADER_FIXED *)pdu = (NR_MAC_SUBHEADER_FIXED){.LCID = UL_SCH_LCID_CCCH};
   pdu += sizeof(NR_MAC_SUBHEADER_FIXED);
   tbs_size_t len = mac_rlc_data_req(mac->ue_id,
@@ -613,6 +621,25 @@ void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
   // We copy from persisted memory to another persisted memory
   memcpy(ra->cont_res_id, pdu, sizeof(uint8_t) * 6);
   pdu += len;
+  return pdu;
+}
+
+void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
+{
+  RA_config_t *ra = &mac->ra;
+
+  // we already stored MSG3 in the buffer, we can use that
+  if (ra->Msg3_buffer) {
+    buf = ra->Msg3_buffer;
+    return;
+  }
+
+  uint8_t *pdu = buf;
+  if (ra->msg3_C_RNTI)
+    pdu = fill_msg3_crnti_pdu(ra, pdu, mac->crnti);
+  else 
+    pdu = fill_msg3_pdu_from_rlc(mac, pdu, TBS_max);
+
   AssertFatal(TBS_max >= pdu - buf, "Allocated resources are not enough for Msg3!\n");
   // Padding: fill remainder with 0
   LOG_D(NR_MAC, "Remaining %ld bytes, filling with padding\n", pdu - buf);
@@ -657,7 +684,7 @@ void nr_ue_get_rach(NR_UE_MAC_INST_t *mac, int CC_id, frame_t frame, uint8_t gNB
   LOG_D(NR_MAC, "[UE %d][%d.%d]: ra_state %d, RA_active %d\n", mac->ue_id, frame, nr_slot_tx, ra->ra_state, ra->RA_active);
 
   if (ra->ra_state > nrRA_UE_IDLE && ra->ra_state < nrRA_SUCCEEDED) {
-    if (ra->RA_active == 0) {
+    if (!ra->RA_active) {
       NR_RACH_ConfigCommon_t *setup = mac->current_UL_BWP->rach_ConfigCommon;
       NR_RACH_ConfigGeneric_t *rach_ConfigGeneric = &setup->rach_ConfigGeneric;
       init_RA(mac, &ra->prach_resources, setup, rach_ConfigGeneric, ra->rach_ConfigDedicated);
@@ -825,7 +852,8 @@ void nr_ra_succeeded(NR_UE_MAC_INST_t *mac, const uint8_t gNB_index, const frame
   }
 
   LOG_D(MAC, "[UE %d] clearing RA_active flag...\n", mac->ue_id);
-  ra->RA_active = 0;
+  ra->RA_active = false;
+  ra->msg3_C_RNTI = false;
   ra->ra_state = nrRA_SUCCEEDED;
   mac->state = UE_CONNECTED;
   free_and_zero(ra->Msg3_buffer);
@@ -873,6 +901,25 @@ void nr_ra_failed(NR_UE_MAC_INST_t *mac, uint8_t CC_id, NR_PRACH_RESOURCES_t *pr
     // Resetting RA window
     nr_get_RA_window(mac);
   }
+}
+
+void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac)
+{
+  LOG_W(NR_MAC, "Triggering new RA procedure for UE with RNTI %x\n", mac->crnti);
+  mac->state = UE_SYNC;
+  reset_ra(mac, false);
+  mac->ra.msg3_C_RNTI = true;
+  // release PUCCH for all Serving Cells;
+  // release SRS for all Serving Cells;
+  release_PUCCH_SRS(mac);
+  // clear any configured downlink assignments and uplink grants;
+  int scs = mac->current_UL_BWP->scs;
+  if (mac->dl_config_request)
+    memset(mac->dl_config_request, 0, sizeof(*mac->dl_config_request));
+  if (mac->ul_config_request)
+    clear_ul_config_request(mac, scs);
+  // clear any PUSCH resources for semi-persistent CSI reporting
+  // TODO we don't have semi-persistent CSI reporting
 }
 
 void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack)

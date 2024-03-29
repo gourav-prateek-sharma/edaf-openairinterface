@@ -60,6 +60,17 @@
 static void nr_ue_prach_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, sub_frame_t slotP);
 static void schedule_ta_command(fapi_nr_dl_config_request_t *dl_config, NR_UL_TIME_ALIGNMENT_t *ul_time_alignment);
 
+void clear_ul_config_request(NR_UE_MAC_INST_t *mac, int scs)
+{
+  int slots = nr_slots_per_frame[scs];
+  for (int i = 0; i < slots ; i++) {
+    fapi_nr_ul_config_request_t *ul_config = mac->ul_config_request + i;
+    pthread_mutex_lock(&ul_config->mutex_ul_config);
+    ul_config->number_pdus = 0;
+    pthread_mutex_unlock(&ul_config->mutex_ul_config);
+  }
+}
+
 fapi_nr_ul_config_request_pdu_t *lockGet_ul_config(NR_UE_MAC_INST_t *mac, frame_t frame_tx, int slot_tx, uint8_t pdu_type)
 {
   NR_TDD_UL_DL_ConfigCommon_t *tdd_config = mac->tdd_UL_DL_ConfigurationCommon;
