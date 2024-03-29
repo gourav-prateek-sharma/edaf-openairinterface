@@ -85,11 +85,9 @@ static const int tables_5_3_2[5][12] = {
     {32, 66, 132, 264, -1, -1, -1, -1, -1, -1, -1, -1} // 120FR2
 };
 
-int get_supported_band_index(int scs, int band, int n_rbs)
+int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs)
 {
-  int scs_index = scs;
-  if (band > 256)
-    scs_index++;
+  int scs_index = scs + freq_range;
   for (int i = 0; i < 12; i++) {
     if(n_rbs == tables_5_3_2[scs_index][i])
       return i;
@@ -224,7 +222,7 @@ bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_
   // 38.101-1 section 6.2.2
   // Relative channel bandwidth <= 4% for TDD bands and <= 3% for FDD bands
   int index = get_nr_table_idx(nr_band, scs);
-  int bw_index = get_supported_band_index(scs, nr_band, nb_ul);
+  int bw_index = get_supported_band_index(scs, nr_band > 256 ? FR2 : FR1, nb_ul);
   int band_size_khz = get_supported_bw_mhz(nr_band > 256 ? FR2 : FR1, bw_index) * 1000;
   float limit = frame_type == TDD ? 0.04 : 0.03;
   float rel_bw = (float) (2 * band_size_khz) / (float) (nr_bandtable[index].ul_max + nr_bandtable[index].ul_min);
@@ -827,18 +825,6 @@ void get_samplerate_and_bw(int mu,
   } else {
     AssertFatal(0 == 1,"Numerology %d not supported for the moment\n",mu);
   }
-}
-
-void get_K1_K2(int N1, int N2, int *K1, int *K2)
-{
-  // num of allowed k1 and k2 according to 5.2.2.2.1-3 and -4 in 38.214
-  if(N2 == N1 || N1 == 2)
-    *K1 = 2;
-  else if (N2 == 1)
-    *K1 = 5;
-  else
-    *K1 = 3;
-  *K2 = N2 > 1 ? 2 : 1;
 }
 
 // from start symbol index and nb or symbols to symbol occupation bitmap in a slot

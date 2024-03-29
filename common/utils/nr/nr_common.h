@@ -194,11 +194,10 @@ void SLIV2SL(int SLIV,int *S,int *L);
 int get_dmrs_port(int nl, uint16_t dmrs_ports);
 uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols);
 int get_nb_periods_per_frame(uint8_t tdd_period);
-int get_supported_band_index(int scs, int band, int n_rbs);
 long rrc_get_max_nr_csrs(const int max_rbs, long b_SRS);
-void get_K1_K2(int N1, int N2, int *K1, int *K2);
 bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_t frame_type);
 int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index);
+int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs);
 void get_samplerate_and_bw(int mu,
                            int n_rb,
                            int8_t threequarter_fs,

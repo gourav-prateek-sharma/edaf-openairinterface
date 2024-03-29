@@ -36,6 +36,7 @@
 #include "common/ngran_types.h"
 
 void set_cset_offset(uint16_t);
+void get_K1_K2(int N1, int N2, int *K1, int *K2, int layers);
 
 void mac_top_init_gNB(ngran_node_t node_type,
                       NR_ServingCellConfigCommon_t *scc,
