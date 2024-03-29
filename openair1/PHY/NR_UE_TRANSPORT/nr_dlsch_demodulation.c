@@ -104,12 +104,14 @@ static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
                                      uint32_t length,
                                      int32_t codeword_TB0,
                                      int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]);
+                                     uint sz,
+                                     int16_t llr_layers[][sz]);
 
 /* compute LLR */
 static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int nbRx,
-                        int16_t *layer_llr[NR_MAX_NB_LAYERS],
+                        uint sz,
+                        int16_t layer_llr[][sz],
                         NR_DL_FRAME_PARMS *frame_parms,
                         int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                         int32_t dl_ch_mag[rx_size_symbol],
@@ -127,6 +129,7 @@ static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         uint8_t nr_slot_rx,
                         NR_UE_DLSCH_t dlsch[2],
                         uint32_t llr_offset[NR_SYMBOLS_PER_SLOT]);
+
 /** \fn nr_dlsch_extract_rbs
     \brief This function extracts the received resource blocks, both channel estimates and data symbols,    for the current
    allocation and for multiple layer antenna gNB transmission.
@@ -575,13 +578,16 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
 
   /* at last symbol in a slot calculate LLR's for whole slot */
   if(symbol == (startSymbIdx + nbSymb -1)) {
+    const uint rx_llr_layer_size = (dlsch0_harq->G + dlsch[0].Nl - 1) / dlsch[0].Nl;
 
-    const uint32_t rx_llr_layer_size = (dlsch0_harq->G + dlsch[0].Nl - 1) / dlsch[0].Nl;
+    if (dlsch[0].Nl == 0 || rx_llr_layer_size == 0 || rx_llr_layer_size > 10 * 1000 * 1000) {
+      LOG_E(PHY, "rx_llr_layer_size %d, G %d, Nl, %d, discarding this pdsch\n", rx_llr_layer_size, dlsch0_harq->G, dlsch[0].Nl);
+      return -1;
+    }
 
-    int16_t* layer_llr[NR_MAX_NB_LAYERS];
-    for (int i = 0; i < NR_MAX_NB_LAYERS; i++)
-      layer_llr[i] = (int16_t *)malloc16_clear(rx_llr_layer_size * sizeof(int16_t));
-    for(uint8_t i = startSymbIdx; i < (startSymbIdx+nbSymb); i++) {
+    int16_t layer_llr[dlsch[0].Nl][rx_llr_layer_size];
+    memset(layer_llr,0, sizeof(layer_llr));
+    for(int i = startSymbIdx; i < startSymbIdx+nbSymb; i++) {
       /* re evaluating the first symbol flag as LLR's are done in symbol loop  */
       if(i == startSymbIdx && i < 3)
         first_symbol_flag = 1;
@@ -590,6 +596,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
       /* Calculate LLR's for each symbol */
       nr_dlsch_llr(rx_size_symbol,
                    nbRx,
+                   rx_llr_layer_size,
                    layer_llr,
                    frame_parms,
                    rxdataF_comp,
@@ -616,11 +623,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                              dlsch0_harq->G,
                              codeword_TB0,
                              codeword_TB1,
+                             rx_llr_layer_size,
                              layer_llr);
-    // if (llr[0][0]) abort();
-    for (int i=0; i<NR_MAX_NB_LAYERS; i++)
-      free(layer_llr[i]);
-  // Please keep it: useful for debugging
+    // Please keep it: useful for debugging
 #ifdef DEBUG_PDSCH_RX
     char filename[50];
     uint8_t aa = 0;
@@ -1874,8 +1879,9 @@ static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
                                      uint32_t length,
                                      int32_t codeword_TB0,
                                      int32_t codeword_TB1,
-                                     int16_t *llr_layers[NR_MAX_NB_LAYERS]) {
-
+                                     uint sz,
+                                     int16_t llr_layers[][sz])
+{
   switch (Nl) {
     case 1:
       if (codeword_TB1 == -1)
@@ -1908,7 +1914,8 @@ static void nr_dlsch_layer_demapping(int16_t *llr_cw[2],
 
 static int nr_dlsch_llr(uint32_t rx_size_symbol,
                         int nbRx,
-                        int16_t *layer_llr[NR_MAX_NB_LAYERS],
+                        uint sz,
+                        int16_t layer_llr[][sz],
                         NR_DL_FRAME_PARMS *frame_parms,
                         int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                         int32_t dl_ch_mag[rx_size_symbol],
