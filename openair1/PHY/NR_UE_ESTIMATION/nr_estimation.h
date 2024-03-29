@@ -57,12 +57,12 @@ void nr_pdcch_channel_estimation(PHY_VARS_NR_UE *ue,
                                  c16_t pdcch_dl_ch_estimates[][pdcch_est_size],
                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
-int nr_pbch_dmrs_correlation(PHY_VARS_NR_UE *ue,
-                             const UE_nr_rxtx_proc_t *proc,
-                             unsigned char symbol,
-                             int dmrss,
-                             NR_UE_SSB *current_ssb,
-                             c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
+c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
+                               const UE_nr_rxtx_proc_t *proc,
+                               const int symbol,
+                               const int dmrss,
+                               const uint32_t nr_gold_pbch[NR_PBCH_DMRS_LENGTH_DWORD],
+                               const c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                                int estimateSz,

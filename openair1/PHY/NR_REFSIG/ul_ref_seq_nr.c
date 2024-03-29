@@ -52,53 +52,44 @@
 *
 *********************************************************************/
 
-static int16_t *base_sequence_less_than_36(unsigned int M_ZC, unsigned int u, unsigned int scaling)
+static c16_t *base_sequence_less_than_36(unsigned int M_ZC, unsigned int u, unsigned int scaling)
 {
-  char *phi_table;
-  int16_t *rv_overbar;
-  double x;
-  unsigned int n;
-
+  const char *phi_table;
   switch(M_ZC) {
     case 6:
-      phi_table = (char *)phi_M_ZC_6;
+      phi_table = phi_M_ZC_6;
       break;
     case 12:
-      phi_table = (char *)phi_M_ZC_12;
+      phi_table = phi_M_ZC_12;
       break;
     case 18:
-      phi_table = (char *)phi_M_ZC_18;
+      phi_table = phi_M_ZC_18;
       break;
     case 24:
-      phi_table = (char *)phi_M_ZC_24;
+      phi_table = phi_M_ZC_24;
       break;
     case 30:
       break;
     default:
-      printf("function base_sequence_less_than 36_: unsupported base sequence size : %u \n", M_ZC);
-      assert(0);
+      AssertFatal(false, "function base_sequence_less_than 36_: unsupported base sequence size : %u \n", M_ZC);
       break;
   }
 
-  rv_overbar = malloc16(IQ_SIZE*M_ZC);
-
-  if (rv_overbar == NULL) {
-    msg("Fatal memory allocation problem \n");
-    assert(0);
-  }
+  c16_t *rv_overbar = malloc16(IQ_SIZE * M_ZC);
+  AssertFatal(rv_overbar, "Fatal memory allocation problem \n");
 
   if (M_ZC == 30) {
-    for (n=0; n<M_ZC; n++) {
-      x = -(M_PI * (u + 1) * (n + 1) * (n + 2))/(double)31;
-      rv_overbar[2*n]   =(int16_t)(floor(scaling*cos(x)));
-      rv_overbar[2*n+1] =(int16_t)(floor(scaling*sin(x)));
+    for (unsigned int n = 0; n < M_ZC; n++) {
+      const double x = -(M_PI * (u + 1) * (n + 1) * (n + 2)) / (double)31;
+      rv_overbar[n].r = (int16_t)(floor(scaling * cos(x)));
+      rv_overbar[n].i = (int16_t)(floor(scaling * sin(x)));
     }
   }
   else {
-    for (n=0; n<M_ZC; n++) {
-      x = (double)phi_table[n + u*M_ZC] * (M_PI/4);
-      rv_overbar[2*n]   = (int16_t)(floor(scaling*cos(x)));
-      rv_overbar[2*n+1] = (int16_t)(floor(scaling*sin(x)));
+    for (unsigned int n = 0; n < M_ZC; n++) {
+      const double x = (double)phi_table[n + u * M_ZC] * (M_PI / 4);
+      rv_overbar[n].r = (int16_t)(floor(scaling * cos(x)));
+      rv_overbar[n].i = (int16_t)(floor(scaling * sin(x)));
     }
   }
   return rv_overbar;
@@ -117,9 +108,9 @@ static int16_t *base_sequence_less_than_36(unsigned int M_ZC, unsigned int u, un
 *
 *********************************************************************/
 
-int16_t get_index_for_dmrs_lowpapr_seq(int16_t num_dmrs_res) {
-
-  int16_t index = num_dmrs_res/6 - 1;
+int get_index_for_dmrs_lowpapr_seq(int num_dmrs_res)
+{
+  int index = num_dmrs_res / 6 - 1;
 
   if (index >= MAX_INDEX_DMRS_UL_ALLOCATED_REs)
     index = MAX_INDEX_DMRS_UL_ALLOCATED_REs-1;
@@ -149,79 +140,63 @@ int16_t get_index_for_dmrs_lowpapr_seq(int16_t num_dmrs_res) {
 *
 *********************************************************************/
 
-static int16_t *base_sequence_36_or_larger(unsigned int Msc_RS,
-                                           unsigned int u,
-                                           unsigned int v,
-                                           unsigned int scaling,
-                                           unsigned int if_dmrs_seq)
+static c16_t *base_sequence_36_or_larger(unsigned int Msc_RS,
+                                         unsigned int u,
+                                         unsigned int v,
+                                         unsigned int scaling,
+                                         unsigned int if_dmrs_seq)
 {
-  int16_t *rv_overbar;
-  unsigned int N_ZC, M_ZC;
-  double q_overbar, x;
-  unsigned int q,m,n;
-  
+  const unsigned int M_ZC = if_dmrs_seq ? dmrs_ul_allocated_res[Msc_RS] : ul_allocated_re[Msc_RS];
 
-  if (if_dmrs_seq)
-    M_ZC = dmrs_ul_allocated_res[Msc_RS];
-  else
-    M_ZC = ul_allocated_re[Msc_RS];
-  
+  c16_t *rv_overbar = malloc16(IQ_SIZE * M_ZC);
+  AssertFatal(rv_overbar, "Fatal memory allocation problem \n");
 
-  rv_overbar = malloc16(IQ_SIZE*M_ZC);
-  if (rv_overbar == NULL) {
-    msg("Fatal memory allocation problem \n");
-    assert(0);
-  }
+  /* The length N_ZC is given by the largest prime number such that N_ZC < M_ZC */
+  const unsigned int N_ZC = if_dmrs_seq ? dmrs_ref_ul_primes[Msc_RS] : ref_ul_primes[Msc_RS];
 
-  if (if_dmrs_seq)
-    N_ZC = dmrs_ref_ul_primes[Msc_RS];
-  else 
-    N_ZC = ref_ul_primes[Msc_RS]; /* The length N_ZC is given by the largest prime number such that N_ZC < M_ZC */
-  
-
-  q_overbar = N_ZC * (u+1)/(double)31;
+  const double q_overbar = N_ZC * (u + 1) / (double)31;
 
   /*  q = (q_overbar + 1/2) + v.(-1)^(2q_overbar) */
+  double q;
   if ((((int)floor(2*q_overbar))&1) == 0)
-    q = (int)(floor(q_overbar+.5)) - v;
+    q = floor(q_overbar + .5) - v;
   else
-    q = (int)(floor(q_overbar+.5)) + v;
+    q = floor(q_overbar + .5) + v;
 
-  for (n = 0; n < M_ZC; n++) {
-    m=n%N_ZC;
-    x = (double)q * m * (m+1)/N_ZC;
-    rv_overbar[2*n]   =  (int16_t)(floor(scaling*cos(M_PI*x)));   /* cos(-x) = cos(x) */
-    rv_overbar[2*n+1] = -(int16_t)(floor(scaling*sin(M_PI*x)));   /* sin(-x) = -sin(x) */
+  for (int n = 0; n < M_ZC; n++) {
+    const int m = n % N_ZC;
+    const double x = q * m * (m + 1) / N_ZC;
+    rv_overbar[n].r = (int16_t)(floor(scaling * cos(M_PI * x))); /* cos(-x) = cos(x) */
+    rv_overbar[n].i = -(int16_t)(floor(scaling * sin(M_PI * x))); /* sin(-x) = -sin(x) */
   }
   return rv_overbar;
 }
 
-int16_t *rv_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][SRS_SB_CONF];
-int16_t *gNB_dmrs_lowpaprtype1_sequence[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
+c16_t *rv_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][SRS_SB_CONF];
+c16_t *gNB_dmrs_lowpaprtype1_sequence[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
 void generate_lowpapr_typ1_refsig_sequences(unsigned int scaling)
 {
   /* prevent multiple calls, relevant when both UE & gNB initialize this */
   static bool already_called = false;
-  if (already_called) return;
+  if (already_called)
+    return;
   already_called = true;
-
-	unsigned int u,Msc_RS;
   unsigned int v = 0; // sequence hopping and group hopping are not supported yet
 
-  for (Msc_RS=0; Msc_RS <= INDEX_SB_LESS_32; Msc_RS++) {  	
-    for (u=0; u < U_GROUP_NUMBER; u++) {
+  for (unsigned int Msc_RS = 0; Msc_RS <= INDEX_SB_LESS_32; Msc_RS++) {
+    for (unsigned int u = 0; u < U_GROUP_NUMBER; u++) {
       gNB_dmrs_lowpaprtype1_sequence[u][v][Msc_RS] = base_sequence_less_than_36(ul_allocated_re[Msc_RS], u, scaling);
     }
   }
 
-  for (Msc_RS=INDEX_SB_LESS_32+1; Msc_RS < MAX_INDEX_DMRS_UL_ALLOCATED_REs; Msc_RS++) {    
-    for (u=0; u < U_GROUP_NUMBER; u++) {        
-      gNB_dmrs_lowpaprtype1_sequence[u][v][Msc_RS] = base_sequence_36_or_larger(Msc_RS, u, v, scaling, 1);           
-    }    
-  } 
+  for (unsigned int Msc_RS = INDEX_SB_LESS_32 + 1; Msc_RS < MAX_INDEX_DMRS_UL_ALLOCATED_REs; Msc_RS++) {
+    for (unsigned int u = 0; u < U_GROUP_NUMBER; u++) {
+      gNB_dmrs_lowpaprtype1_sequence[u][v][Msc_RS] = base_sequence_36_or_larger(Msc_RS, u, v, scaling, 1);
+    }
+  }
 }
 
-int16_t *dmrs_lowpaprtype1_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
+c16_t *dmrs_lowpaprtype1_ul_ref_sig[U_GROUP_NUMBER][V_BASE_SEQUENCE_NUMBER][MAX_INDEX_DMRS_UL_ALLOCATED_REs];
 void generate_ul_reference_signal_sequences(unsigned int scaling)
 {
   /* prevent multiple calls, relevant when both UE & gNB initialize this */

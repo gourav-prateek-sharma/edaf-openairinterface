@@ -1127,15 +1127,15 @@ class OaiCiTest():
 					mib_found = True
 				except Exception as e:
 					logging.error(f'\033[91m MIB marker was not found \033[0m')
-			result = re.search("Measured Carrier Frequency (?P<measured_carrier_frequency>\d{1,15}) Hz", str(line))
+			result = re.search("Initial sync: pbch decoded sucessfully", str(line))
 			if result is not None and (not frequency_found):
 				try:
-					mibMsg = f"Measured Carrier Frequency = {result.group('measured_carrier_frequency')} Hz"
+					mibMsg = f"UE decoded PBCH successfully"
 					HTML.htmlUEFailureMsg=HTML.htmlUEFailureMsg + mibMsg + '\n'
 					logging.debug(f'\033[94m{mibMsg}\033[0m')
 					frequency_found = True
 				except Exception as e:
-					logging.error(f'\033[91m Measured Carrier Frequency not found \033[0m')
+					logging.error(f'\033[91m UE did not find PBCH\033[0m')
 			result = re.search("PLMN MCC (?P<mcc>\d{1,3}), MNC (?P<mnc>\d{1,3}), TAC", str(line))
 			if result is not None and (not plmn_found):
 				try:
