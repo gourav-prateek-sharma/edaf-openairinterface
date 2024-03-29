@@ -3232,6 +3232,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
       break;
 
     case NR_UL_DCI_FORMAT_0_1:
+      if (!UL_BWP) {
+        LOG_E(NR_MAC, "Error! Not possible to configure DCI format 01 without UL BWP.\n");
+        return 0;
+      }
       /// fixed: Format identifier 1, MCS 5, NDI 1, RV 2, HARQ PID 4, PUSCH TPC 2, ULSCH indicator 1 --16
       size += 16;
       // Carrier indicator
@@ -3385,6 +3389,10 @@ uint16_t nr_dci_size(const NR_UE_DL_BWP_t *DL_BWP,
 
     case NR_DL_DCI_FORMAT_1_1:
       LOG_D(NR_MAC, "DCI_FORMAT 1_1 : pdsch_Config %p, pucch_Config %p\n", pdsch_Config, pucch_Config);
+      if (!DL_BWP) {
+        LOG_E(NR_MAC, "Error! Not possible to configure DCI format 11 without DL BWP.\n");
+        return 0;
+      }
       // General note: 0 bits condition is ignored as default nbits is 0.
       // Format identifier
       size = 1;

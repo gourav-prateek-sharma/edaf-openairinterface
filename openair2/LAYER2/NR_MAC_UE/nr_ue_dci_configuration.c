@@ -217,18 +217,21 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                                0);
     }
 
-    rel15->dci_length_options[i] = nr_dci_size(current_DL_BWP,
-                                               current_UL_BWP,
-                                               sc_info,
-                                               mac->pdsch_HARQ_ACK_Codebook,
-                                               &mac->def_dci_pdu_rel15[dl_config->slot][dci_format],
-                                               dci_format,
-                                               rnti_type,
-                                               coreset,
-                                               dl_bwp_id,
-                                               ss->searchSpaceType->present,
-                                               mac->type0_PDCCH_CSS_config.num_rbs,
-                                               alt_size);
+    uint16_t dci_size = nr_dci_size(current_DL_BWP,
+                                    current_UL_BWP,
+                                    sc_info,
+                                    mac->pdsch_HARQ_ACK_Codebook,
+                                    &mac->def_dci_pdu_rel15[dl_config->slot][dci_format],
+                                    dci_format,
+                                    rnti_type,
+                                    coreset,
+                                    dl_bwp_id,
+                                    ss->searchSpaceType->present,
+                                    mac->type0_PDCCH_CSS_config.num_rbs,
+                                    alt_size);
+    if (dci_size == 0)
+      return;
+    rel15->dci_length_options[i] = dci_size;
   }
 
   rel15->BWPStart = coreset_id == 0 ? mac->type0_PDCCH_CSS_config.cset_start_rb : current_DL_BWP->BWPStart;
