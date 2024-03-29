@@ -6302,14 +6302,11 @@ static uint8_t unpack_nr_rach_indication_body(nfapi_nr_prach_indication_pdu_t *v
     return 0;
   }
 
-  if (value->num_preamble > 0) {
-    value->preamble_list = nfapi_p7_allocate(sizeof(*value->preamble_list) * value->num_preamble, config);
-    for (int i = 0; i < value->num_preamble; i++) {
-      nfapi_nr_prach_indication_preamble_t *preamble = &(value->preamble_list[i]);
-      if (!(pull8(ppReadPackedMsg, &preamble->preamble_index, end) && pull16(ppReadPackedMsg, &preamble->timing_advance, end)
-            && pull32(ppReadPackedMsg, &preamble->preamble_pwr, end))) {
-        return 0;
-      }
+  for (int i = 0; i < value->num_preamble; i++) {
+    nfapi_nr_prach_indication_preamble_t *preamble = &(value->preamble_list[i]);
+    if (!(pull8(ppReadPackedMsg, &preamble->preamble_index, end) && pull16(ppReadPackedMsg, &preamble->timing_advance, end)
+          && pull32(ppReadPackedMsg, &preamble->preamble_pwr, end))) {
+      return 0;
     }
   }
   return 1;

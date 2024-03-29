@@ -255,10 +255,6 @@ static void free_unqueued_nfapi_indications(nfapi_nr_rach_indication_t *rach_ind
                                             nfapi_nr_crc_indication_t *crc_ind) {
   if (rach_ind && rach_ind->number_of_pdus > 0)
   {
-    for(int i = 0; i < rach_ind->number_of_pdus; i++)
-    {
-      free_and_zero(rach_ind->pdu_list[i].preamble_list);
-    }
     free_and_zero(rach_ind->pdu_list);
     free_and_zero(rach_ind);
   }

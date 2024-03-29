@@ -185,7 +185,6 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
         ind->avg_snr = 0xff; // invalid for now
 
         ind->num_preamble = 1;
-        ind->preamble_list = gNB->preamble_list;
         ind->preamble_list[0].preamble_index = max_preamble[0];
         ind->preamble_list[0].timing_advance = max_preamble_delay[0];
         ind->preamble_list[0].preamble_pwr = 0xffffffff;
