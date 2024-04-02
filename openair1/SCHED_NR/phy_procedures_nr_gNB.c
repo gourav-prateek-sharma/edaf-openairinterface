@@ -428,7 +428,12 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
-
+  /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
+   * (valid for unitary physical simulators). ULSCH processing lopp is then executed
+   * only once, which ensures exactly one start and stop of the ULSCH decoding time
+   * measurement per processed TB.*/
+  if (gNB->max_nb_pusch == 1)
+    start_meas(&gNB->ulsch_decoding_stats);
   int nbDecode =
       nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G);
 
@@ -916,6 +921,12 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       delNotifiedFIFO_elt(req);
       totalDecode--;
     }
+  /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
+   * (valid for unitary physical simulators). ULSCH processing loop is then executed
+   * only once, which ensures exactly one start and stop of the ULSCH decoding time
+   * measurement per processed TB.*/
+  if (gNB->max_nb_pusch == 1)
+    stop_meas(&gNB->ulsch_decoding_stats);
   for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = &gNB->srs[i];
     if (srs) {
