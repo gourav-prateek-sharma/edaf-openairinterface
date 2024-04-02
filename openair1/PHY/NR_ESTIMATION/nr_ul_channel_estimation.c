@@ -66,14 +66,15 @@ __attribute__((always_inline)) inline c16_t c32x16cumulVectVectWithSteps(c16_t *
 
 int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                                 unsigned char Ns,
+                                int nl,
                                 unsigned short p,
                                 unsigned char symbol,
                                 int ul_id,
                                 unsigned short bwp_start_subcarrier,
                                 nfapi_nr_pusch_pdu_t *pusch_pdu,
                                 int *max_ch,
-                                uint32_t *nvar) {
-
+                                uint32_t *nvar)
+{
   c16_t pilot[3280] __attribute__((aligned(32)));
   const int chest_freq = gNB->chest_freq;
 
@@ -81,20 +82,17 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
   FILE *debug_ch_est;
   debug_ch_est = fopen("debug_ch_est.txt","w");
 #endif
-  //uint16_t Nid_cell = (eNB_offset == 0) ? gNB->frame_parms.Nid_cell : gNB->measurements.adj_cell_id[eNB_offset-1];
   NR_gNB_PUSCH *pusch_vars = &gNB->pusch_vars[ul_id];
   c16_t **ul_ch_estimates = (c16_t **)pusch_vars->ul_ch_estimates;
   const int symbolSize = gNB->frame_parms.ofdm_symbol_size;
-  const int soffset = (Ns&3)*gNB->frame_parms.symbols_per_slot*symbolSize;
+  const int soffset = (Ns & 3) * gNB->frame_parms.symbols_per_slot*symbolSize;
   const int nushift = (p >> 1) & 1;
-  int ch_offset     = symbolSize*symbol;
+  int ch_offset = symbolSize*symbol;
   const int symbol_offset = symbolSize*symbol;
-
   const int k0 = bwp_start_subcarrier;
   const int nb_rb_pusch = pusch_pdu->rb_size;
 
-  LOG_D(PHY, "In %s: ch_offset %d, soffset %d, symbol_offset %d, OFDM size %d, Ns = %d, k0 = %d, symbol %d\n",
-        __FUNCTION__,
+  LOG_D(PHY, "ch_offset %d, soffset %d, symbol_offset %d, OFDM size %d, Ns = %d, k0 = %d, symbol %d\n",
         ch_offset, soffset,
         symbol_offset,
         symbolSize,
@@ -154,7 +152,7 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
   for (int aarx=0; aarx<gNB->frame_parms.nb_antennas_rx; aarx++) {
     c16_t *rxdataF = (c16_t *)&gNB->common_vars.rxdataF[aarx][symbol_offset];
-    c16_t *ul_ch = &ul_ch_estimates[p*gNB->frame_parms.nb_antennas_rx+aarx][ch_offset];
+    c16_t *ul_ch = &ul_ch_estimates[nl * gNB->frame_parms.nb_antennas_rx + aarx][ch_offset];
 
     memset(ul_ch,0,sizeof(*ul_ch)*symbolSize);
 #ifdef DEBUG_PUSCH
@@ -235,7 +233,7 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
 
       // Revert delay
       pilot_cnt = 0;
-      ul_ch = &ul_ch_estimates[p * gNB->frame_parms.nb_antennas_rx + aarx][ch_offset];
+      ul_ch = &ul_ch_estimates[nl * gNB->frame_parms.nb_antennas_rx + aarx][ch_offset];
       int inv_delay_idx = get_delay_idx(-delay->est_delay, MAX_DELAY_COMP);
       c16_t *ul_inv_delay_table = gNB->frame_parms.delay_table[inv_delay_idx];
       for (int n = 0; n < 3 * nb_rb_pusch; n++) {
@@ -450,7 +448,7 @@ int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
     }
 
 #ifdef DEBUG_PUSCH
-    ul_ch = &ul_ch_estimates[p * gNB->frame_parms.nb_antennas_rx + aarx][ch_offset];
+    ul_ch = &ul_ch_estimates[nl * gNB->frame_parms.nb_antennas_rx + aarx][ch_offset];
     for (int idxP = 0; idxP < ceil((float)nb_rb_pusch * 12 / 8); idxP++) {
       for (int idxI = 0; idxI < 8; idxI++) {
           printf("%d\t%d\t", ul_ch[idxP * 8 + idxI].r, ul_ch[idxP * 8 + idxI].i);

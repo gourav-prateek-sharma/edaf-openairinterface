@@ -77,6 +77,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
 
 int nr_pdsch_channel_estimation(PHY_VARS_NR_UE *ue,
                                 const UE_nr_rxtx_proc_t *proc,
+                                int nl,
                                 unsigned short p,
                                 unsigned char symbol,
                                 unsigned char nscid,
