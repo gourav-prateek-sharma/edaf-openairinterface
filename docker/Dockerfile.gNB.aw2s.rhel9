@@ -47,6 +47,7 @@ RUN dnf update -y && \
         libXpm \
         libX11 \
         atlas \
+        gdb \
         lksctp-tools \
         tzdata \
         net-tools \
