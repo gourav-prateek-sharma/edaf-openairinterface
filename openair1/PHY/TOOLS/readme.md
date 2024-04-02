@@ -55,18 +55,40 @@ For the new qt-based scope designed for NR, please consider the following:
 ## Troubleshoot
 
 Similar as with the Xforms-based scope, you should allow root to open X
-windows:
+windows if using Xorg:
 ```
 xhost +si:localuser:root
 ```
 
-Furthermore, if you get the following error (might be followed by a
-segfault)
+If you run on Wayland (e.g., Gnome on Ubuntu 22), you might get this error:
+```
+Warning: Ignoring XDG_SESSION_TYPE=wayland on Gnome. Use QT_QPA_PLATFORM=wayland to run on Wayland anyway.
+Authorization required, but no authorization protocol specified
+qt.qpa.xcb: could not connect to display :0
+qt.qpa.plugin: Could not load the Qt platform plugin "xcb" in "" even though it was found.
+This application failed to start because no Qt platform plugin could be initialized. Reinstalling the application may fix this problem.
+```
+
+We have to force the use of Wayland. Before that, make sure that the Qt-Wayland
+plugin is installed. Also, there seems to be a problem with the qt5-gtk
+platform theme, so remove it:
+```
+sudo apt-get install qtwayland5
+sudo apt-get remove qt5-gtk-platformtheme
+```
+
+Now, force the Wayland plugin; also make sure to pass `-E` to sudo:
+```
+sudo -E QT_QPA_PLATFORM=wayland ./nr-softmodem --sa -O <conf> --dqt
+```
+
+Furthermore, if you get the following warning, _followed by a segfault_ (i.e.,
+if it runs, you can ignore this)
 ```
 QStandardPaths: wrong ownership on runtime directory /run/user/1000, 1000 instead of 0
 ```
-You have to set the XDG runtime directory like one of the following options
-(try in order):
+You can set the XDG runtime directory like one of the following options (try in
+order, keep `QT_QPA_PLATFORM` if necessary)
 ```
 sudo -E XDG_RUNTIME_DIR=/run/user/0 ./nr-softmodem ...
 sudo -E XDG_RUNTIME_DIR=/tmp/runtime-root ./nr-softmodem ...
