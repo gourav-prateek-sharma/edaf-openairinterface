@@ -268,10 +268,11 @@ def GetParametersFromXML(action):
 	elif action == 'Iperf':
 		CiTestObj.iperf_args = test.findtext('iperf_args')
 		CiTestObj.ue_ids = test.findtext('id').split(' ')
-		CiTestObj.iperf_direction = test.findtext('direction')
+		CiTestObj.svr_id = test.findtext('svr_id') or None
 		CiTestObj.iperf_packetloss_threshold = test.findtext('iperf_packetloss_threshold')
 		CiTestObj.iperf_bitrate_threshold = test.findtext('iperf_bitrate_threshold') or '90'
 		CiTestObj.iperf_profile = test.findtext('iperf_profile') or 'balanced'
+		CiTestObj.iperf_tcp_rate_target = test.findtext('iperf_tcp_rate_target') or None
 		if CiTestObj.iperf_profile != 'balanced' and CiTestObj.iperf_profile != 'unbalanced' and CiTestObj.iperf_profile != 'single-ue':
 			logging.error(f'test-case has wrong profile {CiTestObj.iperf_profile}, forcing balanced')
 			CiTestObj.iperf_profile = 'balanced'
@@ -374,20 +375,6 @@ def GetParametersFromXML(action):
 		string_field=test.findtext('u_retx_th')
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
-
-	elif action == 'IperfFromContainer':
-		string_field = test.findtext('server_container_name')
-		if (string_field is not None):
-			CONTAINERS.svrContName = string_field
-		string_field = test.findtext('server_options')
-		if (string_field is not None):
-			CONTAINERS.svrOptions = string_field
-		string_field = test.findtext('client_container_name')
-		if (string_field is not None):
-			CONTAINERS.cliContName = string_field
-		string_field = test.findtext('client_options')
-		if (string_field is not None):
-			CONTAINERS.cliOptions = string_field
 
 	elif action == 'Run_LDPCTest' or action == 'Run_NRulsimTest' or action == 'Run_LDPCt1Test':
 		ldpc.runargs = test.findtext('physim_run_args')

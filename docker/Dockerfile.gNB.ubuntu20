@@ -49,6 +49,7 @@ RUN apt-get update && \
         openssl \
         net-tools \
         iperf \
+        iperf3 \
         iproute2 \
         iputils-ping \
         gdb \

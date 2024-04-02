@@ -72,12 +72,13 @@
         </testCase>
 
         <testCase id="030011">
-                <class>IperfFromContainer</class>
-                <desc>Push MBMS traffic</desc>
-                <server_container_name>rfsim4g-oai-lte-ue0</server_container_name>
-                <client_container_name>rfsim4g-oai-enb</client_container_name>
-                <server_options>-sui1 -B 10.0.2.2</server_options>
-                <client_options>-uc 10.0.2.2 -i1 -t10 -b2M -B10.0.2.1</client_options>
+                <class>Iperf</class>
+                <desc>Iperf UDP DL</desc>
+                <id>rfsim4g_ue</id>
+                <svr_id>rfsim4g_enb_nos1</svr_id>
+                <iperf_args>-u -t 30 -b 2M -R</iperf_args>
+                <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="100011">

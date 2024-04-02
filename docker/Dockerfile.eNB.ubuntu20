@@ -49,9 +49,9 @@ RUN apt-get update && \
         openssl \
         net-tools \
         iperf \
+        iperf3 \
         iputils-ping \
         iproute2 \
-        iperf \
         gdb \
         python \
         python3 \

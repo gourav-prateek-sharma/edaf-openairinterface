@@ -98,7 +98,7 @@
                 <class>Iperf</class>
                 <desc>iperf (DL/UDP/80M)(30 sec)(single-ue profile)</desc>
                 <iperf_args>-u -b 80M -t 30 -R</iperf_args>
-                <direction>IPERF3</direction>
+                <svr_id>porcepix-cn5g</svr_id>
                 <id>sphex_quectel</id>
                 <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
@@ -108,7 +108,7 @@
                 <class>Iperf</class>
                 <desc>iperf (UL/UDP/40M)(30 sec)(single-ue profile)</desc>
                 <iperf_args>-u -b 40M -t 30</iperf_args>
-                <direction>IPERF3</direction>
+                <svr_id>porcepix-cn5g</svr_id>
                 <id>sphex_quectel</id>
                 <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
