@@ -472,8 +472,7 @@ int main(int argc, char **argv)
 	//estimated_output = (unsigned char *) malloc16(sizeof(unsigned char) * 16 * 68 * 384);
 	unsigned char estimated_output_bit[16 * 68 * 384];
 	NR_UE_DLSCH_t *dlsch0_ue = &dlsch_ue[0];
-	NR_DL_UE_HARQ_t *harq_process = &UE->dl_harq_processes[0][harq_pid];
-  harq_process->G = available_bits;
+  NR_DL_UE_HARQ_t *harq_process = &UE->dl_harq_processes[0][harq_pid];
   harq_process->first_rx = 1;
 	dlsch0_ue->dlsch_config.mcs = Imcs;
 	dlsch0_ue->dlsch_config.mcs_table = mcs_table;
@@ -563,13 +562,24 @@ int main(int argc, char **argv)
       }
       uint32_t dlsch_bytes = a_segments*1056;  // allocated bytes per segment
       __attribute__ ((aligned(32))) uint8_t b[dlsch_bytes];
-			ret = nr_dlsch_decoding(UE, &proc, 0, channel_output_fixed, &UE->frame_parms,
-					dlsch0_ue, harq_process, frame, nb_symb_sch,
-					slot,harq_pid,dlsch_bytes,b);
+      ret = nr_dlsch_decoding(UE,
+                              &proc,
+                              0,
+                              channel_output_fixed,
+                              &UE->frame_parms,
+                              dlsch0_ue,
+                              harq_process,
+                              frame,
+                              nb_symb_sch,
+                              slot,
+                              harq_pid,
+                              dlsch_bytes,
+                              b,
+                              available_bits);
 
-			vcd_signal_dumper_dump_function_by_name(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_DECODING0, VCD_FUNCTION_OUT);
+      vcd_signal_dumper_dump_function_by_name(VCD_SIGNAL_DUMPER_FUNCTIONS_DLSCH_DECODING0, VCD_FUNCTION_OUT);
 
-			if (ret > dlsch0_ue->max_ldpc_iterations)
+      if (ret > dlsch0_ue->max_ldpc_iterations)
 				n_errors++;
 
 			//count errors

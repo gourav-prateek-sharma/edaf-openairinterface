@@ -274,7 +274,8 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            uint8_t nr_slot_rx,
                            uint8_t harq_pid,
                            int b_size,
-                           uint8_t b[b_size])
+                           uint8_t b[b_size],
+                           int G)
 {
   uint32_t ret,offset;
   uint32_t r,r_offset=0,Kr=8424,Kr_bytes;
@@ -339,7 +340,6 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
   uint32_t A = dlsch->dlsch_config.TBS;
   ret = dlsch->max_ldpc_iterations + 1;
   dlsch->last_iteration_cnt = ret;
-  uint32_t G = harq_process->G;
 
   // target_code_rate is in 0.1 units
   float Coderate = (float) dlsch->dlsch_config.targetCodeRate / 10240.0f;

@@ -210,7 +210,8 @@ uint32_t nr_dlsch_decoding(PHY_VARS_NR_UE *phy_vars_ue,
                            uint8_t nr_slot_rx,
                            uint8_t harq_pid,
                            int b_size,
-                           uint8_t b[b_size]);
+                           uint8_t b[b_size],
+                           int G);
 
 int nr_ulsch_encoding(PHY_VARS_NR_UE *ue,
                      NR_UE_ULSCH_t *ulsch,
@@ -410,7 +411,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                 int nbRx,
                 int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                 c16_t ptrs_phase_per_slot[][NR_SYMBOLS_PER_SLOT],
-                int32_t ptrs_re_per_slot[][NR_SYMBOLS_PER_SLOT]);
+                int32_t ptrs_re_per_slot[][NR_SYMBOLS_PER_SLOT],
+                int G);
 
 int32_t generate_nr_prach(PHY_VARS_NR_UE *ue, uint8_t gNB_id, int frame, uint8_t slot);
 
