@@ -817,10 +817,19 @@ void add_srb(int is_gnb,
   if (nr_pdcp_get_rb(ue, srb_id, true) != NULL) {
     LOG_E(PDCP, "warning SRB %d already exist for UE ID %ld, do nothing\n", srb_id, UEid);
   } else {
-    pdcp_srb = new_nr_pdcp_entity(NR_PDCP_SRB, is_gnb, srb_id,
-                                  0, false, false, // sdap parameters
-                                  deliver_sdu_srb, ue, NULL, ue,
-                                  12, t_Reordering, -1,
+    pdcp_srb = new_nr_pdcp_entity(NR_PDCP_SRB,
+                                  is_gnb,
+                                  srb_id,
+                                  0,      // PDU session ID (not relevant)
+                                  false,  // has SDAP RX (not relevant)
+                                  false,  // has SDAP TX (not relevant)
+                                  deliver_sdu_srb,
+                                  ue,
+                                  NULL,
+                                  ue,
+                                  SHORT_SN_SIZE,
+                                  t_Reordering,
+                                  -1,
                                   ciphering_algorithm,
                                   integrity_algorithm,
                                   ciphering_key,
@@ -1075,9 +1084,13 @@ bool nr_pdcp_data_req_srb(ue_id_t ue_id,
     return 0;
   }
 
-  int max_size = sdu_buffer_size + 3 + 4; // 3: max header, 4: max integrity
+  int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
   char pdu_buf[max_size];
   int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
+  if (pdu_size == -1) {
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return 0;
+  }
   AssertFatal(rb->deliver_pdu == NULL, "SRB callback should be NULL, to be provided on every invocation\n");
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
@@ -1098,6 +1111,7 @@ void nr_pdcp_suspend_srb(ue_id_t ue_id, int srb_id)
     return;
   }
   srb->suspend_entity(srb);
+  LOG_D(PDCP, "SRB %d suspended\n", srb_id);
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
@@ -1112,6 +1126,7 @@ void nr_pdcp_suspend_drb(ue_id_t ue_id, int drb_id)
     return;
   }
   drb->suspend_entity(drb);
+  LOG_D(PDCP, "DRB %d suspended\n", drb_id);
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
 }
 
@@ -1211,6 +1226,7 @@ void nr_pdcp_reestablishment(ue_id_t ue_id, int rb_id, bool srb_flag)
   if (rb != NULL) {
     LOG_D(PDCP, "UE %4.4lx re-establishment of %sRB %d\n", ue_id, srb_flag ? "S" : "D", rb_id);
     rb->reestablish_entity(rb);
+    LOG_I(PDCP, "%s %d re-established\n", srb_flag ? "SRB" : "DRB" , rb_id);
   } else {
     LOG_W(PDCP, "UE %4.4lx cannot re-establish %sRB %d, RB not found\n", ue_id, srb_flag ? "S" : "D", rb_id);
   }
@@ -1252,14 +1268,19 @@ bool nr_pdcp_data_req_drb(protocol_ctxt_t *ctxt_pP,
   rb = nr_pdcp_get_rb(ue, rb_id, false);
 
   if (rb == NULL) {
-    LOG_E(PDCP, "no DRB found (ue_id %lx, rb_id %ld)\n", ue_id, rb_id);
+    LOG_E(PDCP, "[UE %lx] DRB %ld not found\n", rb_id, ue_id);
     nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
     return 0;
   }
 
-  int max_size = sdu_buffer_size + 3 + 4; // 3: max header, 4: max integrity
+  int max_size = nr_max_pdcp_pdu_size(sdu_buffer_size);
   char pdu_buf[max_size];
   int pdu_size = rb->process_sdu(rb, (char *)sdu_buffer, sdu_buffer_size, muiP, pdu_buf, max_size);
+  if (pdu_size == -1) {
+    nr_pdcp_manager_unlock(nr_pdcp_ue_manager);
+    return 0;
+  }
+
   deliver_pdu deliver_pdu_cb = rb->deliver_pdu;
 
   nr_pdcp_manager_unlock(nr_pdcp_ue_manager);

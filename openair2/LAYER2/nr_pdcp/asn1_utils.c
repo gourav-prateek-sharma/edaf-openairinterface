@@ -20,6 +20,7 @@
  */
 
 #include "common/utils/LOG/log.h"
+#include "nr_pdcp_entity.h"
 
 int decode_t_reordering(int v)
 {
@@ -36,16 +37,16 @@ int decode_t_reordering(int v)
 
 int decode_sn_size_ul(long s)
 {
-  if (s == 0) return 12;
-  if (s == 1) return 18;
+  if (s == 0) return SHORT_SN_SIZE;
+  if (s == 1) return LONG_SN_SIZE;
   LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
   exit(1);
 }
 
 int decode_sn_size_dl(long s)
 {
-  if (s == 0) return 12;
-  if (s == 1) return 18;
+  if (s == 0) return SHORT_SN_SIZE;
+  if (s == 1) return LONG_SN_SIZE;
   LOG_E(RLC, "%s:%d:%s: fatal\n", __FILE__, __LINE__, __FUNCTION__);
   exit(1);
 }

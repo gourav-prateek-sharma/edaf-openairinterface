@@ -32,6 +32,16 @@
 
 #include "LOG/log.h"
 
+/**
+ * @brief returns the maximum PDCP PDU size
+ *        which corresponds to data PDU for DRBs with 18 bits PDCP SN
+ *        and integrity enabled
+*/
+int nr_max_pdcp_pdu_size(sdu_size_t sdu_size)
+{
+  return (sdu_size + LONG_PDCP_HEADER_SIZE + PDCP_INTEGRITY_SIZE);
+}
+
 static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                                     char *_buffer, int size)
 {
@@ -45,6 +55,11 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   int              sdap_header_size = 0;
   int              rx_deliv_sn;
   uint32_t         rx_deliv_hfn;
+
+  if (entity->entity_suspended) {
+    LOG_W(PDCP, "PDCP entity %d is suspended. Quit RX procedure.\n", entity->rb_id);
+    return;
+  }
 
   if (size < 1) {
     LOG_E(PDCP, "bad PDU received (size = %d)\n", size);
@@ -65,21 +80,21 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
 
   if (entity->has_sdap_rx) sdap_header_size = 1; // SDAP Header is one byte
 
-  if (entity->sn_size == 12) {
+  if (entity->sn_size == SHORT_SN_SIZE) {
     rcvd_sn = ((buffer[0] & 0xf) <<  8) |
                 buffer[1];
-    header_size = 2;
+    header_size = SHORT_PDCP_HEADER_SIZE;
   } else {
     rcvd_sn = ((buffer[0] & 0x3) << 16) |
                (buffer[1]        <<  8) |
                 buffer[2];
-    header_size = 3;
+    header_size = LONG_PDCP_HEADER_SIZE;
   }
   entity->stats.rxpdu_sn = rcvd_sn;
 
   /* SRBs always have MAC-I, even if integrity is not active */
   if (entity->has_integrity || entity->type == NR_PDCP_SRB) {
-    integrity_size = 4;
+    integrity_size = PDCP_INTEGRITY_SIZE;
   } else {
     integrity_size = 0;
   }
@@ -113,11 +128,11 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
                    entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
 
   if (entity->has_integrity) {
-    unsigned char integrity[4] = {0};
+    unsigned char integrity[PDCP_INTEGRITY_SIZE] = {0};
     entity->integrity(entity->integrity_context, integrity,
                       buffer, size - integrity_size,
                       entity->rb_id, rcvd_count, entity->is_gnb ? 0 : 1);
-    if (memcmp(integrity, buffer + size - integrity_size, 4) != 0) {
+    if (memcmp(integrity, buffer + size - integrity_size, PDCP_INTEGRITY_SIZE) != 0) {
       LOG_E(PDCP, "discard NR PDU, integrity failed\n");
       entity->stats.rxpdu_dd_pkts++;
       entity->stats.rxpdu_dd_bytes += size;
@@ -189,8 +204,14 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   int      integrity_size;
   int      sdap_header_size = 0;
   char    *buf = pdu_buffer;
-  DevAssert(size + 3 + 4 <= pdu_max_size);
+  DevAssert(nr_max_pdcp_pdu_size(size) <= pdu_max_size);
   int      dc_bit;
+
+  if (entity->entity_suspended) {
+    LOG_W(PDCP, "PDCP entity %d is suspended. Quit SDU processing.\n", entity->rb_id);
+    return -1;
+  }
+
   entity->stats.rxsdu_pkts++;
   entity->stats.rxsdu_bytes += size;
 
@@ -207,20 +228,20 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
     dc_bit = 0;
   }
 
-  if (entity->sn_size == 12) {
+  if (entity->sn_size == SHORT_SN_SIZE) {
     buf[0] = dc_bit | ((sn >> 8) & 0xf);
     buf[1] = sn & 0xff;
-    header_size = 2;
+    header_size = SHORT_PDCP_HEADER_SIZE;
   } else {
     buf[0] = dc_bit | ((sn >> 16) & 0x3);
     buf[1] = (sn >> 8) & 0xff;
     buf[2] = sn & 0xff;
-    header_size = 3;
+    header_size = LONG_PDCP_HEADER_SIZE;
   }
 
   /* SRBs always have MAC-I, even if integrity is not active */
   if (entity->has_integrity || entity->type == NR_PDCP_SRB) {
-    integrity_size = 4;
+    integrity_size = PDCP_INTEGRITY_SIZE;
   } else {
     integrity_size = 0;
   }
@@ -228,16 +249,16 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   memcpy(buf + header_size, buffer, size);
 
   if (entity->has_integrity) {
-    uint8_t integrity[4] = {0};
+    uint8_t integrity[PDCP_INTEGRITY_SIZE] = {0};
     entity->integrity(entity->integrity_context,
                       integrity,
                       (unsigned char *)buf, header_size + size,
                       entity->rb_id, count, entity->is_gnb ? 1 : 0);
 
-    memcpy((unsigned char *)buf + header_size + size, integrity, 4);
-  } else if (integrity_size == 4) {
+    memcpy((unsigned char *)buf + header_size + size, integrity, PDCP_INTEGRITY_SIZE);
+  } else if (integrity_size == PDCP_INTEGRITY_SIZE) {
     // set MAC-I to 0 for SRBs with integrity not active
-    memset(buf + header_size + size, 0, 4);
+    memset(buf + header_size + size, 0, PDCP_INTEGRITY_SIZE);
   }
 
   if (entity->has_ciphering && (entity->is_gnb || entity->security_mode_completed)) {
@@ -400,6 +421,7 @@ static void nr_pdcp_entity_suspend(nr_pdcp_entity_t *entity)
   }
   entity->rx_next = 0;
   entity->rx_deliv = 0;
+  entity->entity_suspended = true;
 }
 
 static void free_rx_list(nr_pdcp_entity_t *entity)
@@ -427,6 +449,9 @@ static void nr_pdcp_entity_reestablish_drb_am(nr_pdcp_entity_t *entity)
 
   /* receiving entity procedures */
   /* todo: deal with ciphering/integrity algos and keys */
+
+  /* Flag PDCP entity as re-established */
+  entity->entity_suspended = false;
 }
 
 static void nr_pdcp_entity_reestablish_drb_um(nr_pdcp_entity_t *entity)
@@ -445,6 +470,9 @@ static void nr_pdcp_entity_reestablish_drb_um(nr_pdcp_entity_t *entity)
   entity->rx_next = 0;
   entity->rx_deliv = 0;
   /* todo: deal with ciphering/integrity algos and keys */
+
+  /* Flag PDCP entity as re-established */
+  entity->entity_suspended = false;
 }
 
 static void nr_pdcp_entity_reestablish_srb(nr_pdcp_entity_t *entity)
@@ -461,6 +489,9 @@ static void nr_pdcp_entity_reestablish_srb(nr_pdcp_entity_t *entity)
   entity->rx_next = 0;
   entity->rx_deliv = 0;
   /* todo: deal with ciphering/integrity algos and keys */
+
+  /* Flag PDCP entity as re-established */
+  entity->entity_suspended = false;
 }
 
 static void nr_pdcp_entity_release(nr_pdcp_entity_t *entity)
