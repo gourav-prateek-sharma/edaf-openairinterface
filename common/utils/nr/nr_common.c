@@ -105,7 +105,6 @@ int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs)
   return (-1); // not found
 }
 
-
 // Table 5.2-1 NR operating bands in FR1 & FR2 (3GPP TS 38.101)
 // Table 5.4.2.3-1 Applicable NR-ARFCN per operating band in FR1 & FR2 (3GPP TS 38.101)
 // Notes:
@@ -179,8 +178,9 @@ const nr_bandentry_t nr_bandtable[] = {
   {261,27500040,28350000,27500040,28350000,  2,2070833, 120}
 };
 
-int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index)
+int get_supported_bw_mhz(frequency_range_t frequency_range, int scs, int nb_rb)
 {
+  int bw_index = get_supported_band_index(scs, frequency_range, nb_rb);
   if (frequency_range == FR1) {
     switch (bw_index) {
       case 0 :
@@ -232,8 +232,8 @@ bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_
   // 38.101-1 section 6.2.2
   // Relative channel bandwidth <= 4% for TDD bands and <= 3% for FDD bands
   int index = get_nr_table_idx(nr_band, scs);
-  int bw_index = get_supported_band_index(scs, nr_band > 256 ? FR2 : FR1, nb_ul);
-  int band_size_khz = get_supported_bw_mhz(nr_band > 256 ? FR2 : FR1, bw_index) * 1000;
+
+  int band_size_khz = get_supported_bw_mhz(nr_band > 256 ? FR2 : FR1, scs, nb_ul) * 1000;
   float limit = frame_type == TDD ? 0.04 : 0.03;
   float rel_bw = (float) (2 * band_size_khz) / (float) (nr_bandtable[index].ul_max + nr_bandtable[index].ul_min);
   return rel_bw <= limit;

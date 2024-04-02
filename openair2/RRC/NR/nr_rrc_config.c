@@ -526,18 +526,12 @@ void set_dl_maxmimolayers(NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig,
 
   NR_FeatureSets_t *fs = uecap ? uecap->featureSets : NULL;
   if (fs) {
-    const int bw_index = get_supported_band_index(scs, freq_range, bw_size);
-    AssertFatal(bw_index >= 0, "BW corresponding to %d PRBs not found\n", bw_size);
+    const int bw_mhz = get_supported_bw_mhz(freq_range, scs, bw_size);
     // go through UL feature sets and look for one with current SCS
     for (int i = 0; i < fs->featureSetsDownlinkPerCC->list.count; i++) {
       NR_FeatureSetDownlinkPerCC_t *dl_fs = fs->featureSetsDownlinkPerCC->list.array[i];
-      long supported_bw;
-      if (freq_range == FR1)
-        supported_bw = dl_fs->supportedBandwidthDL.choice.fr1;
-      else
-        supported_bw = dl_fs->supportedBandwidthDL.choice.fr2;
       if (scs == dl_fs->supportedSubcarrierSpacingDL &&
-          bw_index == supported_bw &&
+          supported_bw_comparison(bw_mhz, &dl_fs->supportedBandwidthDL, dl_fs->channelBW_90mhz) &&
           dl_fs->maxNumberMIMO_LayersPDSCH) {
         long ue_supported_layers = (2 << *dl_fs->maxNumberMIMO_LayersPDSCH);
         *pdsch_servingcellconfig->ext1->maxMIMO_Layers = NR_MAX_SUPPORTED_DL_LAYERS < ue_supported_layers ? NR_MAX_SUPPORTED_DL_LAYERS : ue_supported_layers;
@@ -776,38 +770,42 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
                        int numerology,
                        int rbsize,
                        int mcs_table_dl,
-                       int mcs_table_ul) {
-
+                       int mcs_table_ul)
+{
   NR_Phy_Parameters_t *phy_Parameters = &cap->phy_Parameters;
   int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
-  NR_BandNR_t *nr_bandnr = CALLOC(1,sizeof(NR_BandNR_t));
+  NR_BandNR_t *nr_bandnr = calloc(1, sizeof(NR_BandNR_t));
   nr_bandnr->bandNR = band;
   asn1cSeqAdd(&cap->rf_Parameters.supportedBandListNR.list,
                    nr_bandnr);
   NR_BandNR_t *bandNRinfo = cap->rf_Parameters.supportedBandListNR.list.array[0];
 
   if (mcs_table_ul == 1) {
-    bandNRinfo->pusch_256QAM = CALLOC(1,sizeof(*bandNRinfo->pusch_256QAM));
+    bandNRinfo->pusch_256QAM = calloc(1,sizeof(*bandNRinfo->pusch_256QAM));
     *bandNRinfo->pusch_256QAM = NR_BandNR__pusch_256QAM_supported;
   }
   if (mcs_table_dl == 1) {
     const frequency_range_t freq_range = band < 257 ? FR1 : FR2;
-    int bw = get_supported_band_index(numerology, freq_range, rbsize);
     if (freq_range == FR2) {
-      bandNRinfo->pdsch_256QAM_FR2 = CALLOC(1,sizeof(*bandNRinfo->pdsch_256QAM_FR2));
+      bandNRinfo->pdsch_256QAM_FR2 = calloc(1, sizeof(*bandNRinfo->pdsch_256QAM_FR2));
       *bandNRinfo->pdsch_256QAM_FR2 = NR_BandNR__pdsch_256QAM_FR2_supported;
     }
     else{
-      phy_Parameters->phy_ParametersFR1 = CALLOC(1,sizeof(*phy_Parameters->phy_ParametersFR1));
+      phy_Parameters->phy_ParametersFR1 = calloc(1, sizeof(*phy_Parameters->phy_ParametersFR1));
       NR_Phy_ParametersFR1_t *phy_fr1 = phy_Parameters->phy_ParametersFR1;
-      phy_fr1->pdsch_256QAM_FR1 = CALLOC(1,sizeof(*phy_fr1->pdsch_256QAM_FR1));
+      phy_fr1->pdsch_256QAM_FR1 = calloc(1, sizeof(*phy_fr1->pdsch_256QAM_FR1));
       *phy_fr1->pdsch_256QAM_FR1 = NR_Phy_ParametersFR1__pdsch_256QAM_FR1_supported;
     }
-    cap->featureSets = CALLOC(1,sizeof(*cap->featureSets));
+    cap->featureSets = calloc(1, sizeof(*cap->featureSets));
     NR_FeatureSets_t *fs=cap->featureSets;
-    fs->featureSetsDownlinkPerCC = CALLOC(1,sizeof(*fs->featureSetsDownlinkPerCC));
-    NR_FeatureSetDownlinkPerCC_t *fs_cc = CALLOC(1,sizeof(NR_FeatureSetDownlinkPerCC_t));
+    fs->featureSetsDownlinkPerCC = calloc(1, sizeof(*fs->featureSetsDownlinkPerCC));
+    NR_FeatureSetDownlinkPerCC_t *fs_cc = calloc(1, sizeof(*fs_cc));
     fs_cc->supportedSubcarrierSpacingDL = numerology;
+    int bw = get_supported_band_index(numerology, freq_range, rbsize);
+    if (bw == 10) // 90MHz
+      fs_cc->channelBW_90mhz = calloc(1, sizeof(*fs_cc->channelBW_90mhz));
+    if (bw == 11) // 100MHz
+      bw--;
     if(freq_range == FR2) {
       fs_cc->supportedBandwidthDL.present = NR_SupportedBandwidth_PR_fr2;
       fs_cc->supportedBandwidthDL.choice.fr2 = bw;
@@ -816,12 +814,12 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
       fs_cc->supportedBandwidthDL.present = NR_SupportedBandwidth_PR_fr1;
       fs_cc->supportedBandwidthDL.choice.fr1 = bw;
     }
-    fs_cc->supportedModulationOrderDL = CALLOC(1,sizeof(*fs_cc->supportedModulationOrderDL));
+    fs_cc->supportedModulationOrderDL = calloc(1, sizeof(*fs_cc->supportedModulationOrderDL));
     *fs_cc->supportedModulationOrderDL = NR_ModulationOrder_qam256;
     asn1cSeqAdd(&fs->featureSetsDownlinkPerCC->list, fs_cc);
   }
 
-  phy_Parameters->phy_ParametersFRX_Diff = CALLOC(1,sizeof(*phy_Parameters->phy_ParametersFRX_Diff));
+  phy_Parameters->phy_ParametersFRX_Diff = calloc(1, sizeof(*phy_Parameters->phy_ParametersFRX_Diff));
   phy_Parameters->phy_ParametersFRX_Diff->pucch_F0_2WithoutFH = NULL;
 }
 

@@ -140,10 +140,7 @@ static void  sl_prepare_phy_config(int module_id,
 
   AssertFatal(carriercfg, "SCS_SpecificCarrier cannot be NULL");
 
-  int bw_index = get_supported_band_index(carriercfg->subcarrierSpacing,
-                                          sl_band > 256 ? FR2 : FR1,
-                                          carriercfg->carrierBandwidth);
-  phycfg->sl_carrier_config.sl_bandwidth = get_supported_bw_mhz(FR1, bw_index);
+  phycfg->sl_carrier_config.sl_bandwidth = get_supported_bw_mhz(FR1, carriercfg->subcarrierSpacing, carriercfg->carrierBandwidth);
 
   phycfg->sl_carrier_config.sl_frequency =
               from_nrarfcn(sl_band,carriercfg->subcarrierSpacing,pointA_ARFCN); // freq in kHz
