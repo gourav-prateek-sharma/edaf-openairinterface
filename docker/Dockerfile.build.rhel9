@@ -35,4 +35,8 @@ COPY . .
 RUN /bin/sh oaienv && \ 
     cd cmake_targets && \
     mkdir -p log && \
-    ./build_oai --eNB --gNB --RU --UE --nrUE --ninja --build-lib "telnetsrv enbscope uescope nrscope" -w USRP -t Ethernet --noavx512 -c
+    CXXFLAGS="-Werror -fstack-protector-strong" CFLAGS="-Werror -fstack-protector-strong" ./build_oai -c --ninja \
+      --eNB --gNB --RU --UE --nrUE \
+      --build-lib "telnetsrv enbscope uescope nrscope" \
+      -w USRP -t Ethernet \
+      --noavx512
