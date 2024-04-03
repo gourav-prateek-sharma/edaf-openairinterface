@@ -142,7 +142,7 @@ def Iperf_analyzeV3BIDIRJson(filename):
 	msg += f'Receiver Bitrate UL : {receiver_bitrate_ul} Mbps\n'
 	return (True, msg)
 
-def Iperf_analyzeV3UDP(filename, iperf_bitrate_threshold, iperf_packetloss_threshold):
+def Iperf_analyzeV3UDP(filename, iperf_bitrate_threshold, iperf_packetloss_threshold, target_bitrate):
 	if (not os.path.isfile(filename)):
 		return (False, 'Iperf3 UDP: Log file not present')
 	if (os.path.getsize(filename)==0):
@@ -173,15 +173,15 @@ def Iperf_analyzeV3UDP(filename, iperf_bitrate_threshold, iperf_packetloss_thres
 			sender_bitrate = float(sender_bitrate) / 1000
 		if receiver_unit == 'Kbits/sec':
 			receiver_bitrate = float(receiver_bitrate) / 1000
-		br_perf = 100 * float(receiver_bitrate) / float(sender_bitrate)
+		br_perf = 100 * float(receiver_bitrate) / float(target_bitrate)
 		br_perf = '%.2f ' % br_perf
 		sender_bitrate = '%.2f ' % float(sender_bitrate)
 		receiver_bitrate = '%.2f ' % float(receiver_bitrate)
-		req_msg = f'Sender Bitrate   : {sender_bitrate} Mbps'
-		bir_msg = f'Receiver Bitrate : {receiver_bitrate} Mbps'
+		req_msg = f'Sender Bitrate  : {sender_bitrate} Mbps'
+		bir_msg = f'Receiver Bitrate: {receiver_bitrate} Mbps'
 		brl_msg = f'{br_perf}%'
-		jit_msg = f'Jitter           : {receiver_jitter}'
-		pal_msg = f'Packet Loss      : {receiver_packetloss} %'
+		jit_msg = f'Jitter          : {receiver_jitter}'
+		pal_msg = f'Packet Loss     : {receiver_packetloss} %'
 		if float(br_perf) < float(iperf_bitrate_threshold):
 			brl_msg = f'too low! < {iperf_bitrate_threshold}%'
 		if float(receiver_packetloss) > float(iperf_packetloss_threshold):
@@ -837,7 +837,7 @@ class OaiCiTest():
 				else:
 					cmd_ue.copyin(f'/tmp/{client_filename}', client_filename)
 			if udpIperf:
-				status, msg = Iperf_analyzeV3UDP(client_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold)
+				status, msg = Iperf_analyzeV3UDP(client_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, target_bitrate)
 			elif bidirIperf:
 				status, msg = Iperf_analyzeV3BIDIRJson(client_filename)
 			else:
