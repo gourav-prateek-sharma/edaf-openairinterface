@@ -191,29 +191,21 @@ def Iperf_analyzeV3UDP(filename, iperf_bitrate_threshold, iperf_packetloss_thres
 	else:
 		return (False, 'Could not analyze iperf report')
 
-def Iperf_analyzeV2UDP(server_filename, iperf_bitrate_threshold, iperf_packetloss_threshold, iperf_opt):
+def Iperf_analyzeV2UDP(server_filename, iperf_bitrate_threshold, iperf_packetloss_threshold, target_bitrate):
+		result = None
 		if (not os.path.isfile(server_filename)):
-			return (False, 'Could not analyze, server report not found!')
+			return (False, 'Iperf UDP: Server report not found!')
+		if (os.path.getsize(server_filename)==0):
+			return (False, 'Iperf UDP: Log file is empty')
 		# Computing the requested bandwidth in float
-		req_bw = 1.0 # default iperf throughput, in Mbps
-		result = re.search('-b *(?P<iperf_bandwidth>[0-9\.]+)(?P<magnitude>[kKMG])', iperf_opt)
-		if result is not None:
-			req_bw = float(result.group('iperf_bandwidth'))
-			magn = result.group('magnitude')
-			if magn == "k" or magn == "K":
-				req_bw /= 1000
-			elif magn == "G":
-				req_bw *= 1000
-		statusTemplate = '(?:|\[ *\d+\].*) +0\.0-\s*(?P<duration>[0-9\.]+) +sec +[0-9\.]+ [kKMG]Bytes +(?P<bitrate>[0-9\.]+) (?P<magnitude>[kKMG])bits\/sec +(?P<jitter>[0-9\.]+) ms +(\d+\/ *\d+) +(\((?P<packetloss>[0-9\.]+)%\))'
-
+		statusTemplate = r'(?:|\[ *\d+\].*) +0\.0-\s*(?P<duration>[0-9\.]+) +sec +[0-9\.]+ [kKMG]Bytes +(?P<bitrate>[0-9\.]+) (?P<magnitude>[kKMG])bits\/sec +(?P<jitter>[0-9\.]+) ms +(\d+\/ *\d+) +(\((?P<packetloss>[0-9\.]+)%\))'
 		with open(server_filename, 'r') as server_file:
 			for line in server_file.readlines():
-				res = re.search(statusTemplate, str(line))
-				if res is not None:
-					result = res
+				result = re.search(statusTemplate, str(line))
+				if result is not None:
+					break
 		if result is None:
 			return (False, 'Could not parse server report!')
-
 		bitrate = float(result.group('bitrate'))
 		magn = result.group('magnitude')
 		if magn == "k" or magn == "K":
@@ -222,16 +214,16 @@ def Iperf_analyzeV2UDP(server_filename, iperf_bitrate_threshold, iperf_packetlos
 			bitrate *= 1000
 		jitter = float(result.group('jitter'))
 		packetloss = float(result.group('packetloss'))
-		br_perf = float(bitrate)/float(req_bw) * 100
+		br_perf = float(bitrate)/float(target_bitrate) * 100
 		br_perf = '%.2f ' % br_perf
 
 		result = float(br_perf) >= float(iperf_bitrate_threshold) and float(packetloss) <= float(iperf_packetloss_threshold)
-		req_msg = f'Req Bitrate : {req_bw}'
-		bir_msg = f'Bitrate	 : {bitrate}'
+		req_msg = f'Req Bitrate : {target_bitrate}'
+		bir_msg = f'Bitrate     : {bitrate}'
 		brl_msg = f'Bitrate Perf: {br_perf} %'
 		if float(br_perf) < float(iperf_bitrate_threshold):
 			brl_msg += f' (too low! <{iperf_bitrate_threshold}%)'
-		jit_msg = f'Jitter	  : {jitter}'
+		jit_msg = f'Jitter      : {jitter}'
 		pal_msg = f'Packet Loss : {packetloss}'
 		if float(packetloss) > float(iperf_packetloss_threshold):
 			pal_msg += f' (too high! >{self.iperf_packetloss_threshold}%)'
@@ -821,7 +813,7 @@ class OaiCiTest():
 				cmd_svr.run(f'{svr.getCmdPrefix()} iperf -c {ueIP} -B {svrIP} {iperf_opt} -i1 2>&1 | tee {client_filename}', timeout=iperf_time*1.5)
 				cmd_ue.run(f'cp {client_filename} {logPath}/{client_filename}')
 				cmd_ue.run(f'cp {server_filename} {logPath}/{server_filename}')
-				status, msg = Iperf_analyzeV2UDP(server_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, iperf_opt)
+				status, msg = Iperf_analyzeV2UDP(server_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, target_bitrate)
 		else:
 			with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
 				port = 5002 + idx
