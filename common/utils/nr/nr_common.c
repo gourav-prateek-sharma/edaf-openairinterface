@@ -953,6 +953,9 @@ void freq2time(uint16_t ofdm_symbol_size,
     case 2048:
       idft(IDFT_2048, freq_signal, time_signal, 1);
       break;
+    case 3072:
+      idft(IDFT_3072, freq_signal, time_signal, 1);
+      break;
     case 4096:
       idft(IDFT_4096, freq_signal, time_signal, 1);
       break;
