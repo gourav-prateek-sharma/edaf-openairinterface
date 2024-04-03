@@ -1519,7 +1519,7 @@ void nr_decode_pucch2(PHY_VARS_gNB *gNB,
 
             corr_re = ( corr32_re[symb][half_prb>>2][aa]/(2*nc_group_size*4/2)+((int16_t*)(&prod_re[aa]))[0]);
             corr_im = ( corr32_im[symb][half_prb>>2][aa]/(2*nc_group_size*4/2)+((int16_t*)(&prod_im[aa]))[0]);
-            corr_tmp += corr_re*corr_re + corr_im*corr_im;
+            corr_tmp += (corr_re*corr_re + corr_im*corr_im)>>(Prx/2);
             /*
               LOG_D(PHY,"pucch2 half_prb %d cw %d (%d,%d) aa %d: (%d,%d,%d,%d,%d,%d,%d,%d)x(%d,%d,%d,%d,%d,%d,%d,%d) (%d,%d)+(%d,%d)
               = (%d,%d) => %d\n", half_prb,cw,cw&15,cw>>4,aa,
