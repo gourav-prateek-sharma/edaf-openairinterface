@@ -293,6 +293,7 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
         pdsch_Config->resourceAllocation == NR_PDSCH_Config__resourceAllocation_resourceAllocationType0) {
       // TS 38.214 subclause 5.1.2.2.1 Downlink resource allocation type 0
       dlsch_config_pdu->resource_alloc = 0;
+      memset(dlsch_config_pdu->rb_bitmap, 0, sizeof(dlsch_config_pdu->rb_bitmap));
       int P = getRBGSize(n_RB_DLBWP, pdsch_Config->rbg_Size);
       int n_RBG = frequency_domain_assignment.nbits;
       int index = 0;
@@ -311,6 +312,23 @@ int8_t nr_ue_process_dci_freq_dom_resource_assignment(nfapi_nr_ue_pusch_pdu_t *p
         for (int j = index; j < size_RBG; j++)
           dlsch_config_pdu->rb_bitmap[j / 8] |= bit_rbg << (j % 8);
         index += size_RBG;
+      }
+      dlsch_config_pdu->number_rbs = count_bits(dlsch_config_pdu->rb_bitmap, sizeofArray(dlsch_config_pdu->rb_bitmap));
+      // Temporary code to process type0 as type1 when the RB allocation is contiguous
+      int state = 0;
+      for (int i = 0; i < sizeof(dlsch_config_pdu->rb_bitmap) * 8; i++) {
+        int allocated = dlsch_config_pdu->rb_bitmap[i / 8] & (1 << (i % 8));
+        if (allocated) {
+          if (state == 0) {
+            dlsch_config_pdu->start_rb = i;
+            state = 1;
+          } else
+            AssertFatal(state == 1, "hole, not implemented\n");
+        } else {
+          if (state == 1) {
+            state = 2;
+          }
+        }
       }
     }
     else if (pdsch_Config &&

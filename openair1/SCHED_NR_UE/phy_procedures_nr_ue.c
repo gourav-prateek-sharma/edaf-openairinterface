@@ -494,19 +494,25 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
   // We handle only one CW now
   if (!(NR_MAX_NB_LAYERS>4)) {
     NR_UE_DLSCH_t *dlsch0 = &dlsch[0];
-    int harq_pid = dlsch0->dlsch_config.harq_process_nbr;
+    fapi_nr_dl_config_dlsch_pdu_rel15_t *dlschCfg = &dlsch0->dlsch_config;
+    int harq_pid = dlschCfg->harq_process_nbr;
+    // dlsch0_harq contains the previous transmissions data for this harq pid
     NR_DL_UE_HARQ_t *dlsch0_harq = &ue->dl_harq_processes[0][harq_pid];
-    uint16_t BWPStart       = dlsch0->dlsch_config.BWPStart;
-    uint16_t pdsch_start_rb = dlsch0->dlsch_config.start_rb;
-    uint16_t pdsch_nb_rb    = dlsch0->dlsch_config.number_rbs;
-    uint16_t s0             = dlsch0->dlsch_config.start_symbol;
-    uint16_t s1             = dlsch0->dlsch_config.number_symbols;
 
-    AssertFatal(dlsch0->dlsch_config.resource_alloc == 1,
-                "DLSCH resource allocation type0 not supported at PHY\n");
-
-    LOG_D(PHY,"[UE %d] nr_slot_rx %d, harq_pid %d (%d), BWP start %d, rb_start %d, nb_rb %d, symbol_start %d, nb_symbols %d, DMRS mask %x, Nl %d\n",
-          ue->Mod_id,nr_slot_rx,harq_pid,dlsch0_harq->status,BWPStart,pdsch_start_rb,pdsch_nb_rb,s0,s1,dlsch0->dlsch_config.dlDmrsSymbPos, dlsch0->Nl);
+    LOG_D(PHY,
+          "[UE %d] nr_slot_rx %d, harq_pid %d (%d), BWP start %d, rb_start %d, nb_rb %d, symbol_start %d, nb_symbols %d, DMRS mask "
+          "%x, Nl %d\n",
+          ue->Mod_id,
+          nr_slot_rx,
+          harq_pid,
+          dlsch0_harq->status,
+          dlschCfg->BWPStart,
+          dlschCfg->start_rb,
+          dlschCfg->number_rbs,
+          dlschCfg->start_symbol,
+          dlschCfg->number_symbols,
+          dlschCfg->dlDmrsSymbPos,
+          dlsch0->Nl);
 
     const uint32_t pdsch_est_size = ((ue->frame_parms.symbols_per_slot * ue->frame_parms.ofdm_symbol_size + 15) / 16) * 16;
     __attribute__((aligned(32))) int32_t pdsch_dl_ch_estimates[ue->frame_parms.nb_antennas_rx * dlsch0->Nl][pdsch_est_size];
@@ -522,25 +528,26 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
     __attribute__((aligned(32))) int32_t rxdataF_comp[dlsch[0].Nl][ue->frame_parms.nb_antennas_rx][rx_size_symbol * NR_SYMBOLS_PER_SLOT];
     memset(rxdataF_comp, 0, sizeof(rxdataF_comp));
 
-    for (int m = s0; m < (s0 +s1); m++) {
-      if (dlsch0->dlsch_config.dlDmrsSymbPos & (1 << m)) {
+    for (int m = dlschCfg->start_symbol; m < (dlschCfg->start_symbol + dlschCfg->number_symbols); m++) {
+      if (dlschCfg->dlDmrsSymbPos & (1 << m)) {
         for (int nl = 0; nl < dlsch0->Nl; nl++) { //for MIMO Config: it shall loop over no_layers
           LOG_D(PHY,"PDSCH Channel estimation layer %d, slot %d, symbol %d\n", nl, nr_slot_rx, m);
           nr_pdsch_channel_estimation(ue,
                                       proc,
                                       nl,
-                                      get_dmrs_port(nl,dlsch0->dlsch_config.dmrs_ports),
+                                      get_dmrs_port(nl, dlschCfg->dmrs_ports),
                                       m,
-                                      dlsch0->dlsch_config.nscid,
-                                      dlsch0->dlsch_config.dlDmrsScramblingId,
-                                      BWPStart,
-                                      dlsch0->dlsch_config.dmrsConfigType,
-                                      dlsch0->dlsch_config.rb_offset,
-                                      ue->frame_parms.first_carrier_offset+(BWPStart + pdsch_start_rb)*12,
-                                      pdsch_nb_rb,
+                                      dlschCfg->nscid,
+                                      dlschCfg->dlDmrsScramblingId,
+                                      dlschCfg->BWPStart,
+                                      dlschCfg->dmrsConfigType,
+                                      dlschCfg->rb_offset,
+                                      ue->frame_parms.first_carrier_offset + (dlschCfg->BWPStart + dlschCfg->start_rb) * 12,
+                                      dlschCfg->number_rbs,
                                       pdsch_est_size,
                                       pdsch_dl_ch_estimates,
-                                      ue->frame_parms.samples_per_slot_wCP, rxdataF);
+                                      ue->frame_parms.samples_per_slot_wCP,
+                                      rxdataF);
 #if 0
           ///LOG_M: the channel estimation
           int nr_frame_rx = proc->frame_rx;
@@ -558,22 +565,22 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
 
     if (ue->chest_time == 1) { // averaging time domain channel estimates
       nr_chest_time_domain_avg(&ue->frame_parms,
-                               (int32_t **) pdsch_dl_ch_estimates,
-                               dlsch0->dlsch_config.number_symbols,
-                               dlsch0->dlsch_config.start_symbol,
-                               dlsch0->dlsch_config.dlDmrsSymbPos,
-                               pdsch_nb_rb);
+                               (int32_t **)pdsch_dl_ch_estimates,
+                               dlschCfg->number_symbols,
+                               dlschCfg->start_symbol,
+                               dlschCfg->dlDmrsSymbPos,
+                               dlschCfg->number_rbs);
     }
 
-    uint16_t first_symbol_with_data = s0;
+    uint16_t first_symbol_with_data = dlschCfg->start_symbol;
     uint32_t dmrs_data_re;
 
-    if (dlsch0->dlsch_config.dmrsConfigType == NFAPI_NR_DMRS_TYPE1)
-      dmrs_data_re = 12 - 6 * dlsch0->dlsch_config.n_dmrs_cdm_groups;
+    if (dlschCfg->dmrsConfigType == NFAPI_NR_DMRS_TYPE1)
+      dmrs_data_re = 12 - 6 * dlschCfg->n_dmrs_cdm_groups;
     else
-      dmrs_data_re = 12 - 4 * dlsch0->dlsch_config.n_dmrs_cdm_groups;
+      dmrs_data_re = 12 - 4 * dlschCfg->n_dmrs_cdm_groups;
 
-    while ((dmrs_data_re == 0) && (dlsch0->dlsch_config.dlDmrsSymbPos & (1 << first_symbol_with_data))) {
+    while ((dmrs_data_re == 0) && (dlschCfg->dlDmrsSymbPos & (1 << first_symbol_with_data))) {
       first_symbol_with_data++;
     }
 
@@ -582,7 +589,7 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
 
     int32_t log2_maxh = 0;
     start_meas(&ue->rx_pdsch_stats);
-    for (int m = s0; m < (s1 + s0); m++) {
+    for (int m = dlschCfg->start_symbol; m < (dlschCfg->number_symbols + dlschCfg->start_symbol); m++) {
       bool first_symbol_flag = false;
       if (m == first_symbol_with_data)
         first_symbol_flag = true;

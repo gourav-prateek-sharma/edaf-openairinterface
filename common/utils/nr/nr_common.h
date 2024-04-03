@@ -176,7 +176,16 @@ static inline int get_num_dmrs(uint16_t dmrs_mask )
   return(num_dmrs);
 }
 
-static __attribute__((always_inline)) inline int count_bits_set(uint64_t v)
+static inline int count_bits(uint8_t *arr, int sz)
+{
+  AssertFatal(sz % sizeof(int) == 0, "to implement if needed\n");
+  int ret = 0;
+  for (uint *ptr = (uint *)arr; (uint8_t *)ptr < arr + sz; ptr++)
+    ret += __builtin_popcount(*ptr);
+  return ret;
+}
+
+static __attribute__((always_inline)) inline int count_bits64(uint64_t v)
 {
   return __builtin_popcountll(v);
 }
