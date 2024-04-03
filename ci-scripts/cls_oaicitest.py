@@ -66,26 +66,28 @@ import numpy as np
 def Iperf_ComputeModifiedBW(idx, ue_num, profile, args):
 	result = re.search('-b\s*(?P<iperf_bandwidth>[0-9\.]+)(?P<unit>[KMG])', str(args))
 	if result is None:
-		raise Exception('Iperf bandwidth not found or in incorrect format!')
-	iperf_bandwidth = result.group('iperf_bandwidth')
+		raise ValueError(f'requested iperf bandwidth not found in iperf options "{args}"')
+	iperf_bandwidth = float(result.group('iperf_bandwidth'))
+	if iperf_bandwidth == 0:
+		raise ValueError('iperf bandwidth set to 0 - invalid value')
 	if profile == 'balanced':
-		iperf_bandwidth_new = float(iperf_bandwidth)/ue_num
-	if profile == 'single-ue':
-		iperf_bandwidth_new = float(iperf_bandwidth)
+		iperf_bandwidth_new = iperf_bandwidth/ue_num
+	if profile =='single-ue':
+		iperf_bandwidth_new = iperf_bandwidth
 	if profile == 'unbalanced':
 		# residual is 2% of max bw
-		residualBW = float(iperf_bandwidth) / 50
+		residualBW = iperf_bandwidth / 50
 		if idx == 0:
-			iperf_bandwidth_new = float(iperf_bandwidth) - ((ue_num - 1) * residualBW)
+			iperf_bandwidth_new = iperf_bandwidth - ((ue_num - 1) * residualBW)
 		else:
 			iperf_bandwidth_new = residualBW
 	iperf_bandwidth_str = result.group(0)
 	iperf_bandwidth_unit = result.group(2)
 	iperf_bandwidth_str_new = f"-b {'%.2f' % iperf_bandwidth_new}{iperf_bandwidth_unit}"
-	result = re.sub(iperf_bandwidth_str, iperf_bandwidth_str_new, str(args))
-	if result is None:
-		raise Exception('Calculate Iperf bandwidth failed!')
-	return result
+	args_new = re.sub(iperf_bandwidth_str, iperf_bandwidth_str_new, str(args))
+	if iperf_bandwidth_unit == 'K':
+		iperf_bandwidth_new = iperf_bandwidth_new / 1000
+	return iperf_bandwidth_new, args_new
 
 def Iperf_ComputeTime(args):
 	result = re.search('-t\s*(?P<iperf_time>\d+)', str(args))
@@ -801,7 +803,7 @@ class OaiCiTest():
 		logPath = f'../cmake_targets/log/{ymlPath[1]}'
 
 		if udpIperf:
-			iperf_opt = Iperf_ComputeModifiedBW(idx, ue_num, self.iperf_profile, self.iperf_args)
+			target_bitrate, iperf_opt = Iperf_ComputeModifiedBW(idx, ue_num, self.iperf_profile, self.iperf_args)
 			# note: for UDP testing we don't want to use json report - reports 0 Mbps received bitrate
 			jsonReport = ""
 			# note: enable server report collection on the UE side, no need to store and collect server report separately on the server side
