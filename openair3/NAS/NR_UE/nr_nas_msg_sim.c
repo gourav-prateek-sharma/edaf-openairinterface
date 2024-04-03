@@ -1261,6 +1261,9 @@ void *nas_nrue(void *args_p)
               offset++;
             }
           } break;
+	case FGS_PDU_SESSION_ESTABLISHMENT_REJ:
+	  LOG_E(NAS, "Received PDU Session Establishment reject\n");
+	  break;
           default:
             LOG_W(NR_RRC, "unknown message type %d\n", msg_type);
             break;

@@ -56,6 +56,7 @@ RUN apt-get update && \
         libusb-1.0-0 \
         iputils-ping \
         iproute2 \
+        iperf3 \
         iperf && \
 # if the --sanitize option was used to build, additional packages are required
     /bin/bash -c 'if [[ "$BUILD_OPTION" = "--sanitize" ]]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes \

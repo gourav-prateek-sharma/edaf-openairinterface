@@ -1112,7 +1112,7 @@ static void fill_msg3_pusch_pdu(nfapi_nr_pusch_pdu_t *pusch_pdu,
   int TBS = 0;
   while(TBS<7) {  // TBS for msg3 is 7 bytes (except for RRCResumeRequest1 currently not implemented)
     mcsindex++;
-    AssertFatal(mcsindex<28,"Exceeding MCS limit for Msg3\n");
+    AssertFatal(mcsindex <= 28, "Exceeding MCS limit for Msg3\n");
     int R = nr_get_code_rate_ul(mcsindex,pusch_pdu->mcs_table);
     pusch_pdu->target_code_rate = R;
     pusch_pdu->qam_mod_order = nr_get_Qm_ul(mcsindex,pusch_pdu->mcs_table);
@@ -1981,7 +1981,10 @@ static void nr_check_Msg4_Ack(module_id_t module_id, int CC_id, frame_t frame, s
 
       // Pause scheduling according to:
       // 3GPP TS 38.331 Section 12 Table 12.1-1: UE performance requirements for RRC procedures for UEs
-      nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[module_id], UE, false);
+      // Msg4 may transmit a RRCReconfiguration, for example when UE sends RRCReestablishmentComplete and MAC CE for C-RNTI in Msg3.
+      // In that case, gNB will generate a RRCReconfiguration that will be transmitted in Msg4, so we need to apply CellGroup after the Ack,
+      // UE->apply_cellgroup was already set when processing RRCReestablishment message
+      nr_mac_enable_ue_rrc_processing_timer(RC.nrmac[module_id], UE, UE->apply_cellgroup);
 
       nr_clear_ra_proc(module_id, CC_id, frame, ra);
       if (sched_ctrl->retrans_dl_harq.head >= 0) {
@@ -2160,8 +2163,6 @@ void nr_schedule_RA(module_id_t module_idP,
         case nrRA_Msg3_retransmission:
           nr_generate_Msg3_retransmission(module_idP, CC_id, frameP, slotP, ra, ul_dci_req);
           break;
-        case nrRA_Msg3_dcch_dtch:
-          /* fallthrough */
         case nrRA_Msg4:
           nr_generate_Msg4(module_idP, CC_id, frameP, slotP, ra, DL_req, TX_req);
           break;

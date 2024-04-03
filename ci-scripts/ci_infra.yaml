@@ -56,6 +56,39 @@ adb_ue_2:
   MTU: 1500
   LogStore: /media/usb-drive/ci_adb_2-logs
 
+oc-cn5g:
+  Host: avra
+  NetworkScript: echo "inet 172.21.6.102"
+  RunIperf3Server: False
+
+porcepix-cn4g:
+  Host: porcepix
+  NetworkScript: docker exec prod-trf-gen ip a show dev eth0
+  CmdPrefix: docker exec prod-trf-gen
+
+porcepix-cn5g:
+  Host: porcepix
+  NetworkScript: docker exec prod-trf-gen ip a show dev eth0
+  CmdPrefix: docker exec prod-trf-gen
+  RunIperf3Server: False
+
+nano-cn4g:
+  Host: nano
+  NetworkScript: docker exec prod-trf-gen ip a show dev eth0
+  CmdPrefix: docker exec prod-trf-gen
+
+ltebox-nano:
+  Host: nano
+  NetworkScript: ip a show dev tun1
+
+sabox-nepes:
+  Host: nepes
+  NetworkScript: ip a show dev tun1
+
+ltebox-nepes:
+  Host: nepes
+  NetworkScript: ip a show dev tun1
+
 amarisoft_ue:
   Host: amariue
   InitScript: /root/lteue-linux-2023-10-27/ue/lteue /root/oaicicd/ran_sa_aw2s_asue_2x2/aw2s-multi-20897-2x2.cfg &
@@ -305,6 +338,18 @@ rfsim4g_enb_nos1:
   NetworkScript: docker exec rfsim4g-oai-enb ip a show dev oaitun_enb1
   CmdPrefix: docker exec rfsim4g-oai-enb
   IF: oaitun_enb1
+
+rfsim4g_enb_fembms:
+  Host: localhost
+  NetworkScript: docker exec rfsim4g-oai-enb ip a show dev oaitun_enm1
+  CmdPrefix: docker exec rfsim4g-oai-enb
+  IF: oaitun_enm1
+
+rfsim4g_ue_fembms:
+  Host: localhost
+  NetworkScript: docker exec rfsim4g-oai-lte-ue0 ip a show dev oaitun_uem1
+  CmdPrefix: docker exec rfsim4g-oai-lte-ue0
+  IF: oaitun_uem1
 
 l2sim5g_ue:
   Host: localhost

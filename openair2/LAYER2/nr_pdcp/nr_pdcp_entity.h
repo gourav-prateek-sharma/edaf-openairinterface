@@ -29,6 +29,18 @@
 #include "nr_pdcp_sdu.h"
 #include "openair2/RRC/NR/rrc_gNB_radio_bearers.h"
 
+/* PDCP Formats according to clause 6.2 of 3GPP TS 38.323 */
+/* SN Size applicable to SRBs, UM DRBs and AM DRBs */
+#define SHORT_SN_SIZE 12
+/* SN Size applicable to UM DRBs and AM DRBs */
+#define LONG_SN_SIZE 18
+/* Data PDU for SRBs and DRBs with 12 bits PDCP SN (unit: byte) */
+#define SHORT_PDCP_HEADER_SIZE 2
+/* Data PDU for DRBs with 18 bits PDCP SN (unit: byte) */
+#define LONG_PDCP_HEADER_SIZE 3
+/* MAC-I size (unit: byte) */
+#define PDCP_INTEGRITY_SIZE 4
+
 typedef enum {
   NR_PDCP_DRB_AM,
   NR_PDCP_DRB_UM,
@@ -167,6 +179,9 @@ typedef struct nr_pdcp_entity_t {
   // 4- The ITTI task, forwards the message ciphering (e.g., nea2) it. 
   // 5- The gNB cannot understand the ciphered Security Mode Complete message.
   bool security_mode_completed;
+
+  /* Keep tracks of whether the PDCP entity was suspended or not */
+  bool entity_suspended;
 } nr_pdcp_entity_t;
 
 nr_pdcp_entity_t *new_nr_pdcp_entity(
@@ -189,5 +204,8 @@ nr_pdcp_entity_t *new_nr_pdcp_entity(
     int integrity_algorithm,
     unsigned char *ciphering_key,
     unsigned char *integrity_key);
+
+/* Get maximum PDCP PDU size */
+int nr_max_pdcp_pdu_size(sdu_size_t sdu_size);
 
 #endif /* _NR_PDCP_ENTITY_H_ */

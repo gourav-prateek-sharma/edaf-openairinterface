@@ -44,7 +44,8 @@
 #include "NR_SecurityConfig.h"
 #include "NR_CellGroupConfig.h"
 
-#define NR_MAX_SUPPORTED_DL_LAYERS 2
+#define NR_MAX_SUPPORTED_DL_LAYERS 4
+void rrc_init_nr_srb_param(NR_LCHAN_DESC *chan);
 
 void rrc_gNB_process_SgNBAdditionRequest( 
      const protocol_ctxt_t  *const ctxt_pP,
@@ -63,6 +64,7 @@ void rrc_parse_ue_capabilities(gNB_RRC_INST *rrc,NR_UE_CapabilityRAT_ContainerLi
 void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2ap_ENDC_sgnb_addition_req_t *m);
 
 void rrc_remove_nsa_user(gNB_RRC_INST *rrc, int rnti);
+void rrc_remove_ue(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p);
 
 void fill_default_reconfig(NR_ServingCellConfigCommon_t *servingcellconfigcommon,
                            NR_ServingCellConfig_t *servingcellconfigdedicated,

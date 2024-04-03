@@ -20,6 +20,7 @@
  */
 
 #include "rrc_gNB_du.h"
+#include "rrc_gNB_NGAP.h"
 #include "common/ran_context.h"
 #include "nr_rrc_defs.h"
 #include "rrc_gNB_UE_context.h"
@@ -211,10 +212,14 @@ static int invalidate_du_connections(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id)
     f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_id);
     if (ue_data.du_assoc_id == assoc_id) {
       /* this UE belongs to the DU that disconnected, set du_assoc_id to 0,
-       * meaning DU is offline */
+       * meaning DU is offline, then trigger release request */
       cu_remove_f1_ue_data(ue_id);
-      f1_ue_data_t new = {.secondary_ue = ue_data.secondary_ue, .du_assoc_id = 0 };
-      cu_add_f1_ue_data(ue_id, &new);
+      ue_data.du_assoc_id = 0;
+      cu_add_f1_ue_data(ue_id, &ue_data);
+      rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_REQ(0,
+                                               ue_context_p,
+                                               NGAP_CAUSE_RADIO_NETWORK,
+                                               NGAP_CAUSE_RADIO_NETWORK_RADIO_CONNECTION_WITH_UE_LOST);
       count++;
     }
   }

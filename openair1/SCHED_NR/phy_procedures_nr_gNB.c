@@ -951,7 +951,7 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
                                     slot_rx,
                                     srs_pdu,
                                     gNB->nr_srs_info[i],
-                                    (const int32_t **)gNB->nr_srs_info[i]->srs_generated_signal,
+                                    (const c16_t**)gNB->nr_srs_info[i]->srs_generated_signal,
                                     srs_received_signal,
                                     srs_estimated_channel_freq,
                                     srs_estimated_channel_time,

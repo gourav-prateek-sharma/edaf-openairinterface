@@ -54,7 +54,7 @@ services:
                                     --continuous-tx -E
                                     --telnetsrv --telnetsrv.shrmod ci
                                     --gNBs.[0].min_rxtxtime 2 --gNBs.[0].do_CSIRS 1 --gNBs.[0].do_SRS 1
-                                    --RUs.[0].att_rx 18 --RUs.[0].att_tx 18
+                                    --RUs.[0].att_rx 14 --RUs.[0].att_tx 14
                                     --log_config.global_log_options level,nocolor,time,line_num,function
         volumes:
             - ../../conf_files/gnb-du.sa.band78.106prb.usrpb200.conf:/opt/oai-gnb/etc/gnb.conf

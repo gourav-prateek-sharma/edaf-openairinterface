@@ -91,21 +91,23 @@
         </testCase>
 
         <testCase id="030011">
-                <class>IperfFromContainer</class>
-                <desc>Iperf UDP Downlink</desc>
-                <server_container_name>rfsim4g-oai-lte-ue0</server_container_name>
-                <client_container_name>rfsim4g-oai-enb</client_container_name>
-                <server_options>-B 10.0.1.2 -u -i 1 -s</server_options>
-                <client_options>-B 10.0.1.1 -c 10.0.1.2 -u -i 1 -t 30 -b 2M</client_options>
+                <class>Iperf</class>
+                <desc>Iperf UDP DL</desc>
+                <id>rfsim4g_ue</id>
+                <svr_id>rfsim4g_enb_nos1</svr_id>
+                <iperf_args>-u -t 30 -b 2M -R</iperf_args>
+                <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="030012">
-                <class>IperfFromContainer</class>
-                <desc>Iperf UDP Uplink</desc>
-                <server_container_name>rfsim4g-oai-enb</server_container_name>
-                <client_container_name>rfsim4g-oai-lte-ue0</client_container_name>
-                <server_options>-B 10.0.1.1 -u -i 1 -s</server_options>
-                <client_options>-B 10.0.1.2 -c 10.0.1.1 -u -i 1 -t 30 -b 1M</client_options>
+                <class>Iperf</class>
+                <desc>Iperf UDP UL</desc>
+                <id>rfsim4g_ue</id>
+                <svr_id>rfsim4g_enb_nos1</svr_id>
+                <iperf_args>-u -t 30 -b 1M</iperf_args>
+                <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="100011">

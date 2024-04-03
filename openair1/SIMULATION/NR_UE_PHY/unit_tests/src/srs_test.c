@@ -78,8 +78,8 @@ void generate_reference_signals(void)
           assert(0);
         }
         for (int n=0; n<ul_allocated_re[Msc_RS]; n++) {
-          if ((ul_ref_sigs[u][v][Msc_RS][2*n] != rv_ul_ref_sig[u][v][Msc_RS_index_nr][2*n])
-          || (ul_ref_sigs[u][v][Msc_RS][2*n+1] != rv_ul_ref_sig[u][v][Msc_RS_index_nr][2*n+1])) {
+          if ((ul_ref_sigs[u][v][Msc_RS][n].r != rv_ul_ref_sig[u][v][Msc_RS_index_nr][n].r)
+              || (ul_ref_sigs[u][v][Msc_RS][n].i != rv_ul_ref_sig[u][v][Msc_RS_index_nr][n].i)) {
             number_differencies++;
           }
         }
@@ -157,9 +157,7 @@ void default_srs_configuration(NR_DL_FRAME_PARMS *frame_parms)
 *                for various combinations of parameters
 *
 *********************************************************************/
-int test_srs_single(NR_DL_FRAME_PARMS *frame_parms,
-                    int32_t *txptr,
-                    UE_nr_rxtx_proc_t *proc)
+int test_srs_single(NR_DL_FRAME_PARMS *frame_parms, c16_t *txptr, UE_nr_rxtx_proc_t *proc)
 {
   SRS_Resource_t *p_SRS_Resource = frame_parms->srs_nr.p_SRS_ResourceSetList[0]->p_srs_ResourceList[0];
 

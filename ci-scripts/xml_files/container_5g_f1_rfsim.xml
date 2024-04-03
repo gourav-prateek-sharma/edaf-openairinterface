@@ -75,21 +75,23 @@
         </testCase>
 
         <testCase id="030021">
-                <class>IperfFromContainer</class>
-                <desc>Iperf UDP Downlink</desc>
-                <server_container_name>rfsim5g-oai-nr-ue</server_container_name>
-                <client_container_name>rfsim5g-oai-ext-dn</client_container_name>
-                <server_options>-B 12.1.1.2 -u -i 1 -s</server_options>
-                <client_options>-c 12.1.1.2 -u -i 1 -t 10 -b 20M</client_options>
+                <class>Iperf</class>
+                <desc>Iperf (DL/20Mbps/UDP)(30 sec)</desc>
+                <iperf_args>-u -b 20M -t 30 -R</iperf_args>
+                <id>rfsim5g_ue</id>
+                <svr_id>rfsim5g_ext_dn</svr_id>
+                <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="030022">
-                <class>IperfFromContainer</class>
-                <desc>Iperf UDP Uplink</desc>
-                <server_container_name>rfsim5g-oai-ext-dn</server_container_name>
-                <client_container_name>rfsim5g-oai-nr-ue</client_container_name>
-                <server_options>-u -i 1 -s</server_options>
-                <client_options>-B 12.1.1.2 -c 192.168.72.135 -u -i 1 -t 10 -b 5M</client_options>
+                <class>Iperf</class>
+                <desc>Iperf (UL/5Mbps/UDP)(30 sec)</desc>
+                <iperf_args>-u -b 5M -t 30</iperf_args>
+                <id>rfsim5g_ue</id>
+                <svr_id>rfsim5g_ext_dn</svr_id>
+                <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="100021">

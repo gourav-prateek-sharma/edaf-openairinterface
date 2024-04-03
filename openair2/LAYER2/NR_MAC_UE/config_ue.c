@@ -119,7 +119,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   AssertFatal(frequencyInfoDL->frequencyBandList.list.array[0]->freqBandIndicatorNR, "Field mandatory present for DL in SIB1\n");
   mac->nr_band = *frequencyInfoDL->frequencyBandList.list.array[0]->freqBandIndicatorNR;
   int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                          mac->nr_band,
+                                          mac->nr_band > 256 ? FR2 : FR1,
                                           frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -141,7 +141,7 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   NR_FrequencyInfoUL_SIB_t *frequencyInfoUL = &scc->uplinkConfigCommon->frequencyInfoUL;
   mac->p_Max = frequencyInfoUL->p_Max ? *frequencyInfoUL->p_Max : INT_MIN;
   bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                      mac->nr_band,
+                                      mac->nr_band > 256 ? FR2 : FR1,
                                       frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
   cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -263,7 +263,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
     mac->frequency_range = mac->nr_band < 256 ? FR1 : FR2;
 
     int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                            mac->nr_band,
+                                            mac->nr_band > 256 ? FR2 : FR1,
                                             frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
     cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -288,7 +288,7 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
     mac->p_Max = frequencyInfoUL->p_Max ? *frequencyInfoUL->p_Max : INT_MIN;
 
     int bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                            *frequencyInfoUL->frequencyBandList->list.array[0],
+                                            *frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1,
                                             frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
     cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
 
@@ -779,11 +779,8 @@ static void configure_logicalChannelBearer(NR_UE_MAC_INST_t *mac,
         if (id == mac->lc_ordered_list.array[j]->lcid)
           break;
       }
-      if (j < mac->lc_ordered_list.count) {
-        nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[j];
-        asn_sequence_del(&mac->lc_ordered_list, j, 0);
-        free(lc_info);
-      }
+      if (j < mac->lc_ordered_list.count)
+        asn_sequence_del(&mac->lc_ordered_list, j, 1);
       else
         LOG_E(NR_MAC, "Element not present in the list, impossible to release\n");
     }
@@ -1302,10 +1299,10 @@ static void configure_dedicated_BWP_dl(NR_UE_MAC_INST_t *mac, int bwp_id, NR_BWP
     }
     if (dl_dedicated->pdcch_Config) {
       if (dl_dedicated->pdcch_Config->present == NR_SetupRelease_PDCCH_Config_PR_release) {
-        for (int i = 0; pdcch->list_Coreset.count; i++)
-          asn_sequence_del(&pdcch->list_Coreset, i, 1);
-        for (int i = 0; pdcch->list_SS.count; i++)
-          asn_sequence_del(&pdcch->list_SS, i, 1);
+        for (int i = pdcch->list_Coreset.count; i > 0 ; i--)
+          asn_sequence_del(&pdcch->list_Coreset, i - 1, 1);
+        for (int i = pdcch->list_SS.count; i > 0 ; i--)
+          asn_sequence_del(&pdcch->list_SS, i - 1, 1);
       }
       if (dl_dedicated->pdcch_Config->present == NR_SetupRelease_PDCCH_Config_PR_setup)
         configure_ss_coreset(pdcch, dl_dedicated->pdcch_Config->choice.setup);
@@ -2060,10 +2057,10 @@ void release_dl_BWP(NR_UE_MAC_INST_t *mac, int index)
 
   NR_BWP_PDCCH_t *pdcch = &mac->config_BWP_PDCCH[bwp_id];
   release_common_ss_cset(pdcch);
-  for (int i = 0; pdcch->list_Coreset.count; i++)
-    asn_sequence_del(&pdcch->list_Coreset, i, 1);
-  for (int i = 0; pdcch->list_SS.count; i++)
-    asn_sequence_del(&pdcch->list_SS, i, 1);
+  for (int i = pdcch->list_Coreset.count; i > 0 ; i--)
+    asn_sequence_del(&pdcch->list_Coreset, i - 1, 1);
+  for (int i = pdcch->list_SS.count; i > 0 ; i--)
+    asn_sequence_del(&pdcch->list_SS, i - 1, 1);
 }
 
 void release_ul_BWP(NR_UE_MAC_INST_t *mac, int index)

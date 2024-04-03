@@ -31,7 +31,8 @@ import subprocess as sp
 import os
 import paramiko
 import uuid
-import sys 
+import sys
+import time
 
 SSHTIMEOUT=7
 
@@ -106,6 +107,7 @@ class LocalCmd(Cmd):
 				# if we wait for stdout, subprocess does not return before the end of the command
 				# however, we don't want to wait for commands with &, so just return fake command
 				ret = sp.run(line, shell=True, cwd=self.cwd, timeout=5)
+				time.sleep(0.1)
 			else:
 				ret = sp.run(line, shell=True, cwd=self.cwd, stdout=sp.PIPE, stderr=sp.STDOUT, timeout=timeout)
 		except Exception as e:
@@ -210,6 +212,7 @@ class RemoteCmd(Cmd):
 				# however, we don't want to wait for commands with &, so just return fake command
 				self.client.exec_command(line, timeout = 5)
 				ret = sp.CompletedProcess(args=line, returncode=0, stdout=b'')
+				time.sleep(0.1)
 			else:
 				stdin, stdout, stderr = self.client.exec_command(line, timeout=timeout)
 				ret = sp.CompletedProcess(args=line, returncode=stdout.channel.recv_exit_status(), stdout=stdout.read(size=None) + stderr.read(size=None))

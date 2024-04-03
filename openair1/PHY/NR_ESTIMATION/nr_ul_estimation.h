@@ -43,6 +43,7 @@
 
 int nr_pusch_channel_estimation(PHY_VARS_gNB *gNB,
                                 unsigned char Ns,
+                                int nl,
                                 unsigned short p,
                                 unsigned char symbol,
                                 int ul_id,
@@ -72,18 +73,20 @@ void nr_pusch_ptrs_processing(PHY_VARS_gNB *gNB,
                               unsigned char symbol,
                               uint32_t nb_re_pusch);
 
-int nr_srs_channel_estimation(const PHY_VARS_gNB *gNB,
-                              const int frame,
-                              const int slot,
-                              const nfapi_nr_srs_pdu_t *srs_pdu,
-                              const nr_srs_info_t *nr_srs_info,
-                              const int32_t **srs_generated_signal,
-                              int32_t srs_received_signal[][gNB->frame_parms.ofdm_symbol_size*(1<<srs_pdu->num_symbols)],
-                              int32_t srs_estimated_channel_freq[][1<<srs_pdu->num_ant_ports][gNB->frame_parms.ofdm_symbol_size*(1<<srs_pdu->num_symbols)],
-                              int32_t srs_estimated_channel_time[][1<<srs_pdu->num_ant_ports][gNB->frame_parms.ofdm_symbol_size],
-                              int32_t srs_estimated_channel_time_shifted[][1<<srs_pdu->num_ant_ports][gNB->frame_parms.ofdm_symbol_size],
-                              int8_t *snr_per_rb,
-                              int8_t *snr);
+int nr_srs_channel_estimation(
+    const PHY_VARS_gNB *gNB,
+    const int frame,
+    const int slot,
+    const nfapi_nr_srs_pdu_t *srs_pdu,
+    const nr_srs_info_t *nr_srs_info,
+    const c16_t **srs_generated_signal,
+    int32_t srs_received_signal[][gNB->frame_parms.ofdm_symbol_size * (1 << srs_pdu->num_symbols)],
+    int32_t srs_estimated_channel_freq[][1 << srs_pdu->num_ant_ports]
+                                      [gNB->frame_parms.ofdm_symbol_size * (1 << srs_pdu->num_symbols)],
+    int32_t srs_estimated_channel_time[][1 << srs_pdu->num_ant_ports][gNB->frame_parms.ofdm_symbol_size],
+    int32_t srs_estimated_channel_time_shifted[][1 << srs_pdu->num_ant_ports][gNB->frame_parms.ofdm_symbol_size],
+    int8_t *snr_per_rb,
+    int8_t *snr);
 
 void nr_freq_equalization(NR_DL_FRAME_PARMS *frame_parms,
                           int *rxdataF_comp,

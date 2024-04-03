@@ -37,6 +37,8 @@
     370001
     370000
     370002
+    370003
+    370004
     360001
     100002
     360002
@@ -128,32 +130,47 @@
   <testCase id="370000">
     <class>Iperf</class>
     <desc>iperf (DL/80Mbps/UDP)(30 sec)</desc>
-    <iperf_args>-u -b 80M -t 30 -i 1 -fm</iperf_args>
-    <direction>DL</direction>
+    <iperf_args>-u -b 80M -t 30 -R</iperf_args>
     <id>idefix</id>
+    <svr_id>sabox-nepes</svr_id>
     <iperf_packetloss_threshold>10</iperf_packetloss_threshold>
     <iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-    <iperf_profile>single-ue</iperf_profile>
   </testCase>
 
   <testCase id="370001">
     <class>Iperf</class>
     <desc>iperf (UL/8Mbps/UDP)(30 sec)</desc>
-    <iperf_args>-u -b 8M -t 30 -i 1 -fm</iperf_args>
-    <direction>UL</direction>
+    <iperf_args>-u -b 8M -t 30</iperf_args>
     <id>idefix</id>
+    <svr_id>sabox-nepes</svr_id>
     <iperf_packetloss_threshold>1</iperf_packetloss_threshold>
     <iperf_bitrate_threshold>95</iperf_bitrate_threshold>
-    <iperf_profile>single-ue</iperf_profile>
   </testCase>
 
   <testCase id="370002">
     <class>Iperf</class>
     <desc>iperf (BIDIR TCP)(10 sec)(single-ue profile)</desc>
     <iperf_args>-t 20 --bidir</iperf_args>
-    <direction>BIDIR</direction>
     <id>idefix</id>
-    <iperf_profile>single-ue</iperf_profile>
+    <svr_id>sabox-nepes</svr_id>
+  </testCase>
+
+  <testCase id="370003">
+    <class>Iperf</class>
+    <desc>iperf (DL/TCP)(30 sec)(multi-ue profile)</desc>
+    <iperf_args>-t 30 -R</iperf_args>
+    <id>idefix</id>
+    <svr_id>sabox-nepes</svr_id>
+    <iperf_tcp_rate_target>30</iperf_tcp_rate_target>
+  </testCase>
+
+  <testCase id="370004">
+    <class>Iperf</class>
+    <desc>iperf (UL/TCP)(30 sec)(multi-ue profile)</desc>
+    <iperf_args>-t 30</iperf_args>
+    <id>idefix</id>
+    <svr_id>sabox-nepes</svr_id>
+    <iperf_tcp_rate_target>15</iperf_tcp_rate_target>
   </testCase>
 
   <testCase id="360001">

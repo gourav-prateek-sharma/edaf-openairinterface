@@ -45,6 +45,7 @@ import signal
 import statistics as stat
 from multiprocessing import SimpleQueue, Lock
 import concurrent.futures
+import json
 
 #import our libs
 import helpreadme as HELP
@@ -52,12 +53,187 @@ import constants as CONST
 import cls_cluster as OC
 import sshconnection
 
-import cls_module_ue
+import cls_module
 import cls_cmd
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 import matplotlib.pyplot as plt
 import numpy as np
+
+#-----------------------------------------------------------
+# Helper functions used here and in other classes
+#-----------------------------------------------------------
+def Iperf_ComputeModifiedBW(idx, ue_num, profile, args):
+	result = re.search('-b\s*(?P<iperf_bandwidth>[0-9\.]+)(?P<unit>[KMG])', str(args))
+	if result is None:
+		raise Exception('Iperf bandwidth not found or in incorrect format!')
+	iperf_bandwidth = result.group('iperf_bandwidth')
+	if profile == 'balanced':
+		iperf_bandwidth_new = float(iperf_bandwidth)/ue_num
+	if profile == 'single-ue':
+		iperf_bandwidth_new = float(iperf_bandwidth)
+	if profile == 'unbalanced':
+		# residual is 2% of max bw
+		residualBW = float(iperf_bandwidth) / 50
+		if idx == 0:
+			iperf_bandwidth_new = float(iperf_bandwidth) - ((ue_num - 1) * residualBW)
+		else:
+			iperf_bandwidth_new = residualBW
+	iperf_bandwidth_str = result.group(0)
+	iperf_bandwidth_unit = result.group(2)
+	iperf_bandwidth_str_new = f"-b {'%.2f' % iperf_bandwidth_new}{iperf_bandwidth_unit}"
+	result = re.sub(iperf_bandwidth_str, iperf_bandwidth_str_new, str(args))
+	if result is None:
+		raise Exception('Calculate Iperf bandwidth failed!')
+	return result
+
+def Iperf_ComputeTime(args):
+	result = re.search('-t\s*(?P<iperf_time>\d+)', str(args))
+	if result is None:
+		raise Exception('Iperf time not found!')
+	return int(result.group('iperf_time'))
+
+def Iperf_analyzeV3TCPJson(filename, iperf_tcp_rate_target):
+	if (not os.path.isfile(filename)):
+		return (False, 'Iperf3 TCP: Log file not present')
+	if (os.path.getsize(filename)==0):
+		return (False, 'Iperf3 TCP: Log file is empty')
+
+	with open(filename) as file:
+		filename = json.load(file)
+		try:
+			sender_bitrate   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
+		except Exception as e:
+			return (False, 'Could not compute Iperf3 bitrate!')
+
+	snd_msg = f'Sender Bitrate   : {sender_bitrate} Mbps'
+	rcv_msg = f'Receiver Bitrate : {receiver_bitrate} Mbps'
+	success = True
+	if (iperf_tcp_rate_target is not None):
+		if (int(receiver_bitrate) < int(iperf_tcp_rate_target)):
+			rcv_msg += f" (too low! < {iperf_tcp_rate_target} Mbps)"
+			success = False
+		else:
+			rcv_msg += f" (target : {iperf_tcp_rate_target} Mbps)"
+	return(success, f'{snd_msg}\n{rcv_msg}')
+
+def Iperf_analyzeV3BIDIRJson(filename):
+	if (not os.path.isfile(filename)):
+		return (False, 'Iperf3 Bidir TCP: Log file not present')
+	if (os.path.getsize(filename)==0):
+		return (False, 'Iperf3 Bidir TCP: Log file is empty')
+
+	with open(filename) as file:
+		filename = json.load(file)
+		try:
+			sender_bitrate_dl   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate_dl = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
+			sender_bitrate_ul   = round(filename['end']['streams'][1]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate_ul = round(filename['end']['streams'][1]['receiver']['bits_per_second']/1000000,2)
+		except Exception as e:
+			return (False, 'Could not compute BIDIR bitrate!')
+
+	msg = f'Sender Bitrate DL   : {sender_bitrate_dl} Mbps\n'
+	msg += f'Receiver Bitrate DL : {receiver_bitrate_dl} Mbps\n'
+	msg += f'Sender Bitrate UL   : {sender_bitrate_ul} Mbps\n'
+	msg += f'Receiver Bitrate UL : {receiver_bitrate_ul} Mbps\n'
+	return (True, msg)
+
+def Iperf_analyzeV3UDP(filename, iperf_bitrate_threshold, iperf_packetloss_threshold):
+	if (not os.path.isfile(filename)):
+		return (False, 'Iperf3 UDP: Log file not present')
+	if (os.path.getsize(filename)==0):
+		return (False, 'Iperf3 UDP: Log file is empty')
+	sender_bitrate = None
+	receiver_bitrate = None
+	with open(filename, 'r') as server_file:
+		for line in server_file.readlines():
+			res_sender = re.search(r'(?P<bitrate>[0-9\.]+)\s+(?P<unit>[KMG]bits\/sec)\s+(?P<jitter>[0-9\.]+\s+ms)\s+(?P<lostPack>\d+)/(?P<sentPack>\d+) \((?P<lost>[0-9\.]+).*?\s+(sender)', line)
+			res_receiver = re.search(r'(?P<bitrate>[0-9\.]+)\s+(?P<unit>[KMG]bits\/sec)\s+(?P<jitter>[0-9\.]+\s+ms)\s+(?P<lostPack>\d+)/(?P<receivedPack>\d+) \((?P<lost>[0-9\.]+).*?\s+(receiver)', line)
+			if res_sender is not None:
+				sender_bitrate = res_sender.group('bitrate')
+				sender_unit = res_sender.group('unit')
+				sender_jitter = res_sender.group('jitter')
+				sender_lostPack = res_sender.group('lostPack')
+				sender_sentPack = res_sender.group('sentPack')
+				sender_packetloss = res_sender.group('lost')
+			if res_receiver is not None:
+				receiver_bitrate = res_receiver.group('bitrate')
+				receiver_unit = res_receiver.group('unit')
+				receiver_jitter = res_receiver.group('jitter')
+				receiver_lostPack = res_receiver.group('lostPack')
+				receiver_receivedPack = res_receiver.group('receivedPack')
+				receiver_packetloss = res_receiver.group('lost')
+
+	if receiver_bitrate is not None and sender_bitrate is not None:
+		if sender_unit == 'Kbits/sec':
+			sender_bitrate = float(sender_bitrate) / 1000
+		if receiver_unit == 'Kbits/sec':
+			receiver_bitrate = float(receiver_bitrate) / 1000
+		br_perf = 100 * float(receiver_bitrate) / float(sender_bitrate)
+		br_perf = '%.2f ' % br_perf
+		sender_bitrate = '%.2f ' % float(sender_bitrate)
+		receiver_bitrate = '%.2f ' % float(receiver_bitrate)
+		req_msg = f'Sender Bitrate   : {sender_bitrate} Mbps'
+		bir_msg = f'Receiver Bitrate : {receiver_bitrate} Mbps'
+		brl_msg = f'{br_perf}%'
+		jit_msg = f'Jitter           : {receiver_jitter}'
+		pal_msg = f'Packet Loss      : {receiver_packetloss} %'
+		if float(br_perf) < float(iperf_bitrate_threshold):
+			brl_msg = f'too low! < {iperf_bitrate_threshold}%'
+		if float(receiver_packetloss) > float(iperf_packetloss_threshold):
+			pal_msg += f' (too high! > {iperf_packetloss_threshold}%)'
+		result = float(br_perf) >= float(iperf_bitrate_threshold) and float(receiver_packetloss) <= float(iperf_packetloss_threshold)
+		return (result, f'{req_msg}\n{bir_msg} ({brl_msg})\n{jit_msg}\n{pal_msg}')
+	else:
+		return (False, 'Could not analyze iperf report')
+
+def Iperf_analyzeV2UDP(server_filename, iperf_bitrate_threshold, iperf_packetloss_threshold, iperf_opt):
+		if (not os.path.isfile(server_filename)):
+			return (False, 'Could not analyze, server report not found!')
+		# Computing the requested bandwidth in float
+		req_bw = 1.0 # default iperf throughput, in Mbps
+		result = re.search('-b *(?P<iperf_bandwidth>[0-9\.]+)(?P<magnitude>[kKMG])', iperf_opt)
+		if result is not None:
+			req_bw = float(result.group('iperf_bandwidth'))
+			magn = result.group('magnitude')
+			if magn == "k" or magn == "K":
+				req_bw /= 1000
+			elif magn == "G":
+				req_bw *= 1000
+		statusTemplate = '(?:|\[ *\d+\].*) +0\.0-\s*(?P<duration>[0-9\.]+) +sec +[0-9\.]+ [kKMG]Bytes +(?P<bitrate>[0-9\.]+) (?P<magnitude>[kKMG])bits\/sec +(?P<jitter>[0-9\.]+) ms +(\d+\/ *\d+) +(\((?P<packetloss>[0-9\.]+)%\))'
+
+		with open(server_filename, 'r') as server_file:
+			for line in server_file.readlines():
+				res = re.search(statusTemplate, str(line))
+				if res is not None:
+					result = res
+		if result is None:
+			return (False, 'Could not parse server report!')
+
+		bitrate = float(result.group('bitrate'))
+		magn = result.group('magnitude')
+		if magn == "k" or magn == "K":
+			bitrate /= 1000
+		elif magn == "G": # we assume bitrate in Mbps, therefore it must be G now
+			bitrate *= 1000
+		jitter = float(result.group('jitter'))
+		packetloss = float(result.group('packetloss'))
+		br_perf = float(bitrate)/float(req_bw) * 100
+		br_perf = '%.2f ' % br_perf
+
+		result = float(br_perf) >= float(iperf_bitrate_threshold) and float(packetloss) <= float(iperf_packetloss_threshold)
+		req_msg = f'Req Bitrate : {req_bw}'
+		bir_msg = f'Bitrate	 : {bitrate}'
+		brl_msg = f'Bitrate Perf: {br_perf} %'
+		if float(br_perf) < float(iperf_bitrate_threshold):
+			brl_msg += f' (too low! <{iperf_bitrate_threshold}%)'
+		jit_msg = f'Jitter	  : {jitter}'
+		pal_msg = f'Packet Loss : {packetloss}'
+		if float(packetloss) > float(iperf_packetloss_threshold):
+			pal_msg += f' (too high! >{self.iperf_packetloss_threshold}%)'
+		return (result, f'{req_msg}\n{bir_msg}\n{brl_msg}\n{jit_msg}\n{pal_msg}')
 
 #-----------------------------------------------------------
 # OaiCiTest Class Definition
@@ -86,7 +262,7 @@ class OaiCiTest():
 		self.iperf_bitrate_threshold = ''
 		self.iperf_profile = ''
 		self.iperf_options = ''
-		self.iperf_direction = ''
+		self.iperf_tcp_rate_target = ''
 		self.nbMaxUEtoAttach = -1
 		self.UEDevices = []
 		self.UEDevicesStatus = []
@@ -113,6 +289,7 @@ class OaiCiTest():
 		self.clean_repository = True
 		self.air_interface=''
 		self.ue_ids = []
+		self.svr_id = None
 		self.cmd_prefix = '' # prefix before {lte,nr}-uesoftmodem
 
 
@@ -222,7 +399,7 @@ class OaiCiTest():
 
 
 	def InitializeUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		messages = []
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.initialize) for ue in ues]
@@ -438,7 +615,7 @@ class OaiCiTest():
 			self.AutoTerminateUEandeNB(HTML,RAN,EPC,CONTAINERS)
 
 	def AttachUE(self, HTML, RAN, EPC, CONTAINERS):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.attach) for ue in ues]
 			attached = [f.result() for f in futures]
@@ -453,7 +630,7 @@ class OaiCiTest():
 			self.AutoTerminateUEandeNB(HTML, RAN, EPC, CONTAINERS)
 
 	def DetachUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.detach) for ue in ues]
 			[f.result() for f in futures]
@@ -461,7 +638,7 @@ class OaiCiTest():
 		HTML.CreateHtmlTestRowQueue('NA', 'OK', messages)
 
 	def DataDisableUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.dataDisable) for ue in ues]
 			status = [f.result() for f in futures]
@@ -473,7 +650,7 @@ class OaiCiTest():
 			HTML.CreateHtmlTestRowQueue('N/A', 'KO', ["Could not disable UE data!"])
 
 	def DataEnableUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		logging.debug(f'disabling data for UEs {ues}')
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.dataEnable) for ue in ues]
@@ -486,7 +663,7 @@ class OaiCiTest():
 			HTML.CreateHtmlTestRowQueue('N/A', 'KO', ["Could not enable UE data!"])
 
 	def CheckStatusUE(self,HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		logging.debug(f'checking status of UEs {ues}')
 		messages = []
 		with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -590,7 +767,7 @@ class OaiCiTest():
 		if self.ue_ids == []:
 			raise Exception("no module names in self.ue_ids provided")
 
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		logging.debug(ues)
 		pingLock = Lock()
 		with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -604,372 +781,65 @@ class OaiCiTest():
 			HTML.CreateHtmlTestRowQueue(self.ping_args, 'KO', messages)
 			self.AutoTerminateUEandeNB(HTML,RAN,EPC,CONTAINERS)
 
-	def Iperf_ComputeTime(self):
-		result = re.search('-t (?P<iperf_time>\d+)', str(self.iperf_args))
-		if result is None:
-			logging.debug('\u001B[1;37;41m Iperf time Not Found! \u001B[0m')
-			sys.exit(1)
-		return result.group('iperf_time')
-
-	def Iperf_ComputeModifiedBW(self, idx, ue_num):
-		result = re.search('-b (?P<iperf_bandwidth>[0-9\.]+)[KMG]', str(self.iperf_args))
-		if result is None:
-			logging.error('\u001B[1;37;41m Iperf bandwidth Not Found! \u001B[0m')
-			sys.exit(1)
-		iperf_bandwidth = result.group('iperf_bandwidth')
-		if self.iperf_profile == 'balanced':
-			iperf_bandwidth_new = float(iperf_bandwidth)/ue_num
-		if self.iperf_profile == 'single-ue':
-			iperf_bandwidth_new = float(iperf_bandwidth)
-		if self.iperf_profile == 'unbalanced':
-			# residual is 2% of max bw
-			residualBW = float(iperf_bandwidth) / 50
-			if idx == 0:
-				iperf_bandwidth_new = float(iperf_bandwidth) - ((ue_num - 1) * residualBW)
-			else:
-				iperf_bandwidth_new = residualBW
-		iperf_bandwidth_str = f'-b {iperf_bandwidth}'
-		iperf_bandwidth_str_new = f"-b {'%.2f' % iperf_bandwidth_new}"
-		result = re.sub(iperf_bandwidth_str, iperf_bandwidth_str_new, str(self.iperf_args))
-		if result is None:
-			logging.error('\u001B[1;37;41m Calculate Iperf bandwidth Failed! \u001B[0m')
-			sys.exit(1)
-		return result
-
-	def Iperf_analyzeV2TCPOutput(self, SSH, filename):
-
-		SSH.command(f'awk -f /tmp/tcp_iperf_stats.awk {filename}', '\$', 5)
-		result = re.search('Avg Bitrate : (?P<average>[0-9\.]+ Mbits\/sec) Max Bitrate : (?P<maximum>[0-9\.]+ Mbits\/sec) Min Bitrate : (?P<minimum>[0-9\.]+ Mbits\/sec)', SSH.getBefore())
-		if result is not None:
-			avgbitrate = result.group('average')
-			maxbitrate = result.group('maximum')
-			minbitrate = result.group('minimum')
-			msg = 'TCP Stats   :\n'
-			if avgbitrate is not None:
-				msg += f'Avg Bitrate : {avgbitrate} \n'
-			if maxbitrate is not None:
-				msg += f'Max Bitrate : {maxbitrate} \n'
-			if minbitrate is not None:
-				msg += f'Min Bitrate : {minbitrate} \n'
-			return (True, msg)
-
-		return (False, "could not analyze log file")
-
-	def Iperf_analyzeV2Output(self, iperf_real_options, EPC, SSH):
-
-		result = re.search('-u', str(iperf_real_options))
-		if result is None:
-			filename = f'{EPC.SourceCodePath}/scripts/iperf_{self.testCase_id}_{device_id}.log'
-			response = self.Iperf_analyzeV2TCPOutput(SSH, filename)
-			return response
-
-		result = re.search('Server Report:', SSH.getBefore())
-		if result is None:
-			result = re.search('read failed: Connection refused', SSH.getBefore())
-			if result is not None:
-				msg = 'Could not connect to iperf server!'
-				return (False, msg)
-			else:
-				msg = 'Server Report and Connection refused Not Found!'
-				return (False, msg)
-		# Computing the requested bandwidth in float
-		result = re.search('-b (?P<iperf_bandwidth>[0-9\.]+)[KMG]', str(iperf_real_options))
-		if result is not None:
-			req_bandwidth = result.group('iperf_bandwidth')
-			req_bw = float(req_bandwidth)
-			result = re.search('-b [0-9\.]+K', str(iperf_real_options))
-			if result is not None:
-				req_bandwidth = '%.1f Kbits/sec' % req_bw
-				req_bw = req_bw * 1000
-			result = re.search('-b [0-9\.]+M', str(iperf_real_options))
-			if result is not None:
-				req_bandwidth = '%.1f Mbits/sec' % req_bw
-				req_bw = req_bw * 1000000
-			result = re.search('-b [0-9\.]+G', str(iperf_real_options))
-			if result is not None:
-				req_bandwidth = '%.1f Gbits/sec' % req_bw
-				req_bw = req_bw * 1000000000
-
-		result = re.search('Server Report:\r\n(?:|\[ *\d+\].*) (?P<bitrate>[0-9\.]+ [KMG]bits\/sec) +(?P<jitter>[0-9\.]+ ms) +(\d+\/..\d+) +(\((?P<packetloss>[0-9\.]+)%\))', SSH.getBefore())
-		if result is not None:
-			bitrate = result.group('bitrate')
-			packetloss = result.group('packetloss')
-			jitter = result.group('jitter')
-
-			iperfStatus = True
-			msg = f'Req Bitrate : {req_bandwidth} \n'
-			if bitrate is not None:
-				msg += f'Bitrate     : {bitrate} \n'
-				result = re.search('(?P<real_bw>[0-9\.]+) [KMG]bits/sec', str(bitrate))
-				if result is not None:
-					actual_bw = float(str(result.group('real_bw')))
-					result = re.search('[0-9\.]+ K', bitrate)
-					if result is not None:
-						actual_bw = actual_bw * 1000
-					result = re.search('[0-9\.]+ M', bitrate)
-					if result is not None:
-						actual_bw = actual_bw * 1000000
-					result = re.search('[0-9\.]+ G', bitrate)
-					if result is not None:
-						actual_bw = actual_bw * 1000000000
-					br_loss = 100 * actual_bw / req_bw
-					bitperf = '%.2f ' % br_loss
-					msg += f'Bitrate Perf: {bitperf} %\n'
-			if packetloss is not None:
-				msg += f'Packet Loss : {packetloss} %\n'
-				if float(packetloss) > float(self.iperf_packetloss_threshold):
-					msg += 'Packet Loss too high!\n'
-					iperfStatus = False
-			if jitter is not None:
-				msg += f'Jitter      : {jitter} \n'
-
-			return (iperfStatus, msg)
-		else:
-			return (False, "could not analyze server log")
-
-
-	def Iperf_analyzeV2BIDIR(self, server_filename, client_filename):
-
-		#check the 2 files are here 
-		if (not os.path.isfile(client_filename)) or (not os.path.isfile(server_filename)):
-			return (False, 'Bidir TCP: Client or Server Log File not present')
-		#check the 2 files size
-		if (os.path.getsize(client_filename)==0) and (os.path.getsize(server_filename)==0):
-			return (False, 'Bidir TCP: Client and Server Log File are empty')
-
-		report_msg = ''
-		#if client is not empty, all the info is in, otherwise we ll use the server file to get some partial info
-		client_filesize = os.path.getsize(client_filename)
-		if client_filesize == 0:
-			report_msg+="Client file (UE) present but !!! EMPTY !!!\n"
-			report_msg+="Partial report from server file"
-			filename = server_filename
-		else :		
-			report_msg+="Report from client file (UE)"
-			filename = client_filename
-
-		report=[] #used to check if relevant lines were found
-
-		with open(filename, 'r') as f_client:
-			for line in f_client.readlines():
-				result = re.search(rf'^\[\s+\d+\](?P<direction>\[.+\]).*\s+(?P<bitrate>[0-9\.]+ [KMG]bits\/sec).*\s+(?P<role>\bsender|receiver\b)', str(line))
-				if result is not None:
-					report.append(str(line))
-					report_msg += f"\n{result.group('role')} {result.group('direction')}\t: {result.group('bitrate')}"
-		if len(report) == 0:
-			return (False, 'Bidir TCP: Could not analyze from Log file')
-
-		return (True, report_msg)
-
-	def Iperf_analyzeV2Server(self, iperf_real_options, filename, type):
-		if (not os.path.isfile(filename)):
-			return (False, 'Could not analyze from server log')
-		# Computing the requested bandwidth in float
-		result = re.search('-b (?P<iperf_bandwidth>[0-9\.]+)[KMG]', str(iperf_real_options))
-		if result is None:
-			return (False, 'Could not compute Iperf bandwidth!')
-		else:
-			req_bandwidth = result.group('iperf_bandwidth')
-			req_bw = float(req_bandwidth)
-			result = re.search('-b [0-9\.]+K', str(iperf_real_options))
-			if result is not None:
-				req_bandwidth = '%.1f Kbits/sec' % req_bw
-				req_bw = req_bw * 1000
-			result = re.search('-b [0-9\.]+M', str(iperf_real_options))
-			if result is not None:
-				req_bandwidth = '%.1f Mbits/sec' % req_bw
-				req_bw = req_bw * 1000000
-			result = re.search('-b [0-9\.]+G', str(iperf_real_options))
-			if result is not None:
-				req_bandwidth = '%.1f Gbits/sec' % req_bw
-				req_bw = req_bw * 1000000000
-
-		server_file = open(filename, 'r')
-		br_sum = 0.0
-		ji_sum = 0.0
-		pl_sum = 0
-		ps_sum = 0
-		row_idx = 0
-		for line in server_file.readlines():
-			if type==0:
-				result = re.search('(?P<bitrate>[0-9\.]+ [KMG]bits\/sec) +(?P<jitter>[0-9\.]+ ms) +(?P<lostPack>[0-9]+)/ +(?P<sentPack>[0-9]+)', str(line))
-			else:
-				result = re.search('^\[\s+\d\].+  (?P<bitrate>[0-9\.]+ [KMG]bits\/sec) +(?P<jitter>[0-9\.]+ ms) +(?P<lostPack>[0-9]+)\/\s*(?P<sentPack>[0-9]+)', str(line))
-
-			if result is not None:
-				bitrate = result.group('bitrate')
-				jitter = result.group('jitter')
-				packetlost = result.group('lostPack')
-				packetsent = result.group('sentPack')
-				br = bitrate.split(' ')
-				ji = jitter.split(' ')
-				row_idx = row_idx + 1
-				curr_br = float(br[0])
-				pl_sum = pl_sum + int(packetlost)
-				ps_sum = ps_sum + int(packetsent)
-				if (br[1] == 'Kbits/sec'):
-					curr_br = curr_br * 1000
-				if (br[1] == 'Mbits/sec'):
-					curr_br = curr_br * 1000 * 1000
-				br_sum = curr_br + br_sum
-				ji_sum = float(ji[0]) + ji_sum
-
-		server_file.close()
-
-		if (row_idx > 0):
-			br_sum = br_sum / row_idx
-			ji_sum = ji_sum / row_idx
-			br_loss = 100 * br_sum / req_bw
-			if (br_sum > 1000):
-				br_sum = br_sum / 1000
-				if (br_sum > 1000):
-					br_sum = br_sum / 1000
-					bitrate = '%.2f Mbits/sec' % br_sum
-				else:
-					bitrate = '%.2f Kbits/sec' % br_sum
-			else:
-				bitrate = '%.2f bits/sec' % br_sum
-			bitperf = '%.2f ' % br_loss
-			bitperf += '%'
-			jitter = '%.2f ms' % (ji_sum)
-			if (ps_sum > 0):
-				pl = float(100 * pl_sum / ps_sum)
-				packetloss = '%2.1f ' % (pl)
-				packetloss += '%'
-
-			result = float(br_loss) >= float(self.iperf_bitrate_threshold) and float(pl) <= float(self.iperf_packetloss_threshold)
-			req_msg = f'Req Bitrate : {req_bandwidth}'
-			bir_msg = f'Bitrate     : {bitrate}'
-			brl_msg = f'Bitrate Perf: {bitperf}'
-			if float(br_loss) < float(self.iperf_bitrate_threshold):
-				brl_msg += f' (too low! <{self.iperf_bitrate_threshold}%)'
-			jit_msg = f'Jitter      : {jitter}'
-			pal_msg = f'Packet Loss : {packetloss}'
-			if float(pl) > float(self.iperf_packetloss_threshold):
-				pal_msg += f' (too high! >{self.iperf_packetloss_threshold}%)'
-			return (result, f'{req_msg}\n{bir_msg}\n{brl_msg}\n{jit_msg}\n{pal_msg}')
-		else:
-			return (False, 'Could not analyze from server log')
-
-	def Iperf_Module(self, EPC, ue, RAN, idx, ue_num):
+	def Iperf_Module(self, EPC, ue, svr, RAN, idx, ue_num, CONTAINERS):
 		ueIP = ue.getIP()
 		if not ueIP:
 			return (False, f"UE {ue.getName()} has no IP address")
-		SSH = sshconnection.SSHConnection()
-		server_filename = f'iperf_server_{self.testCase_id}_{ue.getName()}.log'
-		client_filename = f'iperf_client_{self.testCase_id}_{ue.getName()}.log'
-		if (re.match('OAI-Rel14-Docker', EPC.Type, re.IGNORECASE)) or (re.match('OAICN5G', EPC.Type, re.IGNORECASE)):
-			#retrieve trf-gen container IP address
-			SSH.open(EPC.IPAddress, EPC.UserName, EPC.Password)
-			SSH.command('docker inspect --format="TRF_IP_ADDR = {{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" prod-trf-gen', '\$', 5)
-			result = re.search('TRF_IP_ADDR = (?P<trf_ip_addr>[0-9\.]+)', SSH.getBefore())
-			if result is None:
-				raise Exception("could not corver prod-trf-gen IP address")
-			cn_target_ip = result.group('trf_ip_addr')
-			SSH.close()
-			cn_iperf_prefix = "docker exec  prod-trf-gen" # -w /iperf-2.0.13  necessary?
-		elif (re.match('OC-OAI-CN5G', EPC.Type, re.IGNORECASE)):
-			cn_target_ip = "172.21.6.102"
-		else: # lteboix, sabox
-			cn_target_ip = "192.172.0.1"
-			cn_iperf_prefix = ""
+		svrIP = svr.getIP()
+		if not svrIP:
+			return (False, f"Iperf server {ue.getName()} has no IP address")
 
+		runIperf3Server = svr.getRunIperf3Server()
 		iperf_opt = self.iperf_args
+		jsonReport = "--json"
+		serverReport = ""
 		udpIperf = re.search('-u', iperf_opt) is not None
-		udpSwitch = '-u' if udpIperf else ''
-		if udpIperf:
-			iperf_opt = self.Iperf_ComputeModifiedBW(idx, ue_num)
-			logging.info(f'iperf options modified from "{self.iperf_args}" to "{iperf_opt}" for {ue.getName()}')
-		iperf_time = int(self.Iperf_ComputeTime())
-		port = f'-p {5001+idx}'
-		# hack: the ADB UEs don't have iperf in $PATH, so we need to hardcode for the moment
-		iperf_ue = '/data/local/tmp/iperf' if re.search('adb', ue.getName()) else 'iperf'
+		bidirIperf = re.search('--bidir', iperf_opt) is not None
+		client_filename = f'iperf_client_{self.testCase_id}_{ue.getName()}.log'
+		server_filename = f'iperf_server_{self.testCase_id}_{ue.getName()}.log'
+		ymlPath = CONTAINERS.yamlPath[0].split('/')
+		logPath = f'../cmake_targets/log/{ymlPath[1]}'
 
+		if udpIperf:
+			iperf_opt = Iperf_ComputeModifiedBW(idx, ue_num, self.iperf_profile, self.iperf_args)
+			# note: for UDP testing we don't want to use json report - reports 0 Mbps received bitrate
+			jsonReport = ""
+			# note: enable server report collection on the UE side, no need to store and collect server report separately on the server side
+			serverReport = "--get-server-output"
+			logging.info(f'iperf options modified from "{self.iperf_args}" to "{iperf_opt}" for {ue.getName()}')
+		iperf_time = Iperf_ComputeTime(self.iperf_args)
+		# hack: the ADB UEs don't have iperf in $PATH, so we need to hardcode for the moment
+		iperf_ue = '/data/local/tmp/iperf3' if re.search('adb', ue.getName()) else 'iperf3'
 		ue_header = f'UE {ue.getName()} ({ueIP})'
 
-		if self.iperf_direction == "DL":
-			logging.debug("Iperf in DL requested")
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.run(f'rm {server_filename}')
-			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -s -B {ueIP} {udpSwitch} -i 1 -t {iperf_time * 1.5} {port} &> /tmp/{server_filename} &')
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.run(f'rm {EPC.SourceCodePath}/{client_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf -c {ueIP} {iperf_opt} {port} &> {EPC.SourceCodePath}/{client_filename}', timeout=iperf_time * 1.5)
-			cmd.copyin(f'{EPC.SourceCodePath}/{client_filename}', client_filename)
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.copyin(f'/tmp/{server_filename}', server_filename)
-			cmd.close()
-
+		if svr.getName() == "rfsim4g_enb_fembms":
+			with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
+				port = 5002 + idx
+				cmd_ue.run(f'{ue.getCmdPrefix()} iperf -B {ueIP} -s -u -i1 >> {server_filename} &', timeout=iperf_time*1.5)
+				cmd_svr.run(f'{svr.getCmdPrefix()} iperf -c {ueIP} -B {svrIP} {iperf_opt} -i1 2>&1 | tee {client_filename}', timeout=iperf_time*1.5)
+				cmd_ue.run(f'cp {client_filename} {logPath}/{client_filename}')
+				cmd_ue.run(f'cp {server_filename} {logPath}/{server_filename}')
+				status, msg = Iperf_analyzeV2UDP(server_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold, iperf_opt)
+		else:
+			with cls_cmd.getConnection(ue.getHost()) as cmd_ue, cls_cmd.getConnection(EPC.IPAddress) as cmd_svr:
+				port = 5002 + idx
+				# note: some core setups start an iperf3 server automatically, indicated in ci_infra by runIperf3Server: False`
+				if runIperf3Server:
+					cmd_svr.run(f'{svr.getCmdPrefix()} nohup iperf3 -s -B {svrIP} -p {port} -1 {jsonReport} &', timeout=iperf_time*1.5)
+				cmd_ue.run(f'rm /tmp/{client_filename}', reportNonZero=False)
+				cmd_ue.run(f'{ue.getCmdPrefix()} {iperf_ue} -B {ueIP} -c {svrIP} -p {port} {iperf_opt} {jsonReport} {serverReport} -O 5 >> /tmp/{client_filename}', timeout=iperf_time*1.5)
+				if svr.getHost() == 'localhost':
+					cmd_ue.run(f'mkdir -p {logPath}')
+					cmd_ue.run(f'cp /tmp/{client_filename} {logPath}/{client_filename}')
+					cmd_ue.run(f'cp /tmp/{client_filename} {client_filename}')
+				else:
+					cmd_ue.copyin(f'/tmp/{client_filename}', client_filename)
 			if udpIperf:
-				status, msg = self.Iperf_analyzeV2Server(iperf_opt, server_filename, 1)
+				status, msg = Iperf_analyzeV3UDP(client_filename, self.iperf_bitrate_threshold, self.iperf_packetloss_threshold)
+			elif bidirIperf:
+				status, msg = Iperf_analyzeV3BIDIRJson(client_filename)
 			else:
-				cmd = cls_cmd.getConnection(EPC.IPAddress)
-				status, msg = self.Iperf_analyzeV2TCPOutput(cmd, f"{EPC.SourceCodePath}/{client_filename}")
-				cmd.close()
-
-		elif self.iperf_direction == "UL":
-			logging.debug("Iperf in UL requested")
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.run(f'rm {EPC.SourceCodePath}/{server_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf -s {udpSwitch} -t {iperf_time * 1.5} {port} &> {EPC.SourceCodePath}/{server_filename} &')
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.run(f'rm /tmp/{client_filename}')
-			cmd.run(f'{ue.getCmdPrefix()} {iperf_ue} -B {ueIP} -c {cn_target_ip} {iperf_opt} {port} &> /tmp/{client_filename}', timeout=iperf_time*1.5)
-			cmd.copyin(f'/tmp/{client_filename}', client_filename)
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.copyin(f'{EPC.SourceCodePath}/{server_filename}', server_filename)
-			cmd.close()
-
-			if udpIperf:
-				status, msg = self.Iperf_analyzeV2Server(iperf_opt, server_filename, 1)
-			else:
-				cmd = cls_cmd.getConnection(ue.getHost())
-				status, msg = self.Iperf_analyzeV2TCPOutput(cmd, f"/tmp/{client_filename}")
-				cmd.close()
-
-		elif self.iperf_direction=="BIDIR":
-			logging.debug("Bi-directional iperf requested")
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.run(f'rm {EPC.SourceCodePath}/{server_filename}')
-			cmd.run(f'{cn_iperf_prefix} iperf3 -s -i 1 -1 {port} &> {EPC.SourceCodePath}/{server_filename} &')
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.run(f'rm /tmp/{client_filename}')
-			cmd.run(f'iperf3 -B {ueIP} -c {cn_target_ip} {iperf_opt} {port} &> /tmp/{client_filename}', timeout=iperf_time*1.5)
-			cmd.copyin(f'/tmp/{client_filename}', client_filename)
-			cmd.close()
-
-			cmd = cls_cmd.getConnection(EPC.IPAddress)
-			cmd.copyin(f'{EPC.SourceCodePath}/{server_filename}', server_filename)
-			cmd.close()
-
-			status, msg = self.Iperf_analyzeV2BIDIR(server_filename, client_filename)
-
-		elif self.iperf_direction == "IPERF3":
-			cmd = cls_cmd.getConnection(ue.getHost())
-			cmd.run(f'rm /tmp/{server_filename}', reportNonZero=False)
-			port = f'{5002+idx}'
-			cmd.run(f'{ue.getCmdPrefix()} iperf3 -B {ueIP} -c {cn_target_ip} -p {port} {iperf_opt} --get-server-output &> /tmp/{server_filename}', timeout=iperf_time*1.5)
-			cmd.copyin(f'/tmp/{server_filename}', server_filename)
-			cmd.close()
-			if udpIperf:
-				status, msg = self.Iperf_analyzeV2Server(iperf_opt, server_filename, 1)
-			else:
-				cmd = cls_cmd.getConnection(EPC.IPAddress)
-				status, msg = self.Iperf_analyzeV2TCPOutput(cmd, f'/tmp/{server_filename}')
-				cmd.close()
-
-		else :
-			raise Exception("Incorrect or missing IPERF direction in XML")
+				status, msg = Iperf_analyzeV3TCPJson(client_filename, self.iperf_tcp_rate_target)
 
 		logging.info(f'\u001B[1;37;45m iperf result for {ue_header}\u001B[0m')
 		for l in msg.split('\n'):
@@ -988,12 +858,16 @@ class OaiCiTest():
 			HELP.GenericHelp(CONST.Version)
 			sys.exit('Insufficient Parameter')
 
-		logging.debug(f'Iperf: iperf_args "{self.iperf_args}" iperf_direction "{self.iperf_direction}" iperf_packetloss_threshold "{self.iperf_packetloss_threshold}" iperf_bitrate_threshold "{self.iperf_bitrate_threshold}" iperf_profile "{self.iperf_profile}" iperf_options "{self.iperf_options}"')
+		logging.debug(f'Iperf: iperf_args "{self.iperf_args}" iperf_packetloss_threshold "{self.iperf_packetloss_threshold}" iperf_bitrate_threshold "{self.iperf_bitrate_threshold}" iperf_profile "{self.iperf_profile}" iperf_options "{self.iperf_options}"')
 
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		if self.ue_ids == [] or self.svr_id == None:
+			raise Exception("no module names in self.ue_ids or/and self.svr_id provided")
+
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
+		svr = cls_module.Module_UE(self.svr_id)
 		logging.debug(ues)
 		with concurrent.futures.ThreadPoolExecutor() as executor:
-			futures = [executor.submit(self.Iperf_Module, EPC, ue, RAN, i, len(ues)) for i, ue in enumerate(ues)]
+			futures = [executor.submit(self.Iperf_Module, EPC, ue, svr, RAN, i, len(ues), CONTAINERS) for i, ue in enumerate(ues)]
 			results = [f.result() for f in futures]
 			# each result in results is a tuple, first member goes to successes, second to messages
 			successes, messages = map(list, zip(*results))
@@ -1127,15 +1001,15 @@ class OaiCiTest():
 					mib_found = True
 				except Exception as e:
 					logging.error(f'\033[91m MIB marker was not found \033[0m')
-			result = re.search("Measured Carrier Frequency (?P<measured_carrier_frequency>\d{1,15}) Hz", str(line))
+			result = re.search("Initial sync: pbch decoded sucessfully", str(line))
 			if result is not None and (not frequency_found):
 				try:
-					mibMsg = f"Measured Carrier Frequency = {result.group('measured_carrier_frequency')} Hz"
+					mibMsg = f"UE decoded PBCH successfully"
 					HTML.htmlUEFailureMsg=HTML.htmlUEFailureMsg + mibMsg + '\n'
 					logging.debug(f'\033[94m{mibMsg}\033[0m')
 					frequency_found = True
 				except Exception as e:
-					logging.error(f'\033[91m Measured Carrier Frequency not found \033[0m')
+					logging.error(f'\033[91m UE did not find PBCH\033[0m')
 			result = re.search("PLMN MCC (?P<mcc>\d{1,3}), MNC (?P<mnc>\d{1,3}), TAC", str(line))
 			if result is not None and (not plmn_found):
 				try:
@@ -1272,7 +1146,7 @@ class OaiCiTest():
 		return global_status
 
 	def TerminateUE(self, HTML):
-		ues = [cls_module_ue.Module_UE(n.strip()) for n in self.ue_ids]
+		ues = [cls_module.Module_UE(n.strip()) for n in self.ue_ids]
 		with concurrent.futures.ThreadPoolExecutor() as executor:
 			futures = [executor.submit(ue.terminate) for ue in ues]
 			archives = [f.result() for f in futures]
@@ -1404,7 +1278,7 @@ class OaiCiTest():
 		time.sleep(self.idle_sleep_time)
 		HTML.CreateHtmlTestRow(str(self.idle_sleep_time) + ' sec', 'OK', CONST.ALL_PROCESSES_OK)
 
-	def X2_Status(self, idx, fileName):
+	def X2_Status(self, idx, fileName, EPC):
 		cmd = "curl --silent http://" + EPC.IPAddress + ":9999/stats | jq '.' > " + fileName
 		message = cmd + '\n'
 		logging.debug(cmd)

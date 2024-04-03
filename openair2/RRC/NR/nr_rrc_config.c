@@ -363,7 +363,7 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
         break;
       case 2:
         resourceMapping.frequencyDomainAllocation.present = NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_other;
-        resourceMapping.frequencyDomainAllocation.choice.other.buf = calloc(2, sizeof(uint8_t));
+        resourceMapping.frequencyDomainAllocation.choice.other.buf = calloc(1, sizeof(uint8_t));
         resourceMapping.frequencyDomainAllocation.choice.other.size = 1;
         resourceMapping.frequencyDomainAllocation.choice.other.bits_unused = 2;
         resourceMapping.frequencyDomainAllocation.choice.other.buf[0] = 4;
@@ -372,7 +372,7 @@ static void config_csirs(const NR_ServingCellConfigCommon_t *servingcellconfigco
         break;
       case 4:
         resourceMapping.frequencyDomainAllocation.present = NR_CSI_RS_ResourceMapping__frequencyDomainAllocation_PR_row4;
-        resourceMapping.frequencyDomainAllocation.choice.row4.buf = calloc(2, sizeof(uint8_t));
+        resourceMapping.frequencyDomainAllocation.choice.row4.buf = calloc(1, sizeof(uint8_t));
         resourceMapping.frequencyDomainAllocation.choice.row4.size = 1;
         resourceMapping.frequencyDomainAllocation.choice.row4.bits_unused = 5;
         resourceMapping.frequencyDomainAllocation.choice.row4.buf[0] = 32;
@@ -505,6 +505,47 @@ static void config_csiim(int do_csirs,
 
  csi_MeasConfig->csi_IM_ResourceToReleaseList = NULL;
  csi_MeasConfig->csi_IM_ResourceSetToReleaseList = NULL;
+}
+
+
+void set_dl_maxmimolayers(NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig,
+                          const NR_ServingCellConfigCommon_t *scc,
+                          const NR_UE_NR_Capability_t *uecap)
+{
+
+  if(!pdsch_servingcellconfig->ext1)
+    pdsch_servingcellconfig->ext1=calloc(1,sizeof(*pdsch_servingcellconfig->ext1));
+  if(!pdsch_servingcellconfig->ext1->maxMIMO_Layers)
+    pdsch_servingcellconfig->ext1->maxMIMO_Layers = calloc(1,sizeof(*pdsch_servingcellconfig->ext1->maxMIMO_Layers));
+
+  NR_SCS_SpecificCarrier_t *scs_carrier = scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList.list.array[0];
+  int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
+  const frequency_range_t freq_range = band < 100 ? FR1 : FR2;
+  const int scs = scs_carrier->subcarrierSpacing;
+  const int bw_size = scs_carrier->carrierBandwidth;
+
+  NR_FeatureSets_t *fs = uecap ? uecap->featureSets : NULL;
+  if (fs) {
+    const int bw_index = get_supported_band_index(scs, freq_range, bw_size);
+    AssertFatal(bw_index >= 0, "BW corresponding to %d PRBs not found\n", bw_size);
+    // go through UL feature sets and look for one with current SCS
+    for (int i = 0; i < fs->featureSetsDownlinkPerCC->list.count; i++) {
+      NR_FeatureSetDownlinkPerCC_t *dl_fs = fs->featureSetsDownlinkPerCC->list.array[i];
+      long supported_bw;
+      if (freq_range == FR1)
+        supported_bw = dl_fs->supportedBandwidthDL.choice.fr1;
+      else
+        supported_bw = dl_fs->supportedBandwidthDL.choice.fr2;
+      if (scs == dl_fs->supportedSubcarrierSpacingDL &&
+          bw_index == supported_bw &&
+          dl_fs->maxNumberMIMO_LayersPDSCH) {
+        long ue_supported_layers = (2 << *dl_fs->maxNumberMIMO_LayersPDSCH);
+        *pdsch_servingcellconfig->ext1->maxMIMO_Layers = NR_MAX_SUPPORTED_DL_LAYERS < ue_supported_layers ? NR_MAX_SUPPORTED_DL_LAYERS : ue_supported_layers;
+        return;
+      }
+    }
+  }
+  *pdsch_servingcellconfig->ext1->maxMIMO_Layers = 2;
 }
 
 // TODO: Implement to b_SRS = 1 and b_SRS = 2
@@ -759,8 +800,9 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
     *bandNRinfo->pusch_256QAM = NR_BandNR__pusch_256QAM_supported;
   }
   if (mcs_table_dl == 1) {
-    int bw = get_supported_band_index(numerology, band, rbsize);
-    if (band>256) {
+    const frequency_range_t freq_range = band < 257 ? FR1 : FR2;
+    int bw = get_supported_band_index(numerology, freq_range, rbsize);
+    if (freq_range == FR2) {
       bandNRinfo->pdsch_256QAM_FR2 = CALLOC(1,sizeof(*bandNRinfo->pdsch_256QAM_FR2));
       *bandNRinfo->pdsch_256QAM_FR2 = NR_BandNR__pdsch_256QAM_FR2_supported;
     }
@@ -775,7 +817,7 @@ void prepare_sim_uecap(NR_UE_NR_Capability_t *cap,
     fs->featureSetsDownlinkPerCC = CALLOC(1,sizeof(*fs->featureSetsDownlinkPerCC));
     NR_FeatureSetDownlinkPerCC_t *fs_cc = CALLOC(1,sizeof(NR_FeatureSetDownlinkPerCC_t));
     fs_cc->supportedSubcarrierSpacingDL = numerology;
-    if(band>256) {
+    if(freq_range == FR2) {
       fs_cc->supportedBandwidthDL.present = NR_SupportedBandwidth_PR_fr2;
       fs_cc->supportedBandwidthDL.choice.fr2 = bw;
     }
@@ -1135,17 +1177,18 @@ static void set_dl_mcs_table(int scs,
   int band = *scc->downlinkConfigCommon->frequencyInfoDL->frequencyBandList.list.array[0];
   struct NR_FrequencyInfoDL__scs_SpecificCarrierList scs_list = scc->downlinkConfigCommon->frequencyInfoDL->scs_SpecificCarrierList;
   int bw_rb = -1;
-  for(int i=0; i<scs_list.list.count; i++){
+  for(int i = 0; i < scs_list.list.count; i++){
     if(scs == scs_list.list.array[i]->subcarrierSpacing){
       bw_rb = scs_list.list.array[i]->carrierBandwidth;
       break;
     }
   }
-  AssertFatal(bw_rb>0,"Could not find scs-SpecificCarrierList element for scs %d",scs);
+  AssertFatal(bw_rb > 0,"Could not find scs-SpecificCarrierList element for scs %d", scs);
 
   bool supported = false;
-  if (band>256) {
-    for (int i=0;i<cap->rf_Parameters.supportedBandListNR.list.count;i++) {
+  const frequency_range_t freq_range = band > 256 ? FR2 : FR1;
+  if (freq_range == FR2) {
+    for (int i = 0; i < cap->rf_Parameters.supportedBandListNR.list.count; i++) {
       NR_BandNR_t *bandNRinfo = cap->rf_Parameters.supportedBandListNR.list.array[i];
       if(bandNRinfo->bandNR == band && bandNRinfo->pdsch_256QAM_FR2) {
         supported = true;
@@ -1514,10 +1557,12 @@ static void config_csi_codebook(const nr_pdsch_AntennaPorts_t *antennaports,
 {
   const int num_ant_ports = antennaports->N1 * antennaports->N2 * antennaports->XP;
   codebookConfig->codebookType.present = NR_CodebookConfig__codebookType_PR_type1;
-  codebookConfig->codebookType.choice.type1 = calloc(1, sizeof(*codebookConfig->codebookType.choice.type1));
+  if(!codebookConfig->codebookType.choice.type1)
+    codebookConfig->codebookType.choice.type1 = calloc(1, sizeof(*codebookConfig->codebookType.choice.type1));
   // Single panel configuration
   codebookConfig->codebookType.choice.type1->subType.present = NR_CodebookConfig__codebookType__type1__subType_PR_typeI_SinglePanel;
-  codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel = calloc(1, sizeof(*codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel));
+  if(!codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel)
+    codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel = calloc(1, sizeof(*codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel));
   struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel *singlePanelConfig = codebookConfig->codebookType.choice.type1->subType.choice.typeI_SinglePanel;
   singlePanelConfig->typeI_SinglePanel_ri_Restriction.size = 1;
   singlePanelConfig->typeI_SinglePanel_ri_Restriction.bits_unused = 0;
@@ -1525,85 +1570,88 @@ static void config_csi_codebook(const nr_pdsch_AntennaPorts_t *antennaports,
   singlePanelConfig->typeI_SinglePanel_ri_Restriction.buf[0] = (1 << max_layers) - 1; // max_layers bit set to 1
   if (num_ant_ports == 2) {
     singlePanelConfig->nrOfAntennaPorts.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_two;
-    singlePanelConfig->nrOfAntennaPorts.choice.two = calloc(1, sizeof(*singlePanelConfig->nrOfAntennaPorts.choice.two));
-    singlePanelConfig->nrOfAntennaPorts.choice.two->twoTX_CodebookSubsetRestriction.size = 1;
-    singlePanelConfig->nrOfAntennaPorts.choice.two->twoTX_CodebookSubsetRestriction.bits_unused = 2;
-    singlePanelConfig->nrOfAntennaPorts.choice.two->twoTX_CodebookSubsetRestriction.buf = calloc(1, sizeof(uint8_t));
-    singlePanelConfig->nrOfAntennaPorts.choice.two->twoTX_CodebookSubsetRestriction.buf[0] = 0xfc; // no restriction (all 6 bits enabled)
+    if(!singlePanelConfig->nrOfAntennaPorts.choice.two) {
+      asn1cCalloc(singlePanelConfig->nrOfAntennaPorts.choice.two, two);
+      two->twoTX_CodebookSubsetRestriction.size = 1;
+      two->twoTX_CodebookSubsetRestriction.bits_unused = 2;
+      asn1cCallocOne(two->twoTX_CodebookSubsetRestriction.buf, 0xfc); // no restriction (all 6 bits enabled)
+    }
   } else {
     singlePanelConfig->nrOfAntennaPorts.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts_PR_moreThanTwo;
-    singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo = calloc(1, sizeof(*singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo));
-    struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo *moreThanTwo = singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo;
-    switch (num_ant_ports) {
-      case 4:
-        moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_two_one_TypeI_SinglePanel_Restriction;
-        moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.size = 1;
-        moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
-        moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.buf = calloc(1, sizeof(uint8_t));
-        moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.buf[0] = 0xff; // TODO verify the meaning of this parameter
-        break;
-      case 8:
-        if (antennaports->N1 == 2) {
-          AssertFatal(antennaports->N2 == 2, "N1 and N2 not in accordace with the specifications\n");
-          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_two_two_TypeI_SinglePanel_Restriction;
-          moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.size = 8;
-          moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.bits_unused = 0;
-          moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.buf = calloc(8, sizeof(uint8_t));
-          for (int i = 0; i < 8; i++)
-            moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
-        } else if (antennaports->N1 == 4) {
-          AssertFatal(antennaports->N2 == 1, "N1 and N2 not in accordace with the specifications\n");
-          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_four_one_TypeI_SinglePanel_Restriction;
-          moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.size = 2;
-          moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
-          moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.buf = calloc(2, sizeof(uint8_t));
-          for (int i = 0; i < 2; i++)
-            moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
-        } else
-          AssertFatal(1 == 0, "N1 %d and N2 %d not supported for %d antenna ports\n", antennaports->N1, antennaports->N2, num_ant_ports);
-        break;
-      case 12:
-        if (antennaports->N1 == 3) {
-          AssertFatal(antennaports->N2 == 2, "N1 and N2 not in accordace with the specifications\n");
-          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_three_two_TypeI_SinglePanel_Restriction;
-          moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.size = 12;
-          moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.bits_unused = 0;
-          moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.buf = calloc(12, sizeof(uint8_t));
-          for (int i = 0; i < 12; i++)
-            moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
-        } else if (antennaports->N1 == 6) {
-          AssertFatal(antennaports->N2 == 1, "N1 and N2 not in accordace with the specifications\n");
-          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_six_one_TypeI_SinglePanel_Restriction;
-          moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.size = 3;
-          moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
-          moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.buf = calloc(3, sizeof(uint8_t));
-          for (int i = 0; i < 3; i++)
-            moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
-        } else
-          AssertFatal(1 == 0, "N1 %d and N2 %d not supported for %d antenna ports\n", antennaports->N1, antennaports->N2, num_ant_ports);
-        break;
-      case 16:
-        if (antennaports->N1 == 4) {
-          AssertFatal(antennaports->N2 == 2, "N1 and N2 not in accordace with the specifications\n");
-          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_four_two_TypeI_SinglePanel_Restriction;
-          moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.size = 16;
-          moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.bits_unused = 0;
-          moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.buf = calloc(16, sizeof(uint8_t));
-          for (int i = 0; i < 16; i++)
-            moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
-        } else if (antennaports->N1 == 8) {
-          AssertFatal(antennaports->N2 == 1, "N1 and N2 not in accordace with the specifications\n");
-          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_eight_one_TypeI_SinglePanel_Restriction;
-          moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.size = 4;
-          moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
-          moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.buf = calloc(4, sizeof(uint8_t));
-          for (int i = 0; i < 4; i++)
-            moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
-        } else
-          AssertFatal(1 == 0, "N1 %d and N2 %d not supported for %d antenna ports\n", antennaports->N1, antennaports->N2, num_ant_ports);
-        break;
-      default:
-        AssertFatal(1 == 0, "%d antenna ports not supported\n", num_ant_ports);
+    if(!singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo) {
+      singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo = calloc(1, sizeof(*singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo));
+      struct NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo *moreThanTwo = singlePanelConfig->nrOfAntennaPorts.choice.moreThanTwo;
+      switch (num_ant_ports) {
+        case 4:
+          moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_two_one_TypeI_SinglePanel_Restriction;
+          moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.size = 1;
+          moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
+          // TODO verify the meaning of this parameter
+          asn1cCallocOne(moreThanTwo->n1_n2.choice.two_one_TypeI_SinglePanel_Restriction.buf, 0xff);
+          break;
+        case 8:
+          if (antennaports->N1 == 2) {
+            AssertFatal(antennaports->N2 == 2, "N1 and N2 not in accordace with the specifications\n");
+            moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_two_two_TypeI_SinglePanel_Restriction;
+            moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.size = 8;
+            moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.bits_unused = 0;
+            moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.buf = calloc(8, sizeof(uint8_t));
+            for (int i = 0; i < 8; i++)
+              moreThanTwo->n1_n2.choice.two_two_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
+          } else if (antennaports->N1 == 4) {
+            AssertFatal(antennaports->N2 == 1, "N1 and N2 not in accordace with the specifications\n");
+            moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_four_one_TypeI_SinglePanel_Restriction;
+            moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.size = 2;
+            moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
+            moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.buf = calloc(2, sizeof(uint8_t));
+            for (int i = 0; i < 2; i++)
+              moreThanTwo->n1_n2.choice.four_one_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
+          } else
+            AssertFatal(1 == 0, "N1 %d and N2 %d not supported for %d antenna ports\n", antennaports->N1, antennaports->N2, num_ant_ports);
+          break;
+        case 12:
+          if (antennaports->N1 == 3) {
+            AssertFatal(antennaports->N2 == 2, "N1 and N2 not in accordace with the specifications\n");
+            moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_three_two_TypeI_SinglePanel_Restriction;
+            moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.size = 12;
+            moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.bits_unused = 0;
+            moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.buf = calloc(12, sizeof(uint8_t));
+            for (int i = 0; i < 12; i++)
+              moreThanTwo->n1_n2.choice.three_two_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
+          } else if (antennaports->N1 == 6) {
+            AssertFatal(antennaports->N2 == 1, "N1 and N2 not in accordace with the specifications\n");
+            moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_six_one_TypeI_SinglePanel_Restriction;
+            moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.size = 3;
+            moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
+            moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.buf = calloc(3, sizeof(uint8_t));
+            for (int i = 0; i < 3; i++)
+             moreThanTwo->n1_n2.choice.six_one_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
+          } else
+            AssertFatal(1 == 0, "N1 %d and N2 %d not supported for %d antenna ports\n", antennaports->N1, antennaports->N2, num_ant_ports);
+          break;
+        case 16:
+          if (antennaports->N1 == 4) {
+            AssertFatal(antennaports->N2 == 2, "N1 and N2 not in accordace with the specifications\n");
+            moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_four_two_TypeI_SinglePanel_Restriction;
+            moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.size = 16;
+            moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.bits_unused = 0;
+            moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.buf = calloc(16, sizeof(uint8_t));
+            for (int i = 0; i < 16; i++)
+              moreThanTwo->n1_n2.choice.four_two_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
+          } else if (antennaports->N1 == 8) {
+            AssertFatal(antennaports->N2 == 1, "N1 and N2 not in accordace with the specifications\n");
+            moreThanTwo->n1_n2.present = NR_CodebookConfig__codebookType__type1__subType__typeI_SinglePanel__nrOfAntennaPorts__moreThanTwo__n1_n2_PR_eight_one_TypeI_SinglePanel_Restriction;
+            moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.size = 4;
+            moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.bits_unused = 0;
+            moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.buf = calloc(4, sizeof(uint8_t));
+            for (int i = 0; i < 4; i++)
+              moreThanTwo->n1_n2.choice.eight_one_TypeI_SinglePanel_Restriction.buf[i] = 0xff; // TODO verify the meaning of this parameter
+          } else
+            AssertFatal(1 == 0, "N1 %d and N2 %d not supported for %d antenna ports\n", antennaports->N1, antennaports->N2, num_ant_ports);
+          break;
+        default:
+          AssertFatal(1 == 0, "%d antenna ports not supported\n", num_ant_ports);
+      }
     }
   }
   codebookConfig->codebookType.choice.type1->codebookMode = 1;
@@ -1679,7 +1727,8 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                     NR_PUCCH_CSI_Resource_t *pucchcsires,
                                     int do_csi, // if rsrp is based on CSI or SSB
                                     int rep_id,
-                                    int uid)
+                                    int uid,
+                                    int num_antenna_ports)
 {
   NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
   csirep->reportConfigId = rep_id;
@@ -1688,7 +1737,7 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   for (int csi_list = 0; csi_list < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_list++) {
     NR_CSI_ResourceConfig_t *csires = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_list];
     if (csires->csi_RS_ResourceSetList.present == NR_CSI_ResourceConfig__csi_RS_ResourceSetList_PR_nzp_CSI_RS_SSB) {
-      if (do_csi) {
+      if (do_csi && num_antenna_ports < 4) {
         if (csires->csi_RS_ResourceSetList.choice.nzp_CSI_RS_SSB->nzp_CSI_RS_ResourceSetList)
           resource_id = csires->csi_ResourceConfigId;
       } else {
@@ -1707,7 +1756,7 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   csirep->reportConfigType.choice.periodic = calloc(1, sizeof(*csirep->reportConfigType.choice.periodic));
   set_csi_meas_periodicity(servingcellconfigcommon, csirep, uid, true);
   asn1cSeqAdd(&csirep->reportConfigType.choice.periodic->pucch_CSI_ResourceList.list, pucchcsires);
-  if (do_csi) {
+  if (do_csi && num_antenna_ports < 4) {
     csirep->reportQuantity.present = NR_CSI_ReportConfig__reportQuantity_PR_cri_RSRP;
     csirep->reportQuantity.choice.cri_RSRP = (NULL_t)0;
   } else {
@@ -2264,6 +2313,13 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   SpCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->present = NR_SetupRelease_PDSCH_ServingCellConfig_PR_setup;
   SpCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup = pdsch_servingcellconfig;
 
+  pdsch_servingcellconfig->codeBlockGroupTransmission = NULL;
+  pdsch_servingcellconfig->xOverhead = NULL;
+  pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = calloc(1, sizeof(*pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH));
+  *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16;
+  pdsch_servingcellconfig->pucch_Cell = NULL;
+  set_dl_maxmimolayers(pdsch_servingcellconfig, scc, NULL);
+
   // Downlink BWPs
   int n_dl_bwp = 0;
   if (servingcellconfigdedicated && servingcellconfigdedicated->downlinkBWP_ToAddModList
@@ -2404,23 +2460,15 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
                              pucchcsi,
                              pdsch_Config,
                              &configuration->pdsch_AntennaPorts,
-                             NR_MAX_SUPPORTED_DL_LAYERS,
+                             *pdsch_servingcellconfig->ext1->maxMIMO_Layers,
                              bwp_id,
                              uid);
     }
     NR_PUCCH_CSI_Resource_t *pucchrsrp = calloc(1, sizeof(*pucchrsrp));
     pucchrsrp->uplinkBandwidthPartId = bwp_id;
     pucchrsrp->pucch_Resource = pucch_Resource;
-    config_rsrp_meas_report(csi_MeasConfig, scc, pucchrsrp, configuration->do_CSIRS, bwp_id + 10, uid);
+    config_rsrp_meas_report(csi_MeasConfig, scc, pucchrsrp, configuration->do_CSIRS, bwp_id + 10, uid, pdsch_AntennaPorts);
   }
-  pdsch_servingcellconfig->codeBlockGroupTransmission = NULL;
-  pdsch_servingcellconfig->xOverhead = NULL;
-  pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = calloc(1, sizeof(*pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH));
-  *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16;
-  pdsch_servingcellconfig->pucch_Cell = NULL;
-  pdsch_servingcellconfig->ext1 = calloc(1, sizeof(*pdsch_servingcellconfig->ext1));
-  pdsch_servingcellconfig->ext1->maxMIMO_Layers = calloc(1, sizeof(*pdsch_servingcellconfig->ext1->maxMIMO_Layers));
-  *pdsch_servingcellconfig->ext1->maxMIMO_Layers = 2;
 
   if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
     xer_fprint(stdout, &asn_DEF_NR_SpCellConfig, SpCellConfig);
@@ -2471,6 +2519,16 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
   DevAssert(scc != NULL);
 
   NR_SpCellConfig_t *SpCellConfig = cellGroupConfig->spCellConfig;
+
+  NR_PDSCH_ServingCellConfig_t *pdsch_servingcellconfig = SpCellConfig->spCellConfigDedicated->pdsch_ServingCellConfig->choice.setup;
+  set_dl_maxmimolayers(pdsch_servingcellconfig, scc, uecap);
+
+  NR_CSI_MeasConfig_t *csi_MeasConfig = SpCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup;
+  for (int report = 0; report < csi_MeasConfig->csi_ReportConfigToAddModList->list.count; report++) {
+    NR_CSI_ReportConfig_t *csirep = csi_MeasConfig->csi_ReportConfigToAddModList->list.array[report];
+    if(csirep->codebookConfig)
+      config_csi_codebook(&configuration->pdsch_AntennaPorts, *pdsch_servingcellconfig->ext1->maxMIMO_Layers, csirep->codebookConfig);
+  }
 
   int curr_bwp = NRRIV2BW(scc->downlinkConfigCommon->initialDownlinkBWP->genericParameters.locationAndBandwidth, MAX_BWP_SIZE);
   NR_UplinkConfig_t *uplinkConfig =
@@ -2561,7 +2619,7 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
       ul_bwp->bwp_Dedicated->srs_Config = get_config_srs(scc, uecap, bwp_size, uid, i + 1, maxMIMO_Layers, configuration->do_SRS);
     }
   }
-  update_cqitables(bwp_Dedicated->pdsch_Config, SpCellConfig->spCellConfigDedicated->csi_MeasConfig->choice.setup);
+  update_cqitables(bwp_Dedicated->pdsch_Config, csi_MeasConfig);
 }
 
 void free_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig)
@@ -2842,9 +2900,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = calloc(1, sizeof(*pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH));
   *pdsch_servingcellconfig->nrofHARQ_ProcessesForPDSCH = NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH_n16;
   pdsch_servingcellconfig->pucch_Cell = NULL;
-  pdsch_servingcellconfig->ext1 = calloc(1, sizeof(*pdsch_servingcellconfig->ext1));
-  pdsch_servingcellconfig->ext1->maxMIMO_Layers = calloc(1, sizeof(*pdsch_servingcellconfig->ext1->maxMIMO_Layers));
-  *pdsch_servingcellconfig->ext1->maxMIMO_Layers = NR_MAX_SUPPORTED_DL_LAYERS;
+  set_dl_maxmimolayers(pdsch_servingcellconfig, servingcellconfigcommon, uecap);
   pdsch_servingcellconfig->ext1->processingType2Enabled = NULL;
 
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->csi_MeasConfig = NULL;
@@ -2929,15 +2985,8 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
     pucchcsires1->uplinkBandwidthPartId = bwp->bwp_Id;
     pucchcsires1->pucch_Resource = 2;
 
-    config_csi_meas_report(csi_MeasConfig,
-                           servingcellconfigcommon,
-                           pucchcsires1,
-                           bwp->bwp_Dedicated->pdsch_Config,
-                           pdschap,
-                           NR_MAX_SUPPORTED_DL_LAYERS,
-                           bwp->bwp_Id,
-                           uid);
-    config_rsrp_meas_report(csi_MeasConfig, servingcellconfigcommon, pucchcsires1, do_csirs, bwp->bwp_Id + 10, uid);
+    config_csi_meas_report(csi_MeasConfig, servingcellconfigcommon, pucchcsires1, bwp->bwp_Dedicated->pdsch_Config, pdschap, *pdsch_servingcellconfig->ext1->maxMIMO_Layers, bwp->bwp_Id, uid);
+    config_rsrp_meas_report(csi_MeasConfig, servingcellconfigcommon, pucchcsires1, do_csirs, bwp->bwp_Id + 10, uid, dl_antenna_ports);
   }
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->sCellDeactivationTimer = NULL;
   secondaryCellGroup->spCellConfig->spCellConfigDedicated->crossCarrierSchedulingConfig = NULL;

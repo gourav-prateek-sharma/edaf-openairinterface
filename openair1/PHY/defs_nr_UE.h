@@ -307,16 +307,6 @@ typedef struct {
   fapi_nr_ul_config_srs_pdu srs_config_pdu;
 } NR_UE_SRS;
 
-// structure used for multiple SSB detection
-typedef struct NR_UE_SSB {
-  uint8_t i_ssb;   // i_ssb between 0 and 7 (it corresponds to ssb_index only for Lmax=4,8)
-  uint8_t n_hf;    // n_hf = 0,1 for Lmax =4 or n_hf = 0 for Lmax =8,64
-  uint32_t metric; // metric to order SSB hypothesis
-  uint32_t c_re;
-  uint32_t c_im;
-  struct NR_UE_SSB *next_ssb;
-} NR_UE_SSB;
-
 typedef struct UE_NR_SCAN_INFO_s {
   /// 10 best amplitudes (linear) for each pss signals
   int32_t amp[3][10];

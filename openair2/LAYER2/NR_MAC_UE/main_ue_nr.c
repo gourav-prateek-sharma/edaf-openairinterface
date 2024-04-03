@@ -231,11 +231,8 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac,
     asn1cFreeStruc(asn_DEF_NR_ControlResourceSet, mac->coreset0);
     asn1cFreeStruc(asn_DEF_NR_SI_SchedulingInfo, mac->si_SchedulingInfo);
     asn1cFreeStruc(asn_DEF_NR_TDD_UL_DL_ConfigCommon, mac->tdd_UL_DL_ConfigurationCommon);
-    for (int i = 0; i < mac->lc_ordered_list.count; i++) {
-      nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
-      asn_sequence_del(&mac->lc_ordered_list, i, 0);
-      free(lc_info);
-    }
+    for (int i = mac->lc_ordered_list.count; i > 0 ; i--)
+      asn_sequence_del(&mac->lc_ordered_list, i - 1, 1);
   }
 
   asn1cFreeStruc(asn_DEF_NR_CrossCarrierSchedulingConfig, sc->crossCarrierSchedulingConfig);
@@ -263,10 +260,10 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac,
     // release dedicated BWP0 config
     NR_UE_DL_BWP_t *bwp = mac->dl_BWPs.array[0];
     NR_BWP_PDCCH_t *pdcch = &mac->config_BWP_PDCCH[0];
-    for (int i = 0; pdcch->list_Coreset.count; i++)
-      asn_sequence_del(&pdcch->list_Coreset, i, 1);
-    for (int i = 0; pdcch->list_SS.count; i++)
-      asn_sequence_del(&pdcch->list_SS, i, 1);
+    for (int i = pdcch->list_Coreset.count; i > 0 ; i--)
+      asn_sequence_del(&pdcch->list_Coreset, i - 1, 1);
+    for (int i = pdcch->list_SS.count; i > 0 ; i--)
+      asn_sequence_del(&pdcch->list_SS, i - 1, 1);
     asn1cFreeStruc(asn_DEF_NR_PDSCH_Config, bwp->pdsch_Config);
     NR_UE_UL_BWP_t *ubwp = mac->ul_BWPs.array[0];
     asn1cFreeStruc(asn_DEF_NR_PUCCH_Config, ubwp->pucch_Config);

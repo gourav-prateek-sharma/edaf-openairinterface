@@ -134,41 +134,38 @@
     <testCase id="040613">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/10Mbps/UDP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-u -b 10M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 10M -t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>DL</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
     <testCase id="040616">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/TCP)(30 sec)(single-ue profile)</desc>
-        <iperf_args>-t 30 -i 1 -fm</iperf_args>
+        <iperf_args>-t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>DL</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
     <testCase id="040651">
         <class>Iperf</class>
         <desc>iperf (10MHz - UL/10Mbps/UDP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-u -b 10M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 10M -t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>UL</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
     <testCase id="040654">
         <class>Iperf</class>
         <desc>iperf (10MHz - UL/TCP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-t 30 -i 1 -fm</iperf_args>
+        <iperf_args>-t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>balanced</iperf_profile>
-        <direction>UL</direction>
         <id>lte_oai_ue_carabe</id>
+        <svr_id>nano-cn4g</svr_id>
     </testCase>
 
 </testCaseList>

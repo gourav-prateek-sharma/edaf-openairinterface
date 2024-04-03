@@ -112,92 +112,83 @@ Replaces xml_files/enb_usrp210_band7_test_10mhz_tm1.xml
     <testCase id="040613">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/30Mbps/UDP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-u -b 30M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 30M -t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_bitrate_threshold>50</iperf_bitrate_threshold>
         <iperf_profile>balanced</iperf_profile>
-        <direction>DL</direction>
         <id>adb_ue_1 adb_ue_2</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040614">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/30Mbps/UDP)(30 sec)(single-ue profile)</desc>
-        <iperf_args>-u -b 30M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 30M -t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>DL</direction>
         <id>adb_ue_1</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040615">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/30Mbps/UDP)(30 sec)(unbalanced profile)</desc>
-        <iperf_args>-u -b 30M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 30M -t 30 -R</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>unbalanced</iperf_profile>
-        <direction>DL</direction>
         <id>adb_ue_1 adb_ue_2</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040616">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/TCP)(30 sec)(single-ue profile)</desc>
-        <iperf_args>-t 30 -i 1 -fm</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>DL</direction>
+        <iperf_args>-t 30 -R</iperf_args>
         <id>adb_ue_1</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040617">
         <class>Iperf</class>
         <desc>iperf (10MHz - DL/TCP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-t 30 -i 1 -fm</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>balanced</iperf_profile>
-        <direction>DL</direction>
+        <iperf_args>-t 30 -R</iperf_args>
         <id>adb_ue_1 adb_ue_2</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040651">
         <class>Iperf</class>
         <desc>iperf (10MHz - UL/18Mbps/UDP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-u -b 18M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 18M -t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
         <iperf_profile>balanced</iperf_profile>
-        <direction>UL</direction>
         <id>adb_ue_1 adb_ue_2</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040652">
         <class>Iperf</class>
         <desc>iperf (10MHz - UL/18Mbps/UDP)(30 sec)(single-ue profile)</desc>
-        <iperf_args>-u -b 18M -t 30 -i 1</iperf_args>
+        <iperf_args>-u -b 18M -t 30</iperf_args>
         <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>UL</direction>
         <id>adb_ue_1</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040653">
         <class>Iperf</class>
         <desc>iperf (10MHz - UL/TCP)(30 sec)(single-ue profile)</desc>
-        <iperf_args>-t 30 -i 1 -fm</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
-        <iperf_profile>single-ue</iperf_profile>
-        <direction>UL</direction>
+        <iperf_args>-t 30</iperf_args>
         <id>adb_ue_1</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
     <testCase id="040654">
         <class>Iperf</class>
         <desc>iperf (10MHz - UL/TCP)(30 sec)(balanced profile)</desc>
-        <iperf_args>-t 30 -i 1 -fm</iperf_args>
-        <iperf_packetloss_threshold>50</iperf_packetloss_threshold>
+        <iperf_args>-t 30</iperf_args>
         <iperf_profile>balanced</iperf_profile>
-        <direction>UL</direction>
         <id>adb_ue_1 adb_ue_2</id>
+        <svr_id>ltebox-nano</svr_id>
     </testCase>
 
 </testCaseList>

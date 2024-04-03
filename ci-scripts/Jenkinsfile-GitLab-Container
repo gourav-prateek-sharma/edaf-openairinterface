@@ -308,29 +308,6 @@ pipeline {
             }
           }
         }
-        stage ("L2-Sim-Test-5G") {
-          when { expression {do5Gtest} }
-          steps {
-            script {
-              triggerSlaveJob ('RAN-L2-Sim-Test-5G', 'L2-Sim-Test-5G')
-            }
-          }
-          post {
-            always {
-              script {
-                // Using a unique variable name for each test stage to avoid overwriting on a global variable
-                // due to parallel-time concurrency
-                l2Sim5GStatus = finalizeSlaveJob('RAN-L2-Sim-Test-5G')
-              }
-            }
-            failure {
-              script {
-                currentBuild.result = 'FAILURE'
-                failingStages += l2Sim5GStatus
-              }
-            }
-          }
-        }
         stage ("LTE-B200-FDD-LTEBOX-Container") {
           when { expression {do4Gtest} }
           steps {

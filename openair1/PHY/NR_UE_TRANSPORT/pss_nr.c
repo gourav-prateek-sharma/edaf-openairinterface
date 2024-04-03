@@ -672,7 +672,15 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
 
   *nid2 = pss_source;
 
-  LOG_I(PHY,"[UE] nr_synchro_time: Sync source = %d, Peak found at pos %d, val = %llu (%d dB) avg %d dB, ffo %lf\n", pss_source, peak_position, (unsigned long long)peak_value, dB_fixed64(peak_value),dB_fixed64(avg[pss_source]),ffo_est);
+  LOG_I(PHY,
+        "[UE] nr_synchro_time: Sync source (nid2) = %d, Peak found at pos %d, val = %ld (%d dB power over signal avg %d dB), ffo "
+        "%lf\n",
+        pss_source,
+        peak_position,
+        peak_value,
+        dB_fixed64(peak_value),
+        dB_fixed64(avg[pss_source]),
+        ffo_est);
 
   if (peak_value < 5*avg[pss_source])
     return(-1);

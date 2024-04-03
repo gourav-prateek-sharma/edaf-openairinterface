@@ -105,21 +105,23 @@
         </testCase>
 
         <testCase id="030011">
-                <class>IperfFromContainer</class>
+                <class>Iperf</class>
                 <desc>Iperf UDP Downlink</desc>
-                <server_container_name>l2sim4g-oai-lte-ue1</server_container_name>
-                <client_container_name>l2sim4g-trf-gen</client_container_name>
-                <server_options>-B 12.0.0.2 -u -i 1 -s</server_options>
-                <client_options>-c 12.0.0.2 -u -i 1 -t 30 -b 1M</client_options>
+                <id>l2sim4g_ue</id>
+                <svr_id>l2sim4g_ext_dn</svr_id>
+                <iperf_args>-u -t 30 -b 1M -R</iperf_args>
+                <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="030012">
-                <class>IperfFromContainer</class>
+                <class>Iperf</class>
                 <desc>Iperf UDP Uplink</desc>
-                <server_container_name>l2sim4g-trf-gen</server_container_name>
-                <client_container_name>l2sim4g-oai-lte-ue1</client_container_name>
-                <server_options>-u -i 1 -s</server_options>
-                <client_options>-B 12.0.0.2 -c 192.168.61.11 -u -i 1 -t 30 -b 3M</client_options>
+                <id>l2sim4g_ue</id>
+                <svr_id>l2sim4g_ext_dn</svr_id>
+                <iperf_args>-u -t 30 -b 3M</iperf_args>
+                <iperf_packetloss_threshold>25</iperf_packetloss_threshold>
+                <iperf_bitrate_threshold>80</iperf_bitrate_threshold>
         </testCase>
 
         <testCase id="100001">

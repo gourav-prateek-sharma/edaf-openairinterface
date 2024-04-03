@@ -41,7 +41,6 @@
   - Deploy_Run_PhySim
   - DeployGenObject
   - UndeployGenObject
-  - IperfFromContainer
   - StatsFromGenObject
   - LicenceAndFormattingCheck
   - Push_Local_Registry
