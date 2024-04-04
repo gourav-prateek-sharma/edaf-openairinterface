@@ -123,8 +123,6 @@ typedef struct {
   uint32_t F;
   /// LDPC lifting factor
   uint32_t Z;
-  /// Number of soft channel bits
-  uint32_t G;
   /// codeword this transport block is mapped to
   uint8_t codeword;
   /// HARQ-ACKs

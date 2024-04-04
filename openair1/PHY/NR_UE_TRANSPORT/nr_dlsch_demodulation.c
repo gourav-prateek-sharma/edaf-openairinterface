@@ -255,7 +255,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                 int nbRx,
                 int32_t rxdataF_comp[][nbRx][rx_size_symbol * NR_SYMBOLS_PER_SLOT],
                 c16_t ptrs_phase_per_slot[][NR_SYMBOLS_PER_SLOT],
-                int32_t ptrs_re_per_slot[][NR_SYMBOLS_PER_SLOT])
+                int32_t ptrs_re_per_slot[][NR_SYMBOLS_PER_SLOT],
+                int G)
 {
   const int nl = dlsch[0].Nl;
   const int matrixSz = ue->frame_parms.nb_antennas_rx * nl;
@@ -335,9 +336,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   }
 
   DEBUG_HARQ("[DEMOD] cw for TB0 = %d, cw for TB1 = %d\n", codeword_TB0, codeword_TB1);
-
-  int start_rb = dlsch[0].dlsch_config.start_rb;
-  int nb_rb_pdsch = dlsch[0].dlsch_config.number_rbs;
+  fapi_nr_dl_config_dlsch_pdu_rel15_t *dlsch_config = &dlsch[0].dlsch_config;
+  int start_rb = dlsch_config->start_rb;
+  int nb_rb_pdsch = dlsch_config->number_rbs;
 
   DevAssert(dlsch0_harq);
 
@@ -361,8 +362,8 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
       slot = 1;
   }
 
-  uint8_t pilots = (dlsch[0].dlsch_config.dlDmrsSymbPos >> symbol) & 1;
-  uint8_t config_type = dlsch[0].dlsch_config.dmrsConfigType;
+  uint8_t pilots = (dlsch_config->dlDmrsSymbPos >> symbol) & 1;
+  uint8_t config_type = dlsch_config->dmrsConfigType;
   //----------------------------------------------------------
   //--------------------- RBs extraction ---------------------
   //----------------------------------------------------------
@@ -386,12 +387,12 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                          symbol,
                          pilots,
                          config_type,
-                         start_rb + dlsch[0].dlsch_config.BWPStart,
+                         start_rb + dlsch_config->BWPStart,
                          nb_rb_pdsch,
-                         dlsch[0].dlsch_config.n_dmrs_cdm_groups,
+                         dlsch_config->n_dmrs_cdm_groups,
                          nl,
                          frame_parms,
-                         dlsch[0].dlsch_config.dlDmrsSymbPos,
+                         dlsch_config->dlDmrsSymbPos,
                          ue->chest_time);
     if (meas_enabled) {
       stop_meas(&meas);
@@ -409,12 +410,12 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
         memcpy(ue->phy_sim_pdsch_rxdataF_ext + offset, rxdataF_ext, rx_size_symbol * sizeof(c16_t));
       }
 
-    nb_re_pdsch = (pilots == 1)
-                      ? ((config_type == NFAPI_NR_DMRS_TYPE1) ? nb_rb_pdsch * (12 - 6 * dlsch[0].dlsch_config.n_dmrs_cdm_groups) : nb_rb_pdsch * (12 - 4 * dlsch[0].dlsch_config.n_dmrs_cdm_groups))
-                      : (nb_rb_pdsch * 12);
-  //----------------------------------------------------------
-  //--------------------- Channel Scaling --------------------
-  //----------------------------------------------------------
+    nb_re_pdsch = (pilots == 1) ? ((config_type == NFAPI_NR_DMRS_TYPE1) ? nb_rb_pdsch * (12 - 6 * dlsch_config->n_dmrs_cdm_groups)
+                                                                        : nb_rb_pdsch * (12 - 4 * dlsch_config->n_dmrs_cdm_groups))
+                                : (nb_rb_pdsch * 12);
+    //----------------------------------------------------------
+    //--------------------- Channel Scaling --------------------
+    //----------------------------------------------------------
     if (meas_enabled)
       start_meas(&meas);
     nr_dlsch_scale_channel(rx_size_symbol, dl_ch_estimates_ext, frame_parms, nl, n_rx, symbol, pilots, nb_re_pdsch, nb_rb_pdsch);
@@ -493,7 +494,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                                   symbol,
                                   nb_re_pdsch,
                                   first_symbol_flag,
-                                  dlsch[0].dlsch_config.qamModOrder,
+                                  dlsch_config->qamModOrder,
                                   nb_rb_pdsch,
                                   *log2_maxh,
                                   measurements); // log2_maxh+I0_shift
@@ -535,7 +536,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                          dl_ch_magr,
                          dl_ch_estimates_ext,
                          nb_rb_pdsch,
-                         dlsch[0].dlsch_config.qamModOrder,
+                         dlsch_config->qamModOrder,
                          *log2_maxh,
                          symbol,
                          nb_re_pdsch);
@@ -561,9 +562,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
   int pduBitmap = 0;
 
   if(dlsch0_harq->status == ACTIVE) {
-    startSymbIdx = dlsch[0].dlsch_config.start_symbol;
-    nbSymb = dlsch[0].dlsch_config.number_symbols;
-    pduBitmap = dlsch[0].dlsch_config.pduBitmap;
+    startSymbIdx = dlsch_config->start_symbol;
+    nbSymb = dlsch_config->number_symbols;
+    pduBitmap = dlsch_config->pduBitmap;
   }
 
   /* Check for PTRS bitmap and process it respectively */
@@ -572,11 +573,9 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
         ue, nbRx, ptrs_phase_per_slot, ptrs_re_per_slot, rx_size_symbol, rxdataF_comp, frame_parms, dlsch0_harq, dlsch1_harq, gNB_id, nr_slot_rx, symbol, (nb_rb_pdsch * 12), dlsch[0].rnti, dlsch);
     dl_valid_re[symbol-1] -= ptrs_re_per_slot[0][symbol];
   }
-
   /* at last symbol in a slot calculate LLR's for whole slot */
   if(symbol == (startSymbIdx + nbSymb -1)) {
-
-    const uint32_t rx_llr_layer_size = (dlsch0_harq->G + dlsch[0].Nl - 1) / dlsch[0].Nl;
+    const uint32_t rx_llr_layer_size = (G + dlsch[0].Nl - 1) / dlsch[0].Nl;
 
     int16_t* layer_llr[NR_MAX_NB_LAYERS];
     for (int i = 0; i < NR_MAX_NB_LAYERS; i++)
@@ -610,13 +609,7 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
                    llr_offset);
     }
 
-    nr_dlsch_layer_demapping(llr,
-                             dlsch[0].Nl,
-                             dlsch[0].dlsch_config.qamModOrder,
-                             dlsch0_harq->G,
-                             codeword_TB0,
-                             codeword_TB1,
-                             layer_llr);
+    nr_dlsch_layer_demapping(llr, dlsch[0].Nl, dlsch[0].dlsch_config.qamModOrder, G, codeword_TB0, codeword_TB1, layer_llr);
     // if (llr[0][0]) abort();
     for (int i=0; i<NR_MAX_NB_LAYERS; i++)
       free(layer_llr[i]);
