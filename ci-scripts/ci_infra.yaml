@@ -327,6 +327,9 @@ rfsim4g_ue:
   NetworkScript: docker exec rfsim4g-oai-lte-ue0 ip a show dev oaitun_ue1
   CmdPrefix: docker exec rfsim4g-oai-lte-ue0
   IF: oaitun_ue1
+  AttachScript: docker start rfsim4g-oai-lte-ue0
+  DetachScript: docker stop rfsim4g-oai-lte-ue0
+  MTU: 1500
 
 rfsim4g_ext_dn:
   Host: localhost
