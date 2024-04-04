@@ -34,7 +34,7 @@ FROM ran-build:latest AS gnb-build
 FROM ubuntu:focal as oai-gnb
 ARG BUILD_OPTION
 ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=Europe
+ENV TZ=Europe/Paris
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get upgrade --yes && \
@@ -42,6 +42,14 @@ RUN apt-get update && \
         software-properties-common \
         procps \
         libsctp1 \
+        libboost-chrono1.71.0 \
+        libboost-date-time1.71.0 \
+        libboost-filesystem1.71.0 \
+        libboost-regex1.71.0 \
+        libboost-serialization1.71.0 \
+        libboost-thread1.71.0 \
+        libboost-system1.71.0 \
+        libboost-program-options1.71.0 \
         tzdata \
         libblas3 \
         libatlas3-base \
@@ -63,6 +71,7 @@ RUN apt-get update && \
         libasan5 \
         libubsan1 \
         liblapacke; fi' && \
+    apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt/oai-gnb/bin
@@ -86,16 +95,6 @@ COPY --from=gnb-build \
 COPY --from=gnb-base /usr/local/bin/uhd_find_devices /usr/local/bin
 COPY --from=gnb-base /usr/local/lib/libuhd.so.4.4.0 /usr/local/lib
 COPY --from=gnb-base /usr/local/lib/uhd/utils/uhd_images_downloader.py /opt/oai-gnb/bin
-COPY --from=gnb-base \
-    /usr/lib/x86_64-linux-gnu/libboost_chrono.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_date_time.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_regex.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_serialization.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_thread.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_system.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/libboost_program_options.so.1.71.0 \
-    /usr/lib/x86_64-linux-gnu/
 
 RUN /bin/bash -c "ln -s /usr/local/lib/liboai_usrpdevif.so /usr/local/lib/liboai_device.so" && \
     ldconfig && \
