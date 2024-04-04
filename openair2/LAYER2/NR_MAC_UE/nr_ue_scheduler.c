@@ -1085,7 +1085,7 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
   dl_config->slot = rx_slot;
   dl_config->number_pdus = 0;
 
-  if (mac->state == UE_NOT_SYNC)
+  if (mac->state == UE_NOT_SYNC || mac->state == UE_DETACHING)
     return;
 
   ue_dci_configuration(mac, dl_config, rx_frame, rx_slot);
@@ -1316,7 +1316,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     }
   }
 
-  if(mac->state >= UE_PERFORMING_RA)
+  if(mac->state >= UE_PERFORMING_RA && mac->state < UE_DETACHING)
     nr_ue_pucch_scheduler(mac, frame_tx, slot_tx, ul_info->phy_data);
 }
 

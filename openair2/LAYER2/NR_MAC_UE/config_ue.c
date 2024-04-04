@@ -1438,6 +1438,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
+      mac->state = UE_DETACHING;
       break;
     case T300_EXPIRY:
       reset_ra(mac, cause);
