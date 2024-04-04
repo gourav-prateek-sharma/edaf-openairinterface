@@ -1207,7 +1207,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   uint32_t gNB_index = ul_info->gNB_index;
 
   RA_config_t *ra = &mac->ra;
-  if(mac->state < UE_CONNECTED) {
+  if(mac->state > UE_NOT_SYNC && mac->state < UE_CONNECTED) {
     nr_ue_get_rach(mac, cc_id, frame_tx, gNB_index, slot_tx);
     nr_ue_prach_scheduler(mac, frame_tx, slot_tx);
   }
