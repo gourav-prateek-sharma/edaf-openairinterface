@@ -107,7 +107,6 @@ NR_ControlResourceSet_t *ue_get_coreset(const NR_BWP_PDCCH_t *config, const int 
   return coreset;
 }
 
-
 void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                     fapi_nr_dl_config_request_t *dl_config,
                     const int rnti_type,
@@ -160,36 +159,40 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
     rel15->coreset.pdcch_dmrs_scrambling_id = mac->physCellId;
   }
 
-  rel15->num_dci_options = (mac->ra.ra_state == nrRA_WAIT_RAR || rnti_type == TYPE_SI_RNTI_) ? 1 : 2;
-
+  int temp_num_dci_options = (mac->ra.ra_state == nrRA_WAIT_RAR || rnti_type == TYPE_SI_RNTI_) ? 1 : 2;
+  int dci_format[2] = {0};
   if (ss->searchSpaceType->present == NR_SearchSpace__searchSpaceType_PR_ue_Specific) {
     if (ss->searchSpaceType->choice.ue_Specific->dci_Formats ==
         NR_SearchSpace__searchSpaceType__ue_Specific__dci_Formats_formats0_0_And_1_0) {
-      rel15->dci_format_options[0] = NR_DL_DCI_FORMAT_1_0;
-      rel15->dci_format_options[1] = NR_UL_DCI_FORMAT_0_0;
+      dci_format[0] = NR_DL_DCI_FORMAT_1_0;
+      dci_format[1] = NR_UL_DCI_FORMAT_0_0;
     }
     else {
-      rel15->dci_format_options[0] = NR_DL_DCI_FORMAT_1_1;
-      rel15->dci_format_options[1] = NR_UL_DCI_FORMAT_0_1;
+      dci_format[0] = NR_DL_DCI_FORMAT_1_1;
+      dci_format[1] = NR_UL_DCI_FORMAT_0_1;
     }
   }
   else { // common
     AssertFatal(ss->searchSpaceType->choice.common->dci_Format0_0_AndFormat1_0,
                 "Only supporting format 10 and 00 for common SS\n");
-    rel15->dci_format_options[0] = NR_DL_DCI_FORMAT_1_0;
-    rel15->dci_format_options[1] = NR_UL_DCI_FORMAT_0_0;
+    dci_format[0] = NR_DL_DCI_FORMAT_1_0;
+    dci_format[1] = NR_UL_DCI_FORMAT_0_0;
   }
 
   NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
-  // loop over RNTI type and configure resource allocation for DCI
-  for (int i = 0; i < rel15->num_dci_options; i++) {
+  // loop over DCI options and configure resource allocation
+  // need to configure mac->def_dci_pdu_rel15 for all possible format options
+  for (int i = 0; i < temp_num_dci_options; i++) {
     rel15->ss_type_options[i] = ss->searchSpaceType->present;
-    const int dci_format = rel15->dci_format_options[i];
+    if (dci_format[i] == NR_DL_DCI_FORMAT_1_0 || dci_format[i] == NR_UL_DCI_FORMAT_0_0)
+      rel15->dci_format_options[i] = NFAPI_NR_FORMAT_0_0_AND_1_0;
+    else
+      rel15->dci_format_options[i] = NFAPI_NR_FORMAT_0_1_AND_1_1;
     uint16_t alt_size = 0;
     if(current_DL_BWP) {
-      // computing alternative size for padding
+      // computing alternative size for padding or truncation
       dci_pdu_rel15_t temp_pdu;
-      if(dci_format == NR_DL_DCI_FORMAT_1_0)
+      if (dci_format[i] == NR_DL_DCI_FORMAT_1_0)
         alt_size = nr_dci_size(current_DL_BWP,
                                current_UL_BWP,
                                sc_info,
@@ -202,7 +205,7 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                                ss->searchSpaceType->present,
                                mac->type0_PDCCH_CSS_config.num_rbs,
                                0);
-      if(dci_format == NR_UL_DCI_FORMAT_0_0)
+      if (dci_format[i] == NR_UL_DCI_FORMAT_0_0)
         alt_size = nr_dci_size(current_DL_BWP,
                                current_UL_BWP,
                                sc_info,
@@ -221,8 +224,8 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
                                     current_UL_BWP,
                                     sc_info,
                                     mac->pdsch_HARQ_ACK_Codebook,
-                                    &mac->def_dci_pdu_rel15[dl_config->slot][dci_format],
-                                    dci_format,
+                                    &mac->def_dci_pdu_rel15[dl_config->slot][dci_format[i]],
+                                    dci_format[i],
                                     rnti_type,
                                     coreset,
                                     dl_bwp_id,
@@ -233,6 +236,13 @@ void config_dci_pdu(NR_UE_MAC_INST_t *mac,
       return;
     rel15->dci_length_options[i] = dci_size;
   }
+
+  // DCI 0_0 and 1_0 are same size, L1 just needs to look for 1 option
+  // L2 decides format based on format indicator in payload
+  if (rel15->dci_format_options[0] == NFAPI_NR_FORMAT_0_0_AND_1_0)
+    rel15->num_dci_options = 1;
+  else
+    rel15->num_dci_options = 2;
 
   rel15->BWPStart = coreset_id == 0 ? mac->type0_PDCCH_CSS_config.cset_start_rb : current_DL_BWP->BWPStart;
   rel15->BWPSize = coreset_id == 0 ? mac->type0_PDCCH_CSS_config.num_rbs : current_DL_BWP->BWPSize;

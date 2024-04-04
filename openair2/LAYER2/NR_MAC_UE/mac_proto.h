@@ -120,18 +120,8 @@ subframe number \param[in] slotP slot number
 */
 int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP);
 
-int8_t nr_ue_process_dci(NR_UE_MAC_INST_t *mac,
-                         int cc_id,
-                         frame_t frame,
-                         int slot,
-                         dci_pdu_rel15_t *dci,
-                         fapi_nr_dci_indication_pdu_t *dci_ind);
-int nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac,
-                                     int cc_id,
-                                     int gNB_index,
-                                     frame_t frame,
-                                     int slot,
-                                     fapi_nr_dci_indication_pdu_t *dci);
+nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci);
+
 int8_t nr_ue_process_csirs_measurements(NR_UE_MAC_INST_t *mac,
                                         frame_t frame,
                                         int slot,
