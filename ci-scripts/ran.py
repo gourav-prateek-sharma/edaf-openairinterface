@@ -366,7 +366,6 @@ class RANManagement():
 		self.testCase_id = HTML.testCase_id
 		mySSH = SSH.SSHConnection()
 		cwd = os.getcwd()
-		mySSH.copyout(lIpAddr,lUserName,lPassWord, cwd + "/active_net_interfaces.awk", "/tmp")
 		
 		#Get pcap on enb and/or gnb if enabled in the xml 
 		if self.eNB_Trace=='yes':
