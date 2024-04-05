@@ -314,10 +314,10 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
             ulsch_harq->round,
             ulsch_harq->TBS,
             rdata->decodeIterations);
+      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, rdata->ulsch_id, rdata->harq_pid, 0, 0);
+      LOG_D(PHY, "ULSCH received ok \n");
       ulsch->active = false;
       ulsch_harq->round = 0;
-      LOG_D(PHY, "ULSCH received ok \n");
-      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, rdata->ulsch_id, rdata->harq_pid, 0, 0);
       //dumpsig=1;
     } else {
       LOG_D(PHY,
@@ -335,9 +335,9 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
             ulsch_harq->ulsch_pdu.rb_size,
             ulsch_harq->TBS,
             r);
+      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, rdata->ulsch_id, rdata->harq_pid, 1, 0);
       ulsch->handled = 1;
       LOG_D(PHY, "ULSCH %d in error\n",rdata->ulsch_id);
-      nr_fill_indication(gNB, ulsch->frame, ulsch->slot, rdata->ulsch_id, rdata->harq_pid, 1, 0);
       //      dumpsig=1;
     }
     ulsch->last_iteration_cnt = rdata->decodeIterations;
