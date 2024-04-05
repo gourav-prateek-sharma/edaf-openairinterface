@@ -654,7 +654,6 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
       OCTET_STRING_fromBuf(msg,
                            (char *)ue_p->pduSession[i].param.nas_pdu.buffer,
                            ue_p->pduSession[i].param.nas_pdu.length);
-      asn1cSeqAdd(&dedicatedNAS_MessageList->list, msg);
 
       LOG_D(NR_RRC, "add NAS info with size %d (pdusession idx %d)\n", ue_p->pduSession[i].param.nas_pdu.length, i);
       ue_p->pduSession[i].xid = xid;
