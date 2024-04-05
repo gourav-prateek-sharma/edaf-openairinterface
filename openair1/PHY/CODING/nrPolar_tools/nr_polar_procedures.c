@@ -33,6 +33,7 @@
 #include "common/utils/nr/nr_common.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_defs.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -173,6 +174,7 @@ void polar_encode_bytes(uint8_t* in_out, size_t N)
 
 void nr_polar_uxG(uint8_t const *u, size_t N, uint8_t *D2)
 {
+  assert(N > 7); 
   uint8_t tmp[N/8];
   for(int i = 0; i < N/8; ++i)
     tmp[i] = u[N/8 - 1 - i];
