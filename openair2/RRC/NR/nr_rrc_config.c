@@ -657,15 +657,6 @@ static NR_SetupRelease_SRS_Config_t *get_config_srs(const NR_ServingCellConfigCo
                                                     const long maxMIMO_Layers,
                                                     int do_srs)
 {
-  // if in the future NUMBER_OF_gNB_MAX is increased, it will be necessary to improve the allocation of SRS resources,
-  // where the startPosition = 2 or 3 and sl160 = 17, 17, 27 ... 157 only give us 30 different allocations.
-  static_assert(NUMBER_OF_gNB_MAX <= 32,
-                "SRS can only handle up to 30 UEs (additional ones are handled gracefully, but don't have SRS enabled\n");
-  if (do_srs && (uid < 0 || uid > 29)) {
-    LOG_E(NR_RRC, "gNB cannot allocate SRS resources for UID %d: available resources exceeded\n", uid);
-    do_srs = 0;
-  }
-
   NR_SetupRelease_SRS_Config_t *setup_release_srs_Config = calloc(1,sizeof(*setup_release_srs_Config));
   setup_release_srs_Config->present = NR_SetupRelease_SRS_Config_PR_setup;
   setup_release_srs_Config->choice.setup = calloc(1,sizeof(*setup_release_srs_Config->choice.setup));
