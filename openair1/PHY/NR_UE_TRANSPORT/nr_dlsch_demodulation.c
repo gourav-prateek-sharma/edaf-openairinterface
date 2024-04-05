@@ -586,7 +586,6 @@ int nr_rx_pdsch(PHY_VARS_NR_UE *ue,
     }
 
     int16_t layer_llr[dlsch[0].Nl][rx_llr_layer_size];
-    memset(layer_llr,0, sizeof(layer_llr));
     for(int i = startSymbIdx; i < startSymbIdx+nbSymb; i++) {
       /* re evaluating the first symbol flag as LLR's are done in symbol loop  */
       if(i == startSymbIdx && i < 3)
