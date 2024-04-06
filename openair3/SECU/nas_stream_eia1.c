@@ -126,16 +126,17 @@ void nas_stream_encrypt_eia1(nas_stream_cipher_t const *stream_cipher, uint8_t o
   uint64_t        M_D_2;
   int             rem_bits;
   uint32_t        mask = 0;
-  uint32_t       *message;
+  uint32_t        *message;
+  uint8_t         *key = (uint8_t *)stream_cipher->context;
 
   message = (uint32_t*)stream_cipher->message; /* To operate 32 bit message internally. */
   /* Load the Integrity Key for SNOW3G initialization as in section 4.4. */
-  memcpy(K+3,stream_cipher->key+0,4); /*K[3] = key[0]; we assume
+  memcpy(K+3,key+0,4); /*K[3] = key[0]; we assume
     K[3]=key[0]||key[1]||...||key[31] , with key[0] the
     * most important bit of key*/
-  memcpy(K+2,stream_cipher->key+4,4); /*K[2] = key[1];*/
-  memcpy(K+1,stream_cipher->key+8,4); /*K[1] = key[2];*/
-  memcpy(K+0,stream_cipher->key+12,4); /*K[0] = key[3]; we assume
+  memcpy(K+2,key+4,4); /*K[2] = key[1];*/
+  memcpy(K+1,key+8,4); /*K[1] = key[2];*/
+  memcpy(K+0,key+12,4); /*K[0] = key[3]; we assume
     K[0]=key[96]||key[97]||...||key[127] , with key[127] the
     * least important bit of key*/
   K[3] = hton_int32(K[3]);
@@ -212,4 +213,17 @@ void nas_stream_encrypt_eia1(nas_stream_cipher_t const *stream_cipher, uint8_t o
   //printf ("MAC_I:%16X\n",MAC_I);
   MAC_I = hton_int32(MAC_I);
   memcpy(out, &MAC_I, 4);
+}
+
+stream_security_context_t *stream_integrity_init_eia1(const uint8_t *integrity_key)
+{
+  void *ret = calloc(1, 16);
+  AssertFatal(ret != NULL, "out of memory\n");
+  memcpy(ret, integrity_key, 16);
+  return (stream_security_context_t *)ret;
+}
+
+void stream_integrity_free_eia1(stream_security_context_t *integrity_context)
+{
+  free(integrity_context);
 }
