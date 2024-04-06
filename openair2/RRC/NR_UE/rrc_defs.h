@@ -159,6 +159,7 @@ typedef struct NR_UE_Timers_Constants_s {
   NR_timer_t T320;
   NR_timer_t T321;
   NR_timer_t T325;
+  NR_timer_t T380;
   NR_timer_t T390;
   // counters
   uint32_t N310_cnt;
@@ -217,10 +218,10 @@ typedef struct NR_UE_RRC_INST_s {
   long keyToUse;
   bool as_security_activated;
   bool detach_after_release;
-
-  long               selected_plmn_identity;
-  Rrc_State_NR_t     nrRrcState;
-  as_nas_info_t      initialNasMsg;
+  NR_timer_t release_timer;
+  NR_RRCRelease_t *RRCRelease;
+  long selected_plmn_identity;
+  Rrc_State_NR_t nrRrcState;
 
   //Sidelink params
   NR_SL_PreconfigurationNR_r16_t *sl_preconfig;
