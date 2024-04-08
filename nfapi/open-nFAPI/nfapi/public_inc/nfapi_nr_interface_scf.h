@@ -1759,7 +1759,7 @@ typedef struct{
   uint8_t  avg_rssi;
   uint8_t  avg_snr;
   uint8_t  num_preamble;
-  nfapi_nr_prach_indication_preamble_t* preamble_list;
+  nfapi_nr_prach_indication_preamble_t preamble_list[64];
 
 }nfapi_nr_prach_indication_pdu_t;
 

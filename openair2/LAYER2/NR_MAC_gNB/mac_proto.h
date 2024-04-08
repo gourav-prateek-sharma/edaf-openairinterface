@@ -115,7 +115,7 @@ void nr_schedule_RA(module_id_t module_idP,
 void nr_initiate_ra_proc(module_id_t module_idP, int CC_id, frame_t frameP, sub_frame_t slotP,
                          uint16_t preamble_index, uint8_t freq_index, uint8_t symbol, int16_t timing_offset);
 
-void nr_clear_ra_proc(module_id_t module_idP, int CC_id, frame_t frameP, NR_RA_t *ra);
+void nr_clear_ra_proc(NR_RA_t *ra);
 
 int nr_allocate_CCEs(int module_idP, int CC_idP, frame_t frameP, sub_frame_t slotP, int test_only);
 
@@ -301,8 +301,6 @@ void add_front_nr_list(NR_list_t *listP, int id);
 void remove_front_nr_list(NR_list_t *listP);
 
 NR_UE_info_t * find_nr_UE(NR_UEs_t* UEs, rnti_t rntiP);
-
-int find_nr_RA_id(module_id_t mod_idP, int CC_idP, rnti_t rntiP);
 
 void configure_UE_BWP(gNB_MAC_INST *nr_mac,
                       NR_ServingCellConfigCommon_t *scc,

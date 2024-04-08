@@ -731,7 +731,6 @@ int phy_nr_rach_indication(nfapi_nr_rach_indication_t *ind)
       rach_ind->pdu_list[i].num_preamble = ind->pdu_list[i].num_preamble;
       rach_ind->pdu_list[i].freq_index = ind->pdu_list[i].freq_index;
       rach_ind->pdu_list[i].symbol_index = ind->pdu_list[i].symbol_index;
-      rach_ind->pdu_list[i].preamble_list = CALLOC(ind->pdu_list[i].num_preamble, sizeof(nfapi_nr_prach_indication_preamble_t));
       AssertFatal(rach_ind->pdu_list[i].preamble_list != NULL, "Memory not allocated for rach_ind->pdu_list[i].preamble_list  in phy_nr_rach_indication.");
       for (int j = 0; j < ind->number_of_pdus; j++)
       {
@@ -742,10 +741,6 @@ int phy_nr_rach_indication(nfapi_nr_rach_indication_t *ind)
     if (!put_queue(&gnb_rach_ind_queue, rach_ind))
     {
       LOG_E(NR_MAC, "Put_queue failed for rach_ind\n");
-      for (int i = 0; i < ind->number_of_pdus; i++)
-      {
-        free(rach_ind->pdu_list[i].preamble_list);
-      }
       free(rach_ind->pdu_list);
       free(rach_ind);
     }

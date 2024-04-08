@@ -125,16 +125,14 @@ int8_t nr_ue_scheduled_response_stub(nr_scheduled_response_t *scheduled_response
           rach_ind->pdu_list[pdu_index].freq_index = prach_pdu->num_ra;
           rach_ind->pdu_list[pdu_index].avg_rssi = 128;
           rach_ind->pdu_list[pdu_index].avg_snr = 0xff; // invalid for now
-          rach_ind->pdu_list[pdu_index].num_preamble = 1;
           const int num_p = rach_ind->pdu_list[pdu_index].num_preamble;
-          rach_ind->pdu_list[pdu_index].preamble_list = calloc(num_p, sizeof(nfapi_nr_prach_indication_preamble_t));
+          AssertFatal(num_p == 1, "can handle only one preamble in preamble_list\n");
+          rach_ind->pdu_list[pdu_index].num_preamble = 1;
           rach_ind->pdu_list[pdu_index].preamble_list[0].preamble_index = prach_pdu->ra_PreambleIndex;
           rach_ind->pdu_list[pdu_index].preamble_list[0].timing_advance = 0;
           rach_ind->pdu_list[pdu_index].preamble_list[0].preamble_pwr = 0xffffffff;
 
           if (!put_queue(&nr_rach_ind_queue, rach_ind)) {
-            for (int pdu_index = 0; pdu_index < rach_ind->number_of_pdus; pdu_index++)
-              free(rach_ind->pdu_list[pdu_index].preamble_list);
             free(rach_ind->pdu_list);
             free(rach_ind);
           }

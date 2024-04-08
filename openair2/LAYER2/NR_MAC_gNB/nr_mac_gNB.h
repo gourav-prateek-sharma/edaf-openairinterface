@@ -164,8 +164,14 @@ typedef struct {
   RA_gNB_state_t ra_state;
   /// CORESET0 configured flag
   int coreset0_configured;
+  /// Frame where preamble was received
+  int preamble_frame;
   /// Slot where preamble was received
   uint8_t preamble_slot;
+  /// Received preamble_index
+  uint8_t preamble_index;
+  /// Timing offset indicated by PHY
+  int16_t timing_offset;
   /// Subframe where Msg2 is to be sent
   uint8_t Msg2_slot;
   /// Frame where Msg2 is to be sent
@@ -182,14 +188,8 @@ typedef struct {
   rnti_t rnti;
   /// RA RNTI allocated from received PRACH
   uint16_t RA_rnti;
-  /// Received preamble_index
-  uint8_t preamble_index;
   /// Received UE Contention Resolution Identifier
   uint8_t cont_res_id[6];
-  /// Timing offset indicated by PHY
-  int16_t timing_offset;
-  /// Timeout for RRC connection
-  int16_t RRC_timer;
   /// Msg3 first RB
   int msg3_first_rb;
   /// Msg3 number of RB

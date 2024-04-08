@@ -717,7 +717,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
 
       if (no_sig) {
         LOG_D(NR_MAC, "Random Access %i failed at state %s (no signal)\n", i, nrra_text[ra->ra_state]);
-        nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+        nr_clear_ra_proc(ra);
         continue;
       }
 
@@ -732,7 +732,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
                 nrra_text[ra->ra_state],
                 ra->rnti,
                 current_rnti);
-          nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+          nr_clear_ra_proc(ra);
         }
 
         continue;
@@ -747,7 +747,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
               ra->rnti,
               current_rnti);
 
-        nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+        nr_clear_ra_proc(ra);
         return;
       }
 
@@ -778,7 +778,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
         nr_mac_reset_ul_failure(UE_scheduling_control);
         reset_dl_harq_list(UE_scheduling_control);
         reset_ul_harq_list(UE_scheduling_control);
-        nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+        nr_clear_ra_proc(ra);
         process_CellGroup(ra->CellGroup, UE);
 
       } else {
@@ -809,7 +809,7 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
             // solution may be implemented
             LOG_W(NR_MAC, "No UE found with C-RNTI %04x, ignoring Msg3 to have UE come back with new RA attempt\n", ra->rnti);
             mac_remove_nr_ue(RC.nrmac[gnb_mod_idP], ra->rnti);
-            nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+            nr_clear_ra_proc(ra);
             return;
           }
 
@@ -859,13 +859,13 @@ static void _nr_rx_sdu(const module_id_t gnb_mod_idP,
       // for CFRA (NSA) do not schedule retransmission of msg3
       if (ra->cfra) {
         LOG_D(NR_MAC, "Random Access %i failed at state %s (NSA msg3 reception failed)\n", i, nrra_text[ra->ra_state]);
-        nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+        nr_clear_ra_proc(ra);
         return;
       }
 
       if (ra->msg3_round >= gNB_mac->ul_bler.harq_round_max - 1) {
         LOG_W(NR_MAC, "Random Access %i failed at state %s (Reached msg3 max harq rounds)\n", i, nrra_text[ra->ra_state]);
-        nr_clear_ra_proc(gnb_mod_idP, CC_idP, frameP, ra);
+        nr_clear_ra_proc(ra);
         return;
       }
 

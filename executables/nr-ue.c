@@ -209,10 +209,6 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
         .rach_ind = *rach_ind,
       };
       send_nsa_standalone_msg(&UL_INFO, rach_ind->header.message_id);
-      for (int i = 0; i < rach_ind->number_of_pdus; i++)
-      {
-        free_and_zero(rach_ind->pdu_list[i].preamble_list);
-      }
       free_and_zero(rach_ind->pdu_list);
       free_and_zero(rach_ind);
   }
