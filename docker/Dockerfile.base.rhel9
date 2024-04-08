@@ -67,9 +67,17 @@ RUN chmod +x /tini
 # In some network environments, GIT proxy is required
 RUN /bin/bash -c "if [[ -v NEEDED_GIT_PROXY ]]; then git config --global http.proxy $NEEDED_GIT_PROXY; fi"
 
-#create the WORKDIR
+# Copying only the needed files to create ran-base
+WORKDIR /oai-ran/cmake_targets/tools
+COPY cmake_targets/tools/build_helper \
+     cmake_targets/tools/uhd-4.x-tdd-patch.diff \
+     ./
+
+WORKDIR /oai-ran/cmake_targets
+COPY cmake_targets/build_oai .
+
 WORKDIR /oai-ran
-COPY . .
+COPY oaienv .
 
 #run build_oai -I to get the builder image
 RUN /bin/sh oaienv && \ 

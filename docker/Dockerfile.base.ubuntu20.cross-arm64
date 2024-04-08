@@ -79,9 +79,17 @@ ENV TINI_VERSION v0.19.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini
 
-# create the WORKDIR
+# Copying only the needed files to create ran-base
+WORKDIR /oai-ran/cmake_targets/tools
+COPY cmake_targets/tools/build_helper \
+     cmake_targets/tools/uhd-4.x-tdd-patch.diff \
+     ./
+
+WORKDIR /oai-ran/cmake_targets
+COPY cmake_targets/build_oai .
+
 WORKDIR /oai-ran
-COPY . .
+COPY oaienv .
 
 #run build_oai -I to get the builder image
 RUN /bin/sh oaienv && \

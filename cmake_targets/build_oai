@@ -488,7 +488,7 @@ function main() {
 
   [ "$CLEAN" = "1" ] && rm -rf $DIR/$BUILD_DIR/build
 
-  if [[ $TARGET_LIST != "" ]]; then
+  if [[ $TARGET_LIST != "" ]] && [[ -f $OPENAIR_DIR/CMakeLists.txt ]]; then
     # add some default libraries that should always be built
     # for eNB, gNB, UEs, simulators
     if [[ $gNB == 1 || $eNB == 1 || $UE == 1 || $nrUE == 1 || $SIMUS_PHY == 1 || $RU == 1 ]]; then
