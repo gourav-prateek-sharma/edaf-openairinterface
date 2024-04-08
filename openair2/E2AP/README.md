@@ -100,7 +100,7 @@ By default, FlexRIC will build the nearRT-RIC with E2AP v2 and KPM v2. If you wa
 ```bash
 git clone https://gitlab.eurecom.fr/mosaic5g/flexric flexric
 cd flexric/
-git checkout 34d6810f9ab435ac3a4023d5e1917669e24341da
+git checkout f1c08ed2b9b1eceeda7941dd7bf435db0168dd56
 ```
 
 ### 2.2.2 Build FlexRIC
