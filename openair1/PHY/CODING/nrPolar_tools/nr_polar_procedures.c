@@ -30,8 +30,12 @@
  * \warning
  */
 
+#include "common/utils/nr/nr_common.h"
 #include "PHY/CODING/nrPolar_tools/nr_polar_defs.h"
 
+#include <assert.h>
+#include <stdlib.h>
+#include <stdint.h>
 
 // TS 38.212 - Section 5.3.1.2 Polar encoding
 void nr_polar_generate_u(uint64_t *u,
@@ -119,21 +123,69 @@ void nr_polar_info_extraction_from_u(uint64_t *Cprime,
   }
 }
 
-void nr_polar_uxG(uint64_t *D, const uint64_t *u, const fourDimArray_t *G_N_tab, uint16_t N)
+
+static
+void encode_packed_byte(uint8_t* in_out)
 {
-  const int N64 = N / 64;
-  cast2Darray(g_n, uint64_t, G_N_tab);
-  for (int n = 0; n < N; n++) {
-    const uint64_t *Gn = g_n[N - 1 - n];
+  //    *in_out ^= 0xAA & (*in_out << 1);
+  //    *in_out ^= 0xCC & (*in_out << 2);
+  //    *in_out ^= *in_out  in_out << 4;
+  //
+  *in_out ^= 0x55 & (*in_out >> 1);
+  *in_out ^= 0x33 & (*in_out >> 2);
+  *in_out ^= *in_out >> 4;
+}
 
-    int n_ones = 0;
-    for (int a = 0; a < N64; a++)
-      n_ones += count_bits_set(u[a] & Gn[a]);
-
-    int n1 = n / 64;
-    int n2 = n - (n1 * 64);
-    D[n1] |= ((uint64_t)n_ones & 1) << n2;
+static
+void polar_encode_bits(uint8_t* in_out, size_t N)
+{
+  size_t const num_bytes_per_block = N >> 3;
+  for(size_t i = 0; i < num_bytes_per_block; ++i){
+    encode_packed_byte(&in_out[i]);
   }
+}
+
+static 
+uint32_t log2_floor(uint32_t x) 
+{
+  if(x == 0)
+    return 0; 
+  uint32_t clz = __builtin_clz(x);
+  return 31U - clz;
+}
+
+static
+void polar_encode_bytes(uint8_t* in_out, size_t N)
+{
+  size_t brnch_sz = 1;
+  size_t n_brnch = N >> 4;
+  size_t const blck_pwr = log2_floor(N); 
+  for (size_t stage = 3; stage < blck_pwr; ++stage) {
+    for (size_t brnch = 0; brnch < n_brnch; ++brnch) {
+        for(size_t byte = 0; byte < brnch_sz; ++byte){
+          size_t const dst = 2*brnch_sz*brnch + byte;
+          in_out[dst] ^= in_out[dst + brnch_sz];
+        }
+    }
+    n_brnch >>= 1;
+    brnch_sz <<= 1;
+  }
+}
+
+void nr_polar_uxG(uint8_t const *u, size_t N, uint8_t *D2)
+{
+  assert(N > 7); 
+  uint8_t tmp[N/8];
+  for(int i = 0; i < N/8; ++i)
+    tmp[i] = u[N/8 - 1 - i];
+
+  reverse_bits_u8(tmp, N/8, D2);
+
+  // Do the encoding/xor for the bottom 3 levels of the tree.
+  // Thus, data remaining to encode, is in 2^3 type.
+  polar_encode_bits(D2, N);
+  // Xor the remaining tree levels. Use bytes for it
+  polar_encode_bytes(D2, N);
 }
 
 void nr_polar_bit_insertion(uint8_t *input,

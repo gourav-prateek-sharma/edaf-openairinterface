@@ -282,7 +282,7 @@ void nr_polar_generate_u(uint64_t *u,
                          uint16_t N,
                          uint8_t n_pc);
 
-void nr_polar_uxG(uint64_t *D, const uint64_t *u, const fourDimArray_t *G_N_tab, uint16_t N);
+void nr_polar_uxG(uint8_t const* u, size_t N, uint8_t* D);
 
 void nr_polar_info_extraction_from_u(uint64_t *Cprime,
                                      const uint8_t *u,
