@@ -760,6 +760,7 @@ static int get_feasible_msg3_tda(frame_type_t frame_type,
 
   // TDD
   DevAssert(tdd != NULL);
+  uint8_t tdd_period_slot = slots_per_frame / get_nb_periods_per_frame(tdd->dl_UL_TransmissionPeriodicity);
   for (int i = 0; i < tda_list->list.count; i++) {
     // check if it is UL
     long k2 = *tda_list->list.array[i]->k2;
@@ -769,8 +770,19 @@ static int get_feasible_msg3_tda(frame_type_t frame_type,
 
     // check if enough symbols in case of mixed slot
     bool has_mixed = tdd->nrofUplinkSymbols != 0 || tdd->nrofDownlinkSymbols != 0;
-    // is in mixed slot with less than 3 symbols?
-    if (has_mixed && temp_slot == tdd->nrofDownlinkSlots && tdd->nrofUplinkSymbols < 3)
+    bool is_mixed = has_mixed && ((temp_slot % tdd_period_slot) == tdd->nrofDownlinkSlots);
+    // if the mixed slot has not enough symbols, skip
+    if (is_mixed && tdd->nrofUplinkSymbols < 3)
+      continue;
+
+    uint16_t slot_mask = is_mixed ? SL_to_bitmap(14 - tdd->nrofUplinkSymbols, tdd->nrofUplinkSymbols) : 0x3fff;
+    long startSymbolAndLength = tda_list->list.array[i]->startSymbolAndLength;
+    int start, nr;
+    SLIV2SL(startSymbolAndLength, &start, &nr);
+    uint16_t msg3_mask = SL_to_bitmap(start, nr);
+    LOG_D(NR_MAC, "Check Msg3 TDA %d for slot %d: k2 %ld, S %d L %d\n", i, temp_slot, k2, start, nr);
+    /* if this start and length of this TDA cannot be fulfilled, skip */
+    if ((slot_mask & msg3_mask) != msg3_mask)
       continue;
 
     // is in mixed slot with more or equal than 3 symbols, or UL slot
