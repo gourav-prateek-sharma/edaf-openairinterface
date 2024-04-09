@@ -169,6 +169,27 @@ def AnalyzeBuildLogs(buildRoot, images, globalStatus):
 		collectInfo[image] = files
 	return collectInfo
 
+# pyshark livecapture launches 2 processes:
+# * One using dumpcap -i lIfs -w - (ie redirecting the packets to STDOUT)
+# * One using tshark -i - -w loFile (ie capturing from STDIN from previous process)
+# but in fact the packets are read by the following loop before being in fact
+# really written to loFile.
+# So it is mandatory to keep the loop
+def LaunchPySharkCapture(lIfs, lFilter, loFile):
+	capture = pyshark.LiveCapture(interface=lIfs, bpf_filter=lFilter, output_file=loFile, debug=False)
+	for packet in capture.sniff_continuously():
+		pass
+
+def StopPySharkCapture(testcase):
+	with cls_cmd.LocalCmd() as myCmd:
+		cmd = 'killall tshark'
+		myCmd.run(cmd, reportNonZero=False)
+		cmd = 'killall dumpcap'
+		myCmd.run(cmd, reportNonZero=False)
+		time.sleep(5)
+		cmd = f'mv /tmp/capture_{testcase}.pcap ../cmake_targets/log/{testcase}/.'
+		myCmd.run(cmd, timeout=100, reportNonZero=False)
+	return False
 #-----------------------------------------------------------
 # Class Declaration
 #-----------------------------------------------------------
@@ -1183,17 +1204,6 @@ class Containerize():
 			self.UndeployGenObject(HTML, RAN, UE)
 			self.exitStatus = 1
 
-	# pyshark livecapture launches 2 processes:
-	# * One using dumpcap -i lIfs -w - (ie redirecting the packets to STDOUT)
-	# * One using tshark -i - -w loFile (ie capturing from STDIN from previous process)
-	# but in fact the packets are read by the following loop before being in fact
-	# really written to loFile.
-	# So it is mandatory to keep the loop
-	def LaunchPySharkCapture(self, lIfs, lFilter, loFile):
-		capture = pyshark.LiveCapture(interface=lIfs, bpf_filter=lFilter, output_file=loFile, debug=False)
-		for packet in capture.sniff_continuously():
-			pass
-
 	def CaptureOnDockerNetworks(self):
 		myCmd = cls_cmd.LocalCmd(d = self.yamlPath[0])
 		cmd = 'docker-compose -f docker-compose-ci.yml config | grep com.docker.network.bridge.name | sed -e "s@^.*name: @@"'
@@ -1218,7 +1228,7 @@ class Containerize():
 			myCmd.run(cmd, timeout=5, reportNonZero=False)
 			myCmd.close()
 			return
-		x = threading.Thread(target = self.LaunchPySharkCapture, args = (interfaces,capture_filter,output_file,))
+		x = threading.Thread(target = LaunchPySharkCapture, args = (interfaces,capture_filter,output_file,))
 		x.daemon = True
 		x.start()
 
@@ -1307,21 +1317,9 @@ class Containerize():
 						HTML.CreateHtmlTestRow('UE log Analysis', 'KO', logStatus)
 					else:
 						HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
-
-			if self.tsharkStarted:
-				self.tsharkStarted = True
-				cmd = 'killall tshark'
-				myCmd2.run(cmd, reportNonZero=False)
-				cmd = 'killall dumpcap'
-				myCmd2.run(cmd, reportNonZero=False)
-				time.sleep(5)
-				ymlPath = self.yamlPath[0].split('/')
-				# The working dir is still logPath
-				cmd = f'mv /tmp/capture_{ymlPath[1]}.pcap .'
-				myCmd2.run(cmd, timeout=100, reportNonZero=False)
-				self.tsharkStarted = False
 		myCmd2.close()
-
+		if self.tsharkStarted:
+			self.tsharkStarted = StopPySharkCapture(ymlPath[1])
 		logging.debug('\u001B[1m Undeploying \u001B[0m')
 		logging.debug(f'Working dir is back {self.yamlPath[0]}')
 		cmd = 'docker-compose -f docker-compose-ci.yml down -v'
