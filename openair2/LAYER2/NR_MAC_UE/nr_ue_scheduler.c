@@ -624,11 +624,11 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
     /* Transform precoding */
     pusch_config_pdu->transform_precoding = get_transformPrecoding(current_UL_BWP, dci_format, 0);
+    bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
 
     /*DCI format-related configuration*/
     if (dci_format == NR_UL_DCI_FORMAT_0_0) {
-      if ((pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_disabled) &&
-          pusch_config_pdu->nr_of_symbols < 3)
+      if (!tp_enabled && pusch_config_pdu->nr_of_symbols < 3)
         pusch_config_pdu->num_dmrs_cdm_grps_no_data = 1;
       else
         pusch_config_pdu->num_dmrs_cdm_grps_no_data = 2;
@@ -662,7 +662,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       pusch_config_pdu->scid = dci->dmrs_sequence_initialization.val;
 
     /* TRANSFORM PRECODING ------------------------------------------------------------------------------------------*/
-    if (pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled) {
+    if (tp_enabled) {
 
       uint32_t n_RS_Id = 0;
       if (NR_DMRS_ulconfig->transformPrecodingEnabled &&
@@ -721,8 +721,9 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->mcs_index = dci->mcs;
 
     /* MCS TABLE */
-    pusch_config_pdu->mcs_table = get_pusch_mcs_table(pusch_Config ? pusch_Config->mcs_TableTransformPrecoder : NULL,
-                                                      pusch_config_pdu->transform_precoding != NR_PUSCH_Config__transformPrecoder_disabled,
+    long *mcs_table_config = pusch_Config ? (tp_enabled ? pusch_Config->mcs_TableTransformPrecoder : pusch_Config->mcs_Table) : NULL;
+    pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config,
+                                                      tp_enabled,
                                                       dci_format,
                                                       rnti_type,
                                                       ss_type,
@@ -793,7 +794,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     /* PTRS */
     if (pusch_Config && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB &&
         pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS) {
-      if (pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_disabled) {
+      if (!tp_enabled) {
         nfapi_nr_ue_ptrs_ports_t ptrs_ports_list;
         pusch_config_pdu->pusch_ptrs.ptrs_ports_list = &ptrs_ports_list;
         bool valid_ptrs_setup = set_ul_ptrs_values(pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup,
