@@ -94,10 +94,6 @@
  *
  */
 
-
-#define RX_JOB_ID 0x1010
-#define TX_JOB_ID 100
-
 typedef enum {
   pss = 0,
   pbch = 1,
@@ -213,10 +209,6 @@ static void process_queued_nr_nfapi_msgs(NR_UE_MAC_INST_t *mac, int sfn_slot)
         .rach_ind = *rach_ind,
       };
       send_nsa_standalone_msg(&UL_INFO, rach_ind->header.message_id);
-      for (int i = 0; i < rach_ind->number_of_pdus; i++)
-      {
-        free_and_zero(rach_ind->pdu_list[i].preamble_list);
-      }
       free_and_zero(rach_ind->pdu_list);
       free_and_zero(rach_ind);
   }
@@ -503,7 +495,6 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
   if (mac->phy_config_request_sent &&
       openair0_cfg[0].duplex_mode == duplex_mode_TDD &&
       !get_softmodem_params()->continuous_tx) {
-
     int slots_frame = UE->frame_parms.slots_per_frame;
     int curr_slot = nr_ue_slot_select(&UE->nrUE_config, slot);
     if (curr_slot != NR_DOWNLINK_SLOT) {
@@ -520,18 +511,12 @@ static void RU_write(nr_rxtx_thread_data_t *rxtxD) {
     flags = TX_BURST_MIDDLE;
   }
 
-  if (flags || IS_SOFTMODEM_RFSIM)
-    AssertFatal(rxtxD->writeBlockSize ==
-                UE->rfdevice.trx_write_func(&UE->rfdevice,
-                                            proc->timestamp_tx,
-                                            txp,
-                                            rxtxD->writeBlockSize,
-                                            UE->frame_parms.nb_antennas_tx,
-                                            flags),"");
+  int tmp =
+      openair0_write_reorder(&UE->rfdevice, proc->timestamp_tx, txp, rxtxD->writeBlockSize, UE->frame_parms.nb_antennas_tx, flags);
+  AssertFatal(tmp == rxtxD->writeBlockSize, "");
 
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     memset(txp[i], 0, rxtxD->writeBlockSize);
-
 }
 
 void processSlotTX(void *arg)
@@ -666,14 +651,8 @@ void dummyWrite(PHY_VARS_NR_UE *UE,openair0_timestamp timestamp, int writeBlockS
   for (int i=0; i<UE->frame_parms.nb_antennas_tx; i++)
     dummy_tx[i]=dummy_tx_data[i];
 
-  AssertFatal( writeBlockSize ==
-               UE->rfdevice.trx_write_func(&UE->rfdevice,
-               timestamp,
-               dummy_tx,
-               writeBlockSize,
-               UE->frame_parms.nb_antennas_tx,
-               4),"");
-
+  int tmp = UE->rfdevice.trx_write_func(&UE->rfdevice, timestamp, dummy_tx, writeBlockSize, UE->frame_parms.nb_antennas_tx, 4);
+  AssertFatal(writeBlockSize == tmp, "");
 }
 
 void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash) {
@@ -690,13 +669,13 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
                    4*((x*UE->frame_parms.samples_per_subframe)+
                    UE->frame_parms.get_samples_slot_timestamp(slot,&UE->frame_parms,0));
       }
-        
-      AssertFatal( UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms) ==
-                   UE->rfdevice.trx_read_func(&UE->rfdevice,
-                   timestamp,
-                   rxp,
-                   UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms),
-                   UE->frame_parms.nb_antennas_rx), "");
+
+      int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                           timestamp,
+                                           rxp,
+                                           UE->frame_parms.get_samples_per_slot(slot, &UE->frame_parms),
+                                           UE->frame_parms.nb_antennas_rx);
+      AssertFatal(UE->frame_parms.get_samples_per_slot(slot, &UE->frame_parms) == tmp, "");
 
       if (IS_SOFTMODEM_RFSIM)
         dummyWrite(UE,*timestamp, UE->frame_parms.get_samples_per_slot(slot,&UE->frame_parms));
@@ -708,20 +687,20 @@ void readFrame(PHY_VARS_NR_UE *UE,  openair0_timestamp *timestamp, bool toTrash)
 
 }
 
-static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int rx_offset)
+static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, openair0_timestamp rx_offset)
 {
-  LOG_I(PHY, "Resynchronizing RX by %d samples\n", rx_offset);
+  LOG_I(PHY, "Resynchronizing RX by %ld samples\n", rx_offset);
+
   if (IS_SOFTMODEM_IQPLAYER || IS_SOFTMODEM_IQRECORDER) {
     // Resynchonize by slot (will work with numerology 1 only)
     for (int size = rx_offset; size > 0; size -= UE->frame_parms.samples_per_subframe / 2) {
       int unitTransfer = size > UE->frame_parms.samples_per_subframe / 2 ? UE->frame_parms.samples_per_subframe / 2 : size;
-      AssertFatal(unitTransfer
-                      == UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                                    timestamp,
-                                                    (void **)UE->common_vars.rxdata,
-                                                    unitTransfer,
-                                                    UE->frame_parms.nb_antennas_rx),
-                  "");
+      int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                           timestamp,
+                                           (void **)UE->common_vars.rxdata,
+                                           unitTransfer,
+                                           UE->frame_parms.nb_antennas_rx);
+      DevAssert(unitTransfer == tmp);
     }
   } else {
     *timestamp += UE->frame_parms.get_samples_per_slot(1, &UE->frame_parms);
@@ -731,13 +710,12 @@ static void syncInFrame(PHY_VARS_NR_UE *UE, openair0_timestamp *timestamp, int r
       // this happens here as the read size is samples_per_subframe which is very much larger than samp_per_slot
       if (IS_SOFTMODEM_RFSIM)
         dummyWrite(UE, *timestamp, unitTransfer);
-      AssertFatal(unitTransfer
-                      == UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                                    timestamp,
-                                                    (void **)UE->common_vars.rxdata,
-                                                    unitTransfer,
-                                                    UE->frame_parms.nb_antennas_rx),
-                  "");
+      int res = UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                           timestamp,
+                                           (void **)UE->common_vars.rxdata,
+                                           unitTransfer,
+                                           UE->frame_parms.nb_antennas_rx);
+      DevAssert(unitTransfer == res);
       *timestamp += unitTransfer; // this does not affect the read but needed for RFSIM write
     }
   }
@@ -767,10 +745,12 @@ void *UE_thread(void *arg)
   void *rxp[NB_ANTENNAS_RX];
   int start_rx_stream = 0;
   fapi_nr_config_request_t *cfg = &UE->nrUE_config;
-  AssertFatal(0 == openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]), "Could not load the device\n");
+  int tmp = openair0_device_load(&(UE->rfdevice), &openair0_cfg[0]);
+  AssertFatal(tmp == 0, "Could not load the device\n");
   UE->rfdevice.host_type = RAU_HOST;
   UE->is_synchronized = 0;
-  AssertFatal(UE->rfdevice.trx_start_func(&UE->rfdevice) == 0, "Could not start the device\n");
+  int tmp2 = UE->rfdevice.trx_start_func(&UE->rfdevice);
+  AssertFatal(tmp2 == 0, "Could not start the device\n");
 
   notifiedFIFO_t nf;
   initNotifiedFIFO(&nf);
@@ -907,9 +887,8 @@ void *UE_thread(void *arg)
 
     const int readBlockSize = get_readBlockSize(slot_nr, &UE->frame_parms) - iq_shift_to_apply;
     openair0_timestamp rx_timestamp;
-    AssertFatal(readBlockSize
-                    == UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSize, UE->frame_parms.nb_antennas_rx),
-                "");
+    int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice, &rx_timestamp, rxp, readBlockSize, UE->frame_parms.nb_antennas_rx);
+    AssertFatal(readBlockSize == tmp, "");
 
     if(slot_nr == (nb_slot_frame - 1)) {
       // read in first symbol of next frame and adjust for timing drift
@@ -917,12 +896,13 @@ void *UE_thread(void *arg)
 
       if (first_symbols > 0) {
         openair0_timestamp ignore_timestamp;
-        AssertFatal(first_symbols ==
-                    UE->rfdevice.trx_read_func(&UE->rfdevice,
-                                               &ignore_timestamp,
-                                               (void **)UE->common_vars.rxdata,
-                                               first_symbols,
-                                               UE->frame_parms.nb_antennas_rx),"");
+        int tmp = UE->rfdevice.trx_read_func(&UE->rfdevice,
+                                             &ignore_timestamp,
+                                             (void **)UE->common_vars.rxdata,
+                                             first_symbols,
+                                             UE->frame_parms.nb_antennas_rx);
+        AssertFatal(first_symbols == tmp, "");
+
       } else
         LOG_E(PHY,"can't compensate: diff =%d\n", first_symbols);
     }
@@ -988,7 +968,8 @@ void init_NR_UE(int nb_inst, char *uecap_file, char *reconfig_file, char *rbconf
 
   for (int i = 0; i < nb_inst; i++) {
     NR_UE_MAC_INST_t *mac = get_mac_inst(i);
-    AssertFatal((mac->if_module = nr_ue_if_module_init(i)) != NULL, "can not initialize IF module\n");
+    mac->if_module = nr_ue_if_module_init(i);
+    AssertFatal(mac->if_module, "can not initialize IF module\n");
     if (!get_softmodem_params()->sa) {
       init_nsa_message(rrc_inst, reconfig_file, rbconfig_file);
       nr_rlc_activate_srb0(mac_inst->crnti, NULL, send_srb0_rrc);

@@ -133,10 +133,6 @@ void find_aggregation_candidates(uint8_t *aggregation_level,
                                  const NR_SearchSpace_t *ss,
                                  int maxL);
 
-void find_monitoring_periodicity_offset_common(NR_SearchSpace_t *ss,
-                                               uint16_t *slot_period,
-                                               uint16_t *offset);
-
 int get_nr_prach_info_from_index(uint8_t index,
                                  int frame,
                                  int slot,

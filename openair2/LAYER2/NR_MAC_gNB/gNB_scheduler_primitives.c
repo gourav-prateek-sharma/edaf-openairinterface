@@ -2071,20 +2071,6 @@ NR_UE_info_t *find_nr_UE(NR_UEs_t *UEs, rnti_t rntiP)
   return NULL;
 }
 
-int find_nr_RA_id(module_id_t mod_idP, int CC_idP, rnti_t rntiP)
-{
-  NR_RA_t *ra = RC.nrmac[mod_idP]->common_channels[CC_idP].ra;
-
-  for (int RA_id = 0; RA_id < NR_NB_RA_PROC_MAX; RA_id++) {
-    LOG_D(NR_MAC, "Checking RA_id %d for %x : state %s\n", RA_id, rntiP, nrra_text[ra[RA_id].ra_state]);
-
-    if (ra[RA_id].ra_state != nrRA_gNB_IDLE && ra[RA_id].rnti == rntiP)
-      return RA_id;
-  }
-
-  return -1;
-}
-
 int get_nrofHARQ_ProcessesForPDSCH(e_NR_PDSCH_ServingCellConfig__nrofHARQ_ProcessesForPDSCH n)
 {
   switch (n) {

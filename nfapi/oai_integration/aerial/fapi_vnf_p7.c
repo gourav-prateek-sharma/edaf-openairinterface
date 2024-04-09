@@ -397,9 +397,6 @@ int aerial_phy_nr_rach_indication(nfapi_nr_rach_indication_t *ind)
       rach_ind->pdu_list[i].avg_rssi = ind->pdu_list[i].avg_rssi;
       rach_ind->pdu_list[i].avg_snr = ind->pdu_list[i].avg_snr;
       rach_ind->pdu_list[i].num_preamble = ind->pdu_list[i].num_preamble;
-      rach_ind->pdu_list[i].preamble_list = CALLOC(ind->pdu_list[i].num_preamble, sizeof(nfapi_nr_prach_indication_preamble_t));
-      AssertFatal(rach_ind->pdu_list[i].preamble_list != NULL,
-                  "Memory not allocated for rach_ind->pdu_list[i].preamble_list  in phy_nr_rach_indication.");
       for (int j = 0; j < ind->pdu_list[i].num_preamble; j++) {
         rach_ind->pdu_list[i].preamble_list[j].preamble_index = ind->pdu_list[i].preamble_list[j].preamble_index;
         rach_ind->pdu_list[i].preamble_list[j].timing_advance = ind->pdu_list[i].preamble_list[j].timing_advance;

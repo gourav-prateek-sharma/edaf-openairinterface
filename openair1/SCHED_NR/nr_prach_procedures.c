@@ -152,38 +152,43 @@ void L1_nr_prach_procedures(PHY_VARS_gNB *gNB,int frame,int slot) {
 	    gNB->prach_energy_counter);
 
       if ((gNB->prach_energy_counter == 100) && (max_preamble_energy[0] > gNB->measurements.prach_I0+gNB->prach_thres)) {
-	
-	LOG_I(NR_PHY,"[gNB %d][RAPROC] Frame %d, slot %d Initiating RA procedure with preamble %d, energy %d.%d dB (I0 %d, thres %d), delay %d start symbol %u freq index %u\n",
-	      gNB->Mod_id,
-	      frame,
-	      slot,
-	      max_preamble[0],
-	      max_preamble_energy[0]/10,
-	      max_preamble_energy[0]%10,
-              gNB->measurements.prach_I0,gNB->prach_thres,
-	      max_preamble_delay[0],
-	      prachStartSymbol,
-	      prach_pdu->num_ra);
-	
-	T(T_ENB_PHY_INITIATE_RA_PROCEDURE, T_INT(gNB->Mod_id), T_INT(frame), T_INT(slot),
-	  T_INT(max_preamble[0]), T_INT(max_preamble_energy[0]), T_INT(max_preamble_delay[0]));
-	
-	
-	gNB->UL_INFO.rach_ind.number_of_pdus  += 1;
-	
-	gNB->prach_pdu_indication_list[pdu_index].phy_cell_id  = gNB->gNB_config.cell_config.phy_cell_id.value;
-	gNB->prach_pdu_indication_list[pdu_index].symbol_index = prachStartSymbol; 
-	gNB->prach_pdu_indication_list[pdu_index].slot_index   = slot;
-	gNB->prach_pdu_indication_list[pdu_index].freq_index   = prach_pdu->num_ra;
-	gNB->prach_pdu_indication_list[pdu_index].avg_rssi     = (max_preamble_energy[0]<631) ? (128+(max_preamble_energy[0]/5)) : 254;
-	gNB->prach_pdu_indication_list[pdu_index].avg_snr      = 0xff; // invalid for now
-	
-	gNB->prach_pdu_indication_list[pdu_index].num_preamble                        = 1;
-	gNB->prach_pdu_indication_list[pdu_index].preamble_list                       = gNB->preamble_list;
-	gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].preamble_index     = max_preamble[0];
-	gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].timing_advance     = max_preamble_delay[0];
-	gNB->prach_pdu_indication_list[pdu_index].preamble_list[0].preamble_pwr       = 0xffffffff;
-	pdu_index++;
+        LOG_I(NR_PHY,
+              "[RAPROC] %d.%d Initiating RA procedure with preamble %d, energy %d.%d dB (I0 %d, thres %d), delay %d start symbol "
+              "%u freq index %u\n",
+              frame,
+              slot,
+              max_preamble[0],
+              max_preamble_energy[0] / 10,
+              max_preamble_energy[0] % 10,
+              gNB->measurements.prach_I0,
+              gNB->prach_thres,
+              max_preamble_delay[0],
+              prachStartSymbol,
+              prach_pdu->num_ra);
+
+        T(T_ENB_PHY_INITIATE_RA_PROCEDURE,
+          T_INT(gNB->Mod_id),
+          T_INT(frame),
+          T_INT(slot),
+          T_INT(max_preamble[0]),
+          T_INT(max_preamble_energy[0]),
+          T_INT(max_preamble_delay[0]));
+
+        gNB->UL_INFO.rach_ind.number_of_pdus += 1;
+
+        nfapi_nr_prach_indication_pdu_t *ind = &gNB->prach_pdu_indication_list[pdu_index];
+        ind->phy_cell_id = gNB->gNB_config.cell_config.phy_cell_id.value;
+        ind->symbol_index = prachStartSymbol;
+        ind->slot_index = slot;
+        ind->freq_index = prach_pdu->num_ra;
+        ind->avg_rssi = (max_preamble_energy[0] < 631) ? (128 + (max_preamble_energy[0] / 5)) : 254;
+        ind->avg_snr = 0xff; // invalid for now
+
+        ind->num_preamble = 1;
+        ind->preamble_list[0].preamble_index = max_preamble[0];
+        ind->preamble_list[0].timing_advance = max_preamble_delay[0];
+        ind->preamble_list[0].preamble_pwr = 0xffffffff;
+        pdu_index++;
       }
       gNB->measurements.prach_I0 = ((gNB->measurements.prach_I0*900)>>10) + ((max_preamble_energy[0]*124)>>10); 
       if (frame==0) LOG_I(PHY,"prach_I0 = %d.%d dB\n",gNB->measurements.prach_I0/10,gNB->measurements.prach_I0%10);

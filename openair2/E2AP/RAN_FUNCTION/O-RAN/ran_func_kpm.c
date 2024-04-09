@@ -420,26 +420,29 @@ bool read_kpm_sm(void* data)
 }
 
 static const char* kpm_meas_du[] = {
-  "DRB.RlcSduDelayDl", 
-  "DRB.UEThpDl", 
-  "DRB.UEThpUl", 
-  "RRU.PrbTotDl", 
+  "DRB.RlcSduDelayDl",
+  "DRB.UEThpDl",
+  "DRB.UEThpUl",
+  "RRU.PrbTotDl",
   "RRU.PrbTotUl",
+  NULL,
 };
 
 static const char* kpm_meas_gnb[] = {
-  "DRB.PdcpSduVolumeDL", 
-  "DRB.PdcpSduVolumeUL", 
-  "DRB.RlcSduDelayDl", 
-  "DRB.UEThpDl", 
-  "DRB.UEThpUl", 
-  "RRU.PrbTotDl", 
+  "DRB.PdcpSduVolumeDL",
+  "DRB.PdcpSduVolumeUL",
+  "DRB.RlcSduDelayDl",
+  "DRB.UEThpDl",
+  "DRB.UEThpUl",
+  "RRU.PrbTotDl",
   "RRU.PrbTotUl",
+  NULL,
 };
 
 static const char* kpm_meas_cuup[] = {
-  "DRB.PdcpSduVolumeDL", 
-  "DRB.PdcpSduVolumeUL", 
+  "DRB.PdcpSduVolumeDL",
+  "DRB.PdcpSduVolumeUL",
+  NULL,
 };
 
 typedef const char** meas_list;

@@ -295,7 +295,16 @@
                                     (Test16: Format 2 19-bit 8/106 PRB),
                                     (Test17: Format 2 32-bit 8/106 PRB),
                                     (Test18: Format 2 32-bit 16/106 PRB),
-                                    (Test19: Format 2 64-bit 16/106 PRB)</desc>
+                                    (Test19: Format 2 64-bit 16/106 PRB),
+                                    (Test20: Format 0 1-bit Ack miss 273 PRB),
+                                    (Test21: Format 0 2-bit Ack miss 273 PRB),
+                                    (Test22: Format 0 2-bit Ack miss+SR 273 PRB),
+                                    (Test23: Format 2 4-bit 2/273 PRB),
+                                    (Test24: Format 2 7-bit 2/273 PRB),
+                                    (Test25: Format 2 11-bit 2/273 PRB),
+                                    (Test26: Format 2 12-bit 8/273 PRB),
+                                    (Test27: Format 2 19-bit 8/273 PRB),
+                                    (Test28: Format 2 64-bit 16/273 PRB)</desc>
       <main_exec>nr_pucchsim</main_exec>
       <main_exec_args>-R 106 -i 1 -P 0 -b 1 -s-2 -n1000
                       -R 106 -i 1 -P 0 -b 2 -s-2 -n1000
@@ -315,8 +324,17 @@
                       -R 106 -i 1 -P 2 -q8 -b 19 -s-3 -n1000
                       -R 106 -i 1 -P 2 -q8 -b 32 -s-3 -n1000
                       -R 106 -i 1 -P 2 -q16 -b 32 -s-3 -n1000
-                      -R 106 -i 1 -P 2 -q16 -b 64 -s-3 -n1000</main_exec_args>
-      <tags>test1 test2 test3 test4 test5 test6 test7 test8 test9 test10 test11 test12 test13 test14 test15 test16 test17 test18 test19</tags>
+                      -R 106 -i 1 -P 2 -q16 -b 64 -s-3 -n1000
+                      -R 273 -z8 -i 1 -P 0 -b 1 -s-2 -n1000
+                      -R 273 -z8 -i 1 -P 0 -b 2 -s-2 -n1000
+                      -R 273 -z8 -i 1 -P 0 -b 2 -s-2 -c -n1000
+                      -R 273 -z8 -i 1 -P 2 -b 4 -s0 -n1000
+                      -R 273 -z8 -i 1 -P 2 -b 7 -s3 -n1000
+                      -R 273 -z8 -i 1 -P 2 -b 11 -s6 -n1000
+                      -R 273 -z8 -i 1 -P 2 -q8 -b 12 -s-3 -n1000
+                      -R 273 -z8 -i 1 -P 2 -q8 -b 19 -s-3 -n1000
+                      -R 273 -z8 -i 1 -P 2 -q16 -b 64 -s-3 -n1000</main_exec_args>
+      <tags>test1 test2 test3 test4 test5 test6 test7 test8 test9 test10 test11 test12 test13 test14 test15 test16 test17 test18 test19 test20 test21 test22 test23 test24 test25 test26 test27 test28</tags>
       <search_expr_true>PUCCH test OK</search_expr_true>
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>
       <nruns>3</nruns>

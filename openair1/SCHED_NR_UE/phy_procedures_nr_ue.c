@@ -485,7 +485,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                                   const UE_nr_rxtx_proc_t *proc,
                                   NR_UE_DLSCH_t dlsch[2],
                                   int16_t *llr[2],
-                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                                  c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP],
+                                  int G)
 {
   int frame_rx = proc->frame_rx;
   int nr_slot_rx = proc->nr_slot_rx;
@@ -609,7 +610,8 @@ static int nr_ue_pdsch_procedures(PHY_VARS_NR_UE *ue,
                       ue->frame_parms.nb_antennas_rx,
                       rxdataF_comp,
                       ptrs_phase_per_slot,
-                      ptrs_re_per_slot)
+                      ptrs_re_per_slot,
+                      G)
           < 0)
         return -1;
 
@@ -639,7 +641,11 @@ static void send_dl_done_to_tx_thread(notifiedFIFO_t *nf, int rx_slot)
   }
 }
 
-static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, NR_UE_DLSCH_t dlsch[2], int16_t *llr[2])
+static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue,
+                                   const UE_nr_rxtx_proc_t *proc,
+                                   NR_UE_DLSCH_t dlsch[2],
+                                   int16_t *llr[2],
+                                   int G)
 {
   if (dlsch[0].active == false) {
     LOG_E(PHY, "DLSCH should be active when calling this function\n");
@@ -685,12 +691,7 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
   }
 
   start_meas(&ue->dlsch_unscrambling_stats);
-  nr_dlsch_unscrambling(llr[0],
-                        dl_harq0->G,
-                        0,
-                        dlsch[0].dlsch_config.dlDataScramblingId,
-                        dlsch[0].rnti);
-    
+  nr_dlsch_unscrambling(llr[0], G, 0, dlsch[0].dlsch_config.dlDataScramblingId, dlsch[0].rnti);
 
   stop_meas(&ue->dlsch_unscrambling_stats);
 
@@ -718,7 +719,8 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
                           nr_slot_rx,
                           harq_pid,
                           dlsch_bytes,
-                          p_b);
+                          p_b,
+                          G);
 
   LOG_T(PHY,"dlsch decoding, ret = %d\n", ret);
 
@@ -773,19 +775,10 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
       int ptrsSymbPerSlot = get_ptrs_symbols_in_slot(ptrsSymbPos, dlsch_config->start_symbol, dlsch_config->number_symbols);
       unav_res = n_ptrs * ptrsSymbPerSlot;
     }
-    dl_harq1->G = nr_get_G(dlsch_config->number_rbs,
-                           nb_symb_sch,
-                           nb_re_dmrs,
-                           dmrs_len,
-                           unav_res,
-                           dlsch_config->qamModOrder,
-                           dlsch[1].Nl);
+    int G1 =
+        nr_get_G(dlsch_config->number_rbs, nb_symb_sch, nb_re_dmrs, dmrs_len, unav_res, dlsch_config->qamModOrder, dlsch[1].Nl);
     start_meas(&ue->dlsch_unscrambling_stats);
-    nr_dlsch_unscrambling(llr[1],
-                          dl_harq1->G,
-                          0,
-                          dlsch[1].dlsch_config.dlDataScramblingId,
-                          dlsch[1].rnti);
+    nr_dlsch_unscrambling(llr[1], G1, 0, dlsch[1].dlsch_config.dlDataScramblingId, dlsch[1].rnti);
     stop_meas(&ue->dlsch_unscrambling_stats);
 
     start_meas(&ue->dlsch_decoding_stats);
@@ -802,7 +795,8 @@ static bool nr_ue_dlsch_procedures(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *
                              nr_slot_rx,
                              harq_pid,
                              dlsch_bytes,
-                             p_b);
+                             p_b,
+                             G);
     LOG_T(PHY,"CW dlsch decoding, ret1 = %d\n", ret1);
 
     stop_meas(&ue->dlsch_decoding_stats);
@@ -1048,15 +1042,14 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
       int ptrsSymbPerSlot = get_ptrs_symbols_in_slot(ptrsSymbPos, dlsch_config->start_symbol, dlsch_config->number_symbols);
       unav_res = n_ptrs * ptrsSymbPerSlot;
     }
-    NR_DL_UE_HARQ_t *dlsch0_harq = &ue->dl_harq_processes[0][dlsch_config->harq_process_nbr];
-    dlsch0_harq->G = nr_get_G(dlsch_config->number_rbs,
-                              dlsch_config->number_symbols,
-                              nb_re_dmrs,
-                              dmrs_len,
-                              unav_res,
-                              dlsch_config->qamModOrder,
-                              dlsch[0].Nl);
-    const uint32_t rx_llr_buf_sz = ((dlsch0_harq->G + 15) / 16) * 16;
+    int G = nr_get_G(dlsch_config->number_rbs,
+                     dlsch_config->number_symbols,
+                     nb_re_dmrs,
+                     dmrs_len,
+                     unav_res,
+                     dlsch_config->qamModOrder,
+                     dlsch[0].Nl);
+    const uint32_t rx_llr_buf_sz = ((G + 15) / 16) * 16;
     const uint32_t nb_codewords = NR_MAX_NB_LAYERS > 4 ? 2 : 1;
     int16_t* llr[2];
     for (int i = 0; i < nb_codewords; i++)
@@ -1064,11 +1057,11 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC_C, VCD_FUNCTION_IN);
     // it returns -1 in case of internal failure, or 0 in case of normal result
-    int ret_pdsch = nr_ue_pdsch_procedures(ue, proc, dlsch, llr, rxdataF);
+    int ret_pdsch = nr_ue_pdsch_procedures(ue, proc, dlsch, llr, rxdataF, G);
 
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC_C, VCD_FUNCTION_OUT);
 
-    UEscopeCopy(ue, pdschLlr, llr[0], sizeof(int16_t), 1, dlsch0_harq->G, 0);
+    UEscopeCopy(ue, pdschLlr, llr[0], sizeof(int16_t), 1, G, 0);
 
     LOG_D(PHY, "DLSCH data reception at nr_slot_rx: %d\n", nr_slot_rx);
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PDSCH_PROC, VCD_FUNCTION_IN);
@@ -1076,7 +1069,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
     start_meas(&ue->dlsch_procedures_stat);
 
     if (ret_pdsch >= 0)
-      nr_ue_dlsch_procedures(ue, proc, dlsch, llr);
+      nr_ue_dlsch_procedures(ue, proc, dlsch, llr, G);
     else {
       LOG_E(NR_PHY, "Demodulation impossible, internal error\n");
       send_dl_done_to_tx_thread(

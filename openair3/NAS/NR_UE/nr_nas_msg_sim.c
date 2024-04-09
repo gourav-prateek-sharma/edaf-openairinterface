@@ -466,7 +466,7 @@ void generateRegistrationRequest(as_nas_info_t *initialNasMsg, nr_ue_nas_t *nas)
   mm_msg->registration_request.presencemask |= REGISTRATION_REQUEST_UE_SECURITY_CAPABILITY_PRESENT;
   mm_msg->registration_request.nruesecuritycapability.iei = REGISTRATION_REQUEST_UE_SECURITY_CAPABILITY_IEI;
   mm_msg->registration_request.nruesecuritycapability.length = 8;
-  mm_msg->registration_request.nruesecuritycapability.fg_EA = 0x80;
+  mm_msg->registration_request.nruesecuritycapability.fg_EA = 0xa0;
   mm_msg->registration_request.nruesecuritycapability.fg_IA = 0x20;
   mm_msg->registration_request.nruesecuritycapability.EEA = 0;
   mm_msg->registration_request.nruesecuritycapability.EIA = 0;
