@@ -35,13 +35,6 @@
 
 #include "PHY/defs_gNB.h"
 
-void nr_pdsch_codeword_scrambling(uint8_t *in,
-                                  uint32_t size,
-                                  uint8_t q,
-                                  uint32_t Nid,
-                                  uint32_t n_RNTI,
-                                  uint32_t* out);
-
 void nr_fill_dlsch(processingData_L1tx_t *msgTx,
                    nfapi_nr_dl_tti_pdsch_pdu *pdsch_pdu,
                    unsigned char *sdu); 
@@ -49,12 +42,6 @@ void nr_fill_dlsch(processingData_L1tx_t *msgTx,
 void nr_generate_pdsch(processingData_L1tx_t *msgTx,
                        int frame,
                        int slot);
-
-void clean_gNB_dlsch(NR_gNB_DLSCH_t *dlsch);
-
-int16_t find_nr_dlsch(uint16_t rnti, PHY_VARS_gNB *gNB,find_type_t type);
-
-NR_gNB_SCH_STATS_t *find_nr_dlsch_stats(uint16_t rnti, PHY_VARS_gNB *gNB,find_type_t type);
 
 int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
 		      int frame,
@@ -70,7 +57,6 @@ int nr_dlsch_encoding(PHY_VARS_gNB *gNB,
 		      time_stats_t *dlsch_interleaving_stats,
 		      time_stats_t *dlsch_segmentation_stats);
 
-void init_dlsch_tpool(uint8_t nun_dlsch_threads);
 void nr_emulate_dlsch_payload(uint8_t* payload, uint16_t size);
 
 void dump_pdsch_stats(FILE *fd,PHY_VARS_gNB *gNB);

@@ -43,12 +43,7 @@
 //#define DEBUG_DLSCH
 //#define DEBUG_DLSCH_MAPPING
 
-void nr_pdsch_codeword_scrambling(uint8_t *in,
-                                  uint32_t size,
-                                  uint8_t q,
-                                  uint32_t Nid,
-                                  uint32_t n_RNTI,
-                                  uint32_t* out)
+static void nr_pdsch_codeword_scrambling(uint8_t *in, uint32_t size, uint8_t q, uint32_t Nid, uint32_t n_RNTI, uint32_t *out)
 {
   nr_codeword_scrambling(in, size, q, Nid, n_RNTI, out);
 }
@@ -74,8 +69,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 
     NR_DL_gNB_HARQ_t *harq = &dlsch->harq_process;
     nfapi_nr_dl_tti_pdsch_pdu_rel15_t *rel15 = &harq->pdsch_pdu.pdsch_pdu_rel15;
-    const int layerSz = frame_parms->N_RB_DL * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB * 8;
-    c16_t tx_layers[rel15->nrOfLayers][layerSz] __attribute__((aligned(64)));
+    const int layerSz = frame_parms->N_RB_DL * NR_SYMBOLS_PER_SLOT * NR_NB_SC_PER_RB;
     const int dmrs_Type = rel15->dmrsConfigType;
     const int nb_re_dmrs = rel15->numDmrsCdmGrpsNoData * (rel15->dmrsConfigType == NFAPI_NR_DMRS_TYPE1 ? 6 : 4);
     LOG_D(PHY,"pdsch: BWPStart %d, BWPSize %d, rbStart %d, rbsize %d\n",
@@ -184,24 +178,6 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
       }
 #endif
     }
-
-    start_meas(&gNB->dlsch_layer_mapping_stats); 
-    /// Layer mapping
-    nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz, nb_re, tx_layers);
-#ifdef DEBUG_DLSCH
-    printf("Layer mapping (%d layers):\n", rel15->nrOfLayers);
-    for (int l=0; l<rel15->nrOfLayers; l++)
-      for (int i = 0; i < nb_re / rel15->nrOfLayers; i += 8) {
-        printf("layer %d, Re %d..%d : ", l, i, i + 7);
-        for (int j=0; j<8; j++) {
-          printf("l%d %d\t", tx_layers[l][i + j].r, tx_layers[l][i + j].i);
-        }
-        printf("\n");
-      }
-#endif
-
-    stop_meas(&gNB->dlsch_layer_mapping_stats); 
-
     /// Resource mapping
     
     // Non interleaved VRB to PRB mapping
@@ -219,6 +195,9 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
 
     start_meas(&gNB->dlsch_resource_mapping_stats);
     for (int layer = 0; layer < rel15->nrOfLayers; layer++) {
+      c16_t tx_layer[layerSz] __attribute__((aligned(64)));
+      nr_layer_mapping(rel15->NrOfCodewords, encoded_length, mod_symbs, rel15->nrOfLayers, layerSz, nb_re, tx_layer, layer);
+
       int dmrs_port = get_dmrs_port(layer, rel15->dmrsPorts);
 
       // DMRS params for this dmrs port
@@ -244,7 +223,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
              dmrs_symbol);
 #endif
 
-      uint32_t m=0, dmrs_idx=0;
+      uint32_t cur_re = 0, dmrs_idx = 0;
       AssertFatal(n_dmrs, "n_dmrs can't be 0\n");
       c16_t mod_dmrs[n_dmrs] __attribute__((aligned(64)));
 
@@ -356,7 +335,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                                                         frame_parms->ofdm_symbol_size,
                                                         rel15->numDmrsCdmGrpsNoData,
                                                         dmrs_Type)) {
-              txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(tx_layers[layer][m], amp, 15);
+              txdataF_precoding[layer][l_symbol][k] = c16mulRealShift(tx_layer[cur_re], amp, 15);
 #ifdef DEBUG_DLSCH_MAPPING
               printf("m %u\t l %d \t k %d \t txdataF: %d %d\n",
                      m,
@@ -365,7 +344,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
                      txdataF_precoding[layer][l_symbol][k].r,
                      txdataF_precoding[layer][l_symbol][k].i);
 #endif
-              m++;
+              cur_re++;
             }
             /* mute RE */
             else {
@@ -387,15 +366,15 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           if (0/*(frame_parms->N_RB_DL&1)==0*/) {
             simde__m128i *txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol][start_sc];
 
-            simde__m128i *txl = (simde__m128i *)&tx_layers[layer][m];
+            simde__m128i *txl = (simde__m128i *)&tx_layer[cur_re];
             simde__m128i amp128=simde_mm_set1_epi16(amp);
             for (int i=0; i<(upper_limit>>2); i++) {
               txF[i] = simde_mm_mulhrs_epi16(amp128,txl[i]);
             } //RE loop, first part
-            m+=upper_limit;
+            cur_re += upper_limit;
             if (remaining_re > 0) {
               txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol];
-              txl = (simde__m128i *)&tx_layers[layer][m];
+              txl = (simde__m128i *)&tx_layer[cur_re];
               for (int i = 0; i < (remaining_re >> 2); i++) {
                 txF[i] = simde_mm_mulhrs_epi16(amp128, txl[i]);
               }
@@ -404,7 +383,7 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
           else {
             simde__m128i *txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol][start_sc];
 
-            simde__m128i *txl = (simde__m128i *)&tx_layers[layer][m];
+            simde__m128i *txl = (simde__m128i *)&tx_layer[cur_re];
             simde__m128i amp64 = simde_mm_set1_epi16(amp);
             int i;
             for (i = 0; i < (upper_limit >> 2); i++) {
@@ -427,16 +406,16 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
             }
             if (i * 4 != upper_limit) {
               c16_t *txFc = &txdataF_precoding[layer][l_symbol][start_sc];
-              c16_t *txlc = &tx_layers[layer][m];
+              c16_t *txlc = &tx_layer[cur_re];
               for (i = (upper_limit >> 2) << 2; i < upper_limit; i++) {
                 txFc[i].r = ((txlc[i].r * amp) >> 14) + 1;
                 txFc[i].i = ((txlc[i].i * amp) >> 14) + 1;
               }
             }
-            m+=upper_limit;
+            cur_re += upper_limit;
             if (remaining_re > 0) {
               txF = (simde__m128i *)&txdataF_precoding[layer][l_symbol];
-              txl = (simde__m128i *)&tx_layers[layer][m];
+              txl = (simde__m128i *)&tx_layer[cur_re];
               int i;
               for (i = 0; i < (remaining_re >> 2); i++) {
                 const simde__m128i txL = simde_mm_loadu_si128(txl + i);
@@ -459,14 +438,14 @@ void nr_generate_pdsch(processingData_L1tx_t *msgTx, int frame, int slot)
               } // RE loop, second part
               if (i * 4 != remaining_re) {
                 c16_t *txFc = txdataF_precoding[layer][l_symbol];
-                c16_t *txlc = &tx_layers[layer][m];
+                c16_t *txlc = &tx_layer[cur_re];
                 for (i = (remaining_re >> 2) << 2; i < remaining_re; i++) {
                   txFc[i].r = ((txlc[i].r * amp) >> 14) + 1;
                   txFc[i].i = ((txlc[i].i * amp) >> 14) + 1;
                 }
               }
             } // remaining_re > 0
-            m+=remaining_re;
+            cur_re += remaining_re;
           } // N_RB_DL even
         } // no DMRS/PTRS in symbol
       } // symbol loop
