@@ -166,7 +166,7 @@ class PhySim:
 			mySSH.command('oc get pods -o wide -l app=physim | tee -a cmake_targets/log/physim_pods_summary.txt', '\$', 30, resync=True)
 			running_count = mySSH.getBefore().count('Running')
 			completed_count = mySSH.getBefore().count('Completed')
-			if (running_count + completed_count) == 21:
+			if (running_count + completed_count) == 22:
 				logging.debug('\u001B[1m Running the physim test Scenarios\u001B[0m')
 				isRunning = True
 				podNames = re.findall('oai-[\S\d\w]+', mySSH.getBefore())
