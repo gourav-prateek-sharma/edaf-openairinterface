@@ -2045,6 +2045,47 @@ static void configure_servingcell_info(NR_UE_ServingCell_Info_t *sc_info, NR_Ser
   }
 }
 
+/// This function implements 38.331 Section 5.3.12: UE actions upon PUCCH/SRS release request
+void release_PUCCH_SRS(NR_UE_MAC_INST_t *mac)
+{
+  // release PUCCH-CSI-Resources configured in CSI-ReportConfig
+  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
+  NR_CSI_MeasConfig_t *meas_config = sc_info->csi_MeasConfig;
+  if (meas_config && meas_config->csi_ReportConfigToAddModList) {
+    for (int i = 0; i < meas_config->csi_ReportConfigToAddModList->list.count; i++) {
+      struct NR_CSI_ReportConfig__reportConfigType *type = &meas_config->csi_ReportConfigToAddModList->list.array[i]->reportConfigType;
+      switch (type->present) {
+        case NR_CSI_ReportConfig__reportConfigType_PR_periodic :
+          for (int j = type->choice.periodic->pucch_CSI_ResourceList.list.count; j > 0 ; j--)
+            asn_sequence_del(&type->choice.periodic->pucch_CSI_ResourceList.list, j - 1, 1);
+          break;
+        case NR_CSI_ReportConfig__reportConfigType_PR_semiPersistentOnPUCCH :
+          for (int j = type->choice.semiPersistentOnPUCCH->pucch_CSI_ResourceList.list.count; j > 0 ; j--)
+            asn_sequence_del(&type->choice.semiPersistentOnPUCCH->pucch_CSI_ResourceList.list, j - 1, 1);
+          break;
+        case NR_CSI_ReportConfig__reportConfigType_PR_semiPersistentOnPUSCH :
+        case NR_CSI_ReportConfig__reportConfigType_PR_aperiodic :
+          // no PUCCH config to release
+          break;
+        default :
+          AssertFatal(false, "Invalid CSI report type\n");
+      }
+    }
+  }
+
+  for (int bwp = 0; bwp < mac->ul_BWPs.count; bwp++) {
+    // release SchedulingRequestResourceConfig instances configured in PUCCH-Config
+    NR_PUCCH_Config_t *pucch_Config = mac->ul_BWPs.array[bwp]->pucch_Config;
+    for (int j = pucch_Config->schedulingRequestResourceToAddModList->list.count; j > 0 ; j--)
+      asn_sequence_del(&pucch_Config->schedulingRequestResourceToAddModList->list, j - 1, 1);
+    // release SRS-Resource instances configured in SRS-Config
+    // TODO not clear if only SRS-Resources or also the ResourceSet should be released
+    NR_SRS_Config_t *srs_Config = mac->ul_BWPs.array[bwp]->srs_Config;
+    for (int j = srs_Config->srs_ResourceToAddModList->list.count; j > 0 ; j--)
+      asn_sequence_del(&srs_Config->srs_ResourceToAddModList->list, j - 1, 1);
+  }
+}
+
 void release_dl_BWP(NR_UE_MAC_INST_t *mac, int index)
 {
   NR_UE_DL_BWP_t *bwp = mac->dl_BWPs.array[index];
