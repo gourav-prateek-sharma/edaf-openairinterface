@@ -479,86 +479,10 @@ int nr_prs_channel_estimation(uint8_t gNB_id,
     if(second_half > 0)
       memcpy((int16_t *)&chF_interpol[rxAnt][0], &ch_tmp[first_half << 1], second_half * sizeof(int32_t));
 
-    // Time domain IMPULSE response
-    idft_size_idx_t idftsizeidx;
-    switch (NR_PRS_IDFT_OVERSAMP_FACTOR*frame_params->ofdm_symbol_size) {
-    case 128:
-      idftsizeidx = IDFT_128;
-      break;
-
-    case 256:
-      idftsizeidx = IDFT_256;
-      break;
-
-    case 512:
-      idftsizeidx = IDFT_512;
-      break;
-
-    case 768:
-      idftsizeidx = IDFT_768;
-      break;
-
-    case 1024:
-      idftsizeidx = IDFT_1024;
-      break;
-
-    case 1536:
-      idftsizeidx = IDFT_1536;
-      break;
-
-    case 2048:
-      idftsizeidx = IDFT_2048;
-      break;
-
-    case 3072:
-      idftsizeidx = IDFT_3072;
-      break;
-
-    case 4096:
-      idftsizeidx = IDFT_4096;
-      break;
-    
-    case 6144:
-      idftsizeidx = IDFT_6144;
-      break;
- 
-    // 16x IDFT oversampling
-    case 8192:
-      idftsizeidx = IDFT_8192;
-      break;
-
-    case 12288:
-      idftsizeidx = IDFT_12288;
-      break;
-
-    case 16384:
-      idftsizeidx = IDFT_16384;
-      break;
-
-    case 24576:
-      idftsizeidx = IDFT_24576;
-      break;
-
-    case 32768:
-      idftsizeidx = IDFT_32768;
-      break;
-
-    case 49152:
-      idftsizeidx = IDFT_49152;
-      break;
-
-    case 65536:
-      idftsizeidx = IDFT_65536;
-      break;
-
-    default:
-      LOG_I(PHY, "%s: unsupported ofdm symbol size \n", __FUNCTION__);
-      assert(0);
-    }
-
-    idft(idftsizeidx,
-         (int16_t *)&chF_interpol[rxAnt][0],
-         (int16_t *)&chT_interpol[rxAnt][0],1);
+    // Convert to time domain
+    freq2time(NR_PRS_IDFT_OVERSAMP_FACTOR * frame_params->ofdm_symbol_size,
+              (int16_t *)&chF_interpol[rxAnt][0],
+              (int16_t *)&chT_interpol[rxAnt][0]);
 
     // peak estimator
     mean_val = squaredMod(((c16_t *)ch_tmp)[(prs_cfg->NumRB * 12) >> 1]);
@@ -785,53 +709,6 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     break;
   }
 
-  idft_size_idx_t idftsizeidx;
-  
-  switch (ue->frame_parms.ofdm_symbol_size) {
-  case 128:
-    idftsizeidx = IDFT_128;
-    break;
-    
-  case 256:
-    idftsizeidx = IDFT_256;
-    break;
-    
-  case 512:
-    idftsizeidx = IDFT_512;
-    break;
-    
-  case 768:
-    idftsizeidx = IDFT_768;
-    break;
-
-  case 1024:
-    idftsizeidx = IDFT_1024;
-    break;
-    
-  case 1536:
-    idftsizeidx = IDFT_1536;
-    break;
-    
-  case 2048:
-    idftsizeidx = IDFT_2048;
-    break;
-    
-  case 3072:
-    idftsizeidx = IDFT_3072;
-    break;
-    
-  case 4096:
-    idftsizeidx = IDFT_4096;
-    break;
-  
-  case 6144:
-    idftsizeidx = IDFT_6144;
-    break;
- 
-  default:
-    printf("unsupported ofdm symbol size \n");
-    assert(0);
-  }
   
   // generate pilot
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
@@ -926,10 +803,9 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     {
       // do ifft of channel estimate
       LOG_D(PHY,"Channel Impulse Computation Slot %d Symbol %d ch_offset %d\n", Ns, symbol, ch_offset);
-      idft(idftsizeidx,
-	   (int16_t*) &dl_ch_estimates[aarx][ch_offset],
-	   (int16_t*) dl_ch_estimates_time[aarx],
-	   1);
+      freq2time(ue->frame_parms.ofdm_symbol_size,
+                (int16_t *)&dl_ch_estimates[aarx][ch_offset],
+                (int16_t *)&dl_ch_estimates_time[aarx]);
     }
   }
 

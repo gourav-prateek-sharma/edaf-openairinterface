@@ -679,14 +679,20 @@ idft_size_idx_t get_idft(int ofdm_symbol_size)
       return IDFT_9216;
     case 12288:
       return IDFT_12288;
+    case 16384:
+      return IDFT_16384;
     case 18432:
       return IDFT_18432;
     case 24576:
       return IDFT_24576;
+    case 32768:
+      return IDFT_32768;
     case 36864:
       return IDFT_36864;
     case 49152:
       return IDFT_49152;
+    case 65536:
+      return IDFT_65536;
     case 73728:
       return IDFT_73728;
     case 98304:

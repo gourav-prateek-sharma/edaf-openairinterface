@@ -934,41 +934,8 @@ void freq2time(uint16_t ofdm_symbol_size,
                int16_t *freq_signal,
                int16_t *time_signal)
 {
-  switch (ofdm_symbol_size) {
-    case 128:
-      idft(IDFT_128, freq_signal, time_signal, 1);
-      break;
-    case 256:
-      idft(IDFT_256, freq_signal, time_signal, 1);
-      break;
-    case 512:
-      idft(IDFT_512, freq_signal, time_signal, 1);
-      break;
-    case 1024:
-      idft(IDFT_1024, freq_signal, time_signal, 1);
-      break;
-    case 1536:
-      idft(IDFT_1536, freq_signal, time_signal, 1);
-      break;
-    case 2048:
-      idft(IDFT_2048, freq_signal, time_signal, 1);
-      break;
-    case 3072:
-      idft(IDFT_3072, freq_signal, time_signal, 1);
-      break;
-    case 4096:
-      idft(IDFT_4096, freq_signal, time_signal, 1);
-      break;
-    case 6144:
-      idft(IDFT_6144, freq_signal, time_signal, 1);
-      break;
-    case 8192:
-      idft(IDFT_8192, freq_signal, time_signal, 1);
-      break;
-    default:
-      AssertFatal (1 == 0, "Invalid ofdm_symbol_size %i\n", ofdm_symbol_size);
-      break;
-  }
+  const idft_size_idx_t idft_size = get_idft(ofdm_symbol_size);
+  idft(idft_size, freq_signal, time_signal, 1);
 }
 
 void nr_est_delay(int ofdm_symbol_size, const c16_t *ls_est, c16_t *ch_estimates_time, delay_t *delay)
