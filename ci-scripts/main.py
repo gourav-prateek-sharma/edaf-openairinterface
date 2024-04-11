@@ -376,7 +376,7 @@ def GetParametersFromXML(action):
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
 
-	elif action == 'Run_LDPCTest' or action == 'Run_NRulsimTest' or action == 'Run_T2Test':
+	elif action == 'Run_CUDATest' or action == 'Run_NRulsimTest' or action == 'Run_T2Test':
 		ldpc.runargs = test.findtext('physim_run_args')
 		ldpc.runsim = test.findtext('physim_run')
 		ldpc.timethrs = test.findtext('physim_time_threshold')
@@ -798,8 +798,8 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 						HTML=ldpc.Build_PhySim(HTML,CONST)
 						if ldpc.exitStatus==1:
 							RAN.prematureExit = True
-					elif action == 'Run_LDPCTest':
-						HTML=ldpc.Run_LDPCTest(HTML,CONST,id)
+					elif action == 'Run_CUDATest':
+						HTML=ldpc.Run_CUDATest(HTML,CONST,id)
 						if ldpc.exitStatus==1:
 							RAN.prematureExit = True
 					elif action == 'Run_T2Test':
