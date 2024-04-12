@@ -169,7 +169,8 @@ typedef enum {
   UE_NOT_SYNC = 0,
   UE_SYNC,
   UE_PERFORMING_RA,
-  UE_CONNECTED
+  UE_CONNECTED,
+  UE_DETACHING
 } NR_UE_L2_STATE_t;
 
 typedef enum {

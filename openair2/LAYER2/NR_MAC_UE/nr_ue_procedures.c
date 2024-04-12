@@ -2263,7 +2263,10 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
 
   bool two_transport_blocks = false;
   int number_of_code_word = 1;
-  if (current_DL_BWP && current_DL_BWP->pdsch_Config && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI[0] == 2) {
+  if (current_DL_BWP
+      && current_DL_BWP->pdsch_Config
+      && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI
+      && current_DL_BWP->pdsch_Config->maxNrofCodeWordsScheduledByDCI[0] == 2) {
     two_transport_blocks = true;
     number_of_code_word = 2;
   }
@@ -2400,9 +2403,8 @@ bool get_downlink_ack(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, PUCCH_sche
     return false;
   }
 
-  NR_PUCCH_Config_t *pucch_Config = current_UL_BWP->pucch_Config;
-  if (!pucch_Config || !pucch_Config->resourceSetToAddModList
-      || pucch_Config->resourceSetToAddModList->list.array[0] == NULL)
+  NR_PUCCH_Config_t *pucch_Config = current_UL_BWP ? current_UL_BWP->pucch_Config : NULL;
+  if (!(pucch_Config && pucch_Config->resourceSetToAddModList && pucch_Config->resourceSetToAddModList->list.array[0]))
     configure_initial_pucch(pucch, res_ind);
   else {
     int resource_set_id = find_pucch_resource_set(pucch_Config, O_ACK);

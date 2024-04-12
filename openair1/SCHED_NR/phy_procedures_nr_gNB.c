@@ -81,20 +81,18 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
     fp->print_ue_help_cmdline_log = false;
     if (fp->dl_CarrierFreq != fp->ul_CarrierFreq)
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu --CO %lu -r %d --numerology %d --band %d --ssb %d\n",
+            "Command line parameters for the UE: -C %lu --CO %lu -r %d --numerology %d --ssb %d\n",
             fp->dl_CarrierFreq,
             fp->dl_CarrierFreq - fp->ul_CarrierFreq,
             fp->N_RB_DL,
             scs,
-            fp->nr_band,
             fp->ssb_start_subcarrier);
     else
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu -r %d --numerology %d --band %d --ssb %d\n",
+            "Command line parameters for the UE: -C %lu -r %d --numerology %d --ssb %d\n",
             fp->dl_CarrierFreq,
             fp->N_RB_DL,
             scs,
-            fp->nr_band,
             fp->ssb_start_subcarrier);
   }
   LOG_D(PHY,

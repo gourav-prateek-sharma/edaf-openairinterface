@@ -311,6 +311,7 @@ NR_UE_RRC_INST_t* nr_rrc_init_ue(char* uecap_file, int nb_inst)
     rrc->dl_bwp_id = 0;
     rrc->ul_bwp_id = 0;
     rrc->as_security_activated = false;
+    rrc->detach_after_release = false;
 
     FILE *f = NULL;
     if (uecap_file)
@@ -1628,6 +1629,8 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
           LOG_I(NR_RRC, "[UE %ld] Received RRC Release (gNB %d)\n", rrc->ue_id, gNB_indexP);
           // TODO properly implement procedures in 5.3.8.3 of 38.331
           NR_Release_Cause_t cause = OTHER;
+          if (rrc->detach_after_release)
+            rrc->nrRrcState = RRC_STATE_DETACH_NR;
           nr_rrc_going_to_IDLE(rrc, cause, dl_dcch_msg->message.choice.c1->choice.rrcRelease);
           break;
 
@@ -1786,7 +1789,9 @@ void *rrc_nrue(void *notUsed)
     break;
 
   case NAS_DETACH_REQ:
-    if (!NAS_DETACH_REQ(msg_p).wait_release) {
+    if (NAS_DETACH_REQ(msg_p).wait_release)
+      rrc->detach_after_release = true;
+    else {
       rrc->nrRrcState = RRC_STATE_DETACH_NR;
       NR_Release_Cause_t release_cause = OTHER;
       nr_rrc_going_to_IDLE(rrc, release_cause, NULL);

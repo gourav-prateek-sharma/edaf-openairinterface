@@ -100,7 +100,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst);
 NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id);
 
 void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac);
-void reset_ra(RA_config_t *ra);
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, NR_UE_MAC_reset_cause_t cause);
 void release_mac_configuration(NR_UE_MAC_INST_t *mac,
                                NR_UE_MAC_reset_cause_t cause);
 
@@ -304,7 +304,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
              NR_RACH_ConfigDedicated_t *rach_ConfigDedicated);
 
 int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac);
-
+void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id);
 void nr_Msg1_transmitted(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, slot_t slotP, uint8_t gNB_id);
 void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);

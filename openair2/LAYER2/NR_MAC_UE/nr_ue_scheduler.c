@@ -626,11 +626,11 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
     /* Transform precoding */
     pusch_config_pdu->transform_precoding = get_transformPrecoding(current_UL_BWP, dci_format, 0);
+    bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
 
     /*DCI format-related configuration*/
     if (dci_format == NR_UL_DCI_FORMAT_0_0) {
-      if ((pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_disabled) &&
-          pusch_config_pdu->nr_of_symbols < 3)
+      if (!tp_enabled && pusch_config_pdu->nr_of_symbols < 3)
         pusch_config_pdu->num_dmrs_cdm_grps_no_data = 1;
       else
         pusch_config_pdu->num_dmrs_cdm_grps_no_data = 2;
@@ -653,7 +653,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
     pusch_config_pdu->scid = 0;
     pusch_config_pdu->data_scrambling_id = mac->physCellId;
-    if (pusch_Config->dataScramblingIdentityPUSCH
+    if (pusch_Config
+        && pusch_Config->dataScramblingIdentityPUSCH
         && rnti_type == TYPE_C_RNTI_
         && !(dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common))
       pusch_config_pdu->data_scrambling_id = *pusch_Config->dataScramblingIdentityPUSCH;
@@ -663,7 +664,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       pusch_config_pdu->scid = dci->dmrs_sequence_initialization.val;
 
     /* TRANSFORM PRECODING ------------------------------------------------------------------------------------------*/
-    if (pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled) {
+    if (tp_enabled) {
 
       uint32_t n_RS_Id = 0;
       if (NR_DMRS_ulconfig->transformPrecodingEnabled &&
@@ -712,8 +713,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     }
 
     /* FREQ_HOPPING_FLAG */
-    if ((pusch_Config != NULL)
-        && (pusch_Config->frequencyHopping != NULL)
+    if (pusch_Config
+        && pusch_Config->frequencyHopping
         && (pusch_Config->resourceAllocation != NR_PUSCH_Config__resourceAllocation_resourceAllocationType0)) {
       pusch_config_pdu->frequency_hopping = dci->frequency_hopping_flag.val;
     }
@@ -722,8 +723,9 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->mcs_index = dci->mcs;
 
     /* MCS TABLE */
-    pusch_config_pdu->mcs_table = get_pusch_mcs_table(pusch_Config ? pusch_Config->mcs_TableTransformPrecoder : NULL,
-                                                      pusch_config_pdu->transform_precoding != NR_PUSCH_Config__transformPrecoder_disabled,
+    long *mcs_table_config = pusch_Config ? (tp_enabled ? pusch_Config->mcs_TableTransformPrecoder : pusch_Config->mcs_Table) : NULL;
+    pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config,
+                                                      tp_enabled,
                                                       dci_format,
                                                       rnti_type,
                                                       ss_type,
@@ -794,7 +796,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     /* PTRS */
     if (pusch_Config && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB &&
         pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS) {
-      if (pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_disabled) {
+      if (!tp_enabled) {
         nfapi_nr_ue_ptrs_ports_t ptrs_ports_list;
         pusch_config_pdu->pusch_ptrs.ptrs_ports_list = &ptrs_ports_list;
         bool valid_ptrs_setup = set_ul_ptrs_values(pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup,
@@ -1086,7 +1088,7 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
   dl_config->slot = rx_slot;
   dl_config->number_pdus = 0;
 
-  if (mac->state == UE_NOT_SYNC)
+  if (mac->state == UE_NOT_SYNC || mac->state == UE_DETACHING)
     return;
 
   ue_dci_configuration(mac, dl_config, rx_frame, rx_slot);
@@ -1241,7 +1243,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   uint32_t gNB_index = ul_info->gNB_index;
 
   RA_config_t *ra = &mac->ra;
-  if(mac->state < UE_CONNECTED) {
+  if(mac->state > UE_NOT_SYNC && mac->state < UE_CONNECTED) {
     nr_ue_get_rach(mac, cc_id, frame_tx, gNB_index, slot_tx);
     nr_ue_prach_scheduler(mac, frame_tx, slot_tx);
   }
@@ -1325,35 +1327,32 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
     nr_update_sr(mac);
 
   // update Bj for all active lcids before LCP procedure
-  LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
-  for (int i = 0; i < mac->lc_ordered_list.count; i++) {
-    nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
-    int lcid = lc_info->lcid;
-    // max amount of data that can be buffered/accumulated in a logical channel buffer
-    uint32_t bucketSize_max = lc_info->bucket_size;
-
-    /*
-      measure Bj
-      increment the value of Bj by product PBR  * T
-    */
-    NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
-    int32_t bj = sched_info->Bj;
-    if (lc_info->pbr < UINT_MAX) {
-      uint32_t slots_elapsed = nr_timer_elapsed_time(sched_info->Bj_timer); // slots elapsed since Bj was last incremented
-      // it is safe to divide by 1k since pbr in lc_info is computed multiplying by 1000 the RRC value to convert kB/s to B/s
-      uint32_t pbr_ms = lc_info->pbr / 1000;
-      bj += ((pbr_ms * slots_elapsed) >> mac->current_UL_BWP->scs); // each slot length is 1/scs ms
+  if (mac->current_UL_BWP) {
+    LOG_D(NR_MAC, "%4d.%2d Logical Channel Prioritization\n", frame_tx, slot_tx);
+    for (int i = 0; i < mac->lc_ordered_list.count; i++) {
+      nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
+      int lcid = lc_info->lcid;
+      // max amount of data that can be buffered/accumulated in a logical channel buffer
+      uint32_t bucketSize_max = lc_info->bucket_size;
+      //  measure Bj increment the value of Bj by product PBR  * T
+      NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
+      int32_t bj = sched_info->Bj;
+      if (lc_info->pbr < UINT_MAX) {
+        uint32_t slots_elapsed = nr_timer_elapsed_time(sched_info->Bj_timer); // slots elapsed since Bj was last incremented
+        // it is safe to divide by 1k since pbr in lc_info is computed multiplying by 1000 the RRC value to convert kB/s to B/s
+        uint32_t pbr_ms = lc_info->pbr / 1000;
+        bj += ((pbr_ms * slots_elapsed) >> mac->current_UL_BWP->scs); // each slot length is 1/scs ms
+      }
+      else
+        bj = INT_MAX;
+      // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
+      sched_info->Bj = min(bj, bucketSize_max);
+      // reset bj timer
+      nr_timer_start(&sched_info->Bj_timer);
     }
-    else
-      bj = INT_MAX;
-
-    // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
-    sched_info->Bj = min(bj, bucketSize_max);
-    // reset bj timer
-    nr_timer_start(&sched_info->Bj_timer);
   }
 
-  if(mac->state >= UE_PERFORMING_RA)
+  if(mac->state >= UE_PERFORMING_RA && mac->state < UE_DETACHING)
     nr_ue_pucch_scheduler(mac, frame_tx, slot_tx, ul_info->phy_data);
 }
 
@@ -1952,6 +1951,7 @@ void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac)
 {
   // Clear all the lists and maps
   const int bwp_id = mac->current_UL_BWP->bwp_id;
+  free_rach_structures(mac, bwp_id);
   memset(&mac->ssb_list[bwp_id], 0, sizeof(ssb_list_info_t));
   memset(&mac->prach_assoc_pattern[bwp_id], 0, sizeof(prach_association_pattern_t));
 
