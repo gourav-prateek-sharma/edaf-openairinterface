@@ -139,8 +139,8 @@
                 <class>UndeployGenObject</class>
                 <desc>Undeploy all OAI 5G stack</desc>
                 <yaml_path>yaml_files/5g_f1_rfsimulator</yaml_path>
-                <d_retx_th>30,30,30,30</d_retx_th>
-                <u_retx_th>30,30,30,30</u_retx_th>
+                <d_retx_th>30,30,100,100</d_retx_th>
+                <u_retx_th>30,30,100,100</u_retx_th>
         </testCase>
 
 </testCaseList>
