@@ -1030,8 +1030,6 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
   }
   /* Re-establish PDCP for SRB1, according to 5.3.7.4 of 3GPP TS 38.331 */
   nr_pdcp_reestablishment(ue_p->rrc_ue_id, 1, true);
-  /* PDCP Reestablishment over E1 */
-  cuup_notify_reestablishment(rrc, ue_p);
   /* F1AP DL RRC Message Transfer */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
@@ -1094,6 +1092,8 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
   if (ue_p->Srb[srb_id].Active) {
       nr_pdcp_reestablishment(ue_p->rrc_ue_id, srb_id, true);
   }
+  /* PDCP Reestablishment of DRBs according to 5.3.5.6.5 of 3GPP TS 38.331 (over E1) */
+  cuup_notify_reestablishment(rrc, ue_p);
 
   /* Create srb-ToAddModList */
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, true);
