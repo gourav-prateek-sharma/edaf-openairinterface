@@ -135,7 +135,7 @@ static uint32_t oran_allocate_uplane_buffers(
   uint32_t numBufs = XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT;
   status = xran_bm_init(instHandle, &pool, numBufs, bufSize);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
-  printf("xran_bm_init() hInstance %p poolIdx %d elements %d size %d\n", instHandle, pool, numBufs, bufSize);
+  printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, pool, numBufs, bufSize);
   int count = 0;
   for (uint32_t a = 0; a < ant; ++a) {
     for (uint32_t j = 0; j < XRAN_N_FE_BUF_LEN; ++j) {
@@ -158,7 +158,7 @@ static uint32_t oran_allocate_uplane_buffers(
       }
     }
   }
-  printf("xran_bm_allocate_buffer() hInstance %p poolIdx %d count %d\n", instHandle, pool, count);
+  printf("xran_bm_allocate_buffer() hInstance %p poolIdx %u count %d\n", instHandle, pool, count);
   return pool;
 }
 
@@ -215,14 +215,14 @@ static void oran_allocate_cplane_buffers(void *instHandle,
   uint32_t bufSizeSec = sizeof(struct xran_section_desc);
   status = xran_bm_init(instHandle, &poolSec, numBufsSec, bufSizeSec);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
-  printf("xran_bm_init() hInstance %p poolIdx %d elements %d size %d\n", instHandle, poolSec, numBufsSec, bufSizeSec);
+  printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, poolSec, numBufsSec, bufSizeSec);
 
   uint32_t poolPrb;
   uint32_t numBufsPrb = XRAN_N_FE_BUF_LEN * ant * XRAN_NUM_OF_SYMBOL_PER_SLOT;
   uint32_t bufSizePrb = size_of_prb_map;
   status = xran_bm_init(instHandle, &poolPrb, numBufsPrb, bufSizePrb);
   AssertFatal(XRAN_STATUS_SUCCESS == status, "Failed at xran_bm_init(), status %d\n", status);
-  printf("xran_bm_init() hInstance %p poolIdx %d elements %d size %d\n", instHandle, poolPrb, numBufsPrb, bufSizePrb);
+  printf("xran_bm_init() hInstance %p poolIdx %u elements %u size %u\n", instHandle, poolPrb, numBufsPrb, bufSizePrb);
 
   uint32_t count1 = 0;
   uint32_t count2 = 0;
@@ -273,8 +273,8 @@ static void oran_allocate_cplane_buffers(void *instHandle,
       }
     }
   }
-  printf("xran_bm_allocate_buffer() hInstance %p poolIdx %d count %d\n", instHandle, poolPrb, count1);
-  printf("xran_bm_allocate_buffer() hInstance %p poolIdx %d count %d\n", instHandle, poolSec, count2);
+  printf("xran_bm_allocate_buffer() hInstance %p poolIdx %u count %u\n", instHandle, poolPrb, count1);
+  printf("xran_bm_allocate_buffer() hInstance %p poolIdx %u count %u\n", instHandle, poolSec, count2);
 }
 
 /* callback not actively used */

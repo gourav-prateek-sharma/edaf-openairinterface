@@ -107,6 +107,7 @@ double dac_fixed_gain(double *s_re[2],
     *amp1p=sqrt(*amp1p);
   }
 
+  AssertFatal(amp1p != NULL && *amp1p != 0.0, "Precondition to avoid UB\n");
 
 #ifdef DEBUG_DAC
   LOG_I(OCM,"DAC: amp %f, amp1 %f dB (%d,%d), tx_power target %f (actual %f %f),length %d,pos %d\n",
@@ -122,7 +123,6 @@ double dac_fixed_gain(double *s_re[2],
 
 #endif
 
-  AssertFatal(amp1p != NULL && *amp1p != 0.0, "Precondition to avoid UB\n");
   for (i=0; i<length; i++) {
     for (aa=0; aa<nb_tx_antennas; aa++) {
       s_re[aa][i] = amp*((double)(((short *)input[aa]))[((i+input_offset)<<1)])/(*amp1p); 

@@ -201,7 +201,7 @@ int addmod_static_slice_ul(slice_info_t *si,
   int index = _exists_slice(si->num, si->s, id);
   if (index >= 0) {
     for (int s = 0; s < si->num; ++s) {
-      static_slice_param_t *su = ul && si->s[s]->id == id && ul ? ul : si->s[s]->algo_data;
+      static_slice_param_t *su = ul && si->s[s]->id == id? ul : si->s[s]->algo_data;
       for (int i = su->posLow; i <= su->posHigh; ++i) {
         if (rbMap[i])
           RET_FAIL(-33, "%s(): overlap of slices detected at RBG %d\n", __func__, i);

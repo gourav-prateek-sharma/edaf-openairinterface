@@ -225,7 +225,7 @@ static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_
   else if (dl_arfcn >= 2016667 && dl_arfcn < 2795832)
     freqssb = freqpointa + 60000 * offsetToPointA * 12 + (1 << scs) * 15000 * (kssb  + 10ll * 12);
   else
-    AssertFatal(false, "Invalid absoluteFrequencyPointA: %d\n", dl_arfcn);
+    AssertFatal(false, "Invalid absoluteFrequencyPointA: %u\n", dl_arfcn);
 
   int bw_index = get_supported_band_index(scs, band > 256 ? FR2 : FR1, get_dl_bw(cell_info));
   int band_size_hz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, bw_index) * 1000 * 1000;
@@ -253,7 +253,7 @@ static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_
     const NR_ServingCellConfigCommon_t *scc = RC.nrmac[0]->common_channels[0].ServingCellConfigCommon;
     uint32_t scc_ssb_arfcn = *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
     AssertFatal(ssb_arfcn == scc_ssb_arfcn,
-                "mismatch of SCC SSB ARFCN original %d vs. computed %d! Note: you can remove this Assert, the gNB might run but UE "
+                "mismatch of SCC SSB ARFCN original %u vs. computed %u! Note: you can remove this Assert, the gNB might run but UE "
                 "connection instable\n",
                 scc_ssb_arfcn,
                 ssb_arfcn);
@@ -729,7 +729,6 @@ rrc_gNB_modify_dedicatedRRCReconfiguration(
 
   struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList =
       CALLOC(1, sizeof(*dedicatedNAS_MessageList));
-  NR_DRB_ToAddMod_t *DRB_config = NULL;
 
   for (int i = 0; i < ue_p->nb_of_pdusessions; i++) {
     // bypass the new and already configured pdu sessions
@@ -784,13 +783,11 @@ rrc_gNB_modify_dedicatedRRCReconfiguration(
           ue_p->pduSession[i].cause_value = NGAP_CauseRadioNetwork_not_supported_5QI_value;
           continue;
       }
-      LOG_I(NR_RRC,
-            "PDU SESSION ID %ld, DRB ID %ld (index %d), QOS flow %d, 5QI %ld \n",
-            DRB_config->cnAssociation->choice.sdap_Config->pdu_Session,
-            DRB_config->drb_Identity,
-            i,
-            qos_flow_index,
-            ue_p->pduSession[i].param.qos[qos_flow_index].fiveQI);
+        LOG_I(NR_RRC,
+              "index %d, QOS flow %d, 5QI %ld \n",
+              i,
+              qos_flow_index,
+              ue_p->pduSession[i].param.qos[qos_flow_index].fiveQI);
     }
 
     ue_p->pduSession[i].status = PDU_SESSION_STATUS_DONE;
@@ -954,7 +951,7 @@ static void cuup_notify_reestablishment(gNB_RRC_INST *rrc, gNB_RRC_UE_t *ue_p)
     pdu_session_to_mod_t *pdu_e1 = find_or_next_pdu_session(&req, pdu->param.pdusession_id);
     AssertError(pdu != NULL,
                 continue,
-                "UE %d: E1 Bearer Context Modification: PDU session %d to setup is null\n",
+                "UE %u: E1 Bearer Context Modification: PDU session %d to setup is null\n",
                 ue_p->rrc_ue_id,
                 pdu->param.pdusession_id);
     /* Prepare PDU for E1 Bearear Context Modification Request */
@@ -2305,7 +2302,7 @@ static void write_rrc_stats(const gNB_RRC_INST *rrc)
     f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_ctxt->rrc_ue_id);
 
     fprintf(f,
-            "UE %d CU UE ID %d DU UE ID %d RNTI %04x random identity %016lx",
+            "UE %d CU UE ID %u DU UE ID %d RNTI %04x random identity %016lx",
             i,
             ue_ctxt->rrc_ue_id,
             ue_data.secondary_ue,

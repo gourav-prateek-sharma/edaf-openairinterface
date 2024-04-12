@@ -549,13 +549,14 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
   int rb2 = 0;
   int prbpos = 0;
 
-  for (int symbol=0;symbol<14;symbol++) {
-    for (int m=0;m<9;m++) {
+  for (int symbol = 0; symbol < 14; symbol++) {
+    for (int m = 0; m < 9; m++) {
       gNB->rb_mask_ul[symbol][m] = 0;
-      for (int i=0;i<32;i++) {
-        prbpos = (m*32)+i;
-        if (prbpos>gNB->frame_parms.N_RB_UL) break;
-        gNB->rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos]>0 ? 1 : 0)<<i;
+      for (int i = 0; i < 32; i++) {
+        prbpos = (m * 32) + i;
+        if (prbpos>gNB->frame_parms.N_RB_UL)
+          break;
+        gNB->rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos] > 0 ? 1U : 0) << i;
       }
     }
   }

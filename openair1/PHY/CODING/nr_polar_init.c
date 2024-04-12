@@ -110,10 +110,9 @@ t_nrPolar_params *nr_polar_params(int8_t messageType, uint16_t messageLength, ui
   //  printf("currentPtr %p (polarParams %p)\n",currentPtr,polarParams);
   //Else, initialize and add node to the end of the linked list.
   t_nrPolar_params *newPolarInitNode = calloc(sizeof(t_nrPolar_params),1);
-  newPolarInitNode->busy=true;
+  AssertFatal(newPolarInitNode, "[nr_polar_init] New t_nrPolar_params * could not be created");
+  newPolarInitNode->busy = true;
   pthread_mutex_unlock(&PolarListMutex);
-
-  AssertFatal(newPolarInitNode != NULL, "[nr_polar_init] New t_nrPolar_params * could not be created");
   
   //   LOG_D(PHY,"Setting new polarParams index %d, messageType %d, messageLength %d, aggregation_prime %d\n",(messageType * messageLength * aggregation_prime),messageType,messageLength,aggregation_prime);
   newPolarInitNode->idx = PolarKey;

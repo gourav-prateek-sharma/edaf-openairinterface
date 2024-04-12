@@ -122,6 +122,8 @@ int main(int n, char **v)
   socket = connect_to(ip, port);
   if (socket == -1) {
     printf("fatal: connection failed\n");
+    free(on_off_name);
+    free(on_off_action);
     return 1;
   }
 

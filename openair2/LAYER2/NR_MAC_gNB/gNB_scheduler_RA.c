@@ -652,7 +652,7 @@ static void nr_generate_Msg3_retransmission(module_id_t module_idP,
     // generation of DCI 0_0 to schedule msg3 retransmission
     NR_SearchSpace_t *ss = ra->ra_ss;
     NR_ControlResourceSet_t *coreset = ra->coreset;
-    AssertFatal(coreset!=NULL,"Coreset cannot be null for RA-Msg3 retransmission\n");
+    AssertFatal(coreset, "Coreset cannot be null for RA-Msg3 retransmission\n");
 
     const int coresetid = coreset->controlResourceSetId;
     nfapi_nr_dl_tti_pdcch_pdu_rel15_t *pdcch_pdu_rel15 = nr_mac->pdcch_pdu_idx[CC_id][coresetid];
@@ -1251,7 +1251,7 @@ static void nr_generate_Msg2(module_id_t module_idP,
   }
 
   NR_ControlResourceSet_t *coreset = ra->coreset;
-  AssertFatal(coreset != NULL, "Coreset cannot be null for RA-Msg2\n");
+  AssertFatal(coreset, "Coreset cannot be null for RA-Msg2\n");
   const int coresetid = coreset->controlResourceSetId;
   // Calculate number of symbols
   int time_domain_assignment = get_dl_tda(nr_mac, scc, slotP);

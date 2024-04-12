@@ -1677,28 +1677,24 @@ void set_monitoring_periodicity_offset(NR_SearchSpace_t *ss,
 
 
 int get_nr_prach_occasion_info_from_index(uint8_t index,
-                                 uint32_t pointa,
-                                 uint8_t mu,
-                                 uint8_t unpaired,
-                                 uint16_t *format,
-                                 uint8_t *start_symbol,
-                                 uint8_t *N_t_slot,
-                                 uint8_t *N_dur,
-                                 uint8_t *N_RA_slot,
-                                 uint16_t *N_RA_sfn,
-                                 uint8_t *max_association_period) {
-
+                                          uint32_t pointa,
+                                          uint8_t mu,
+                                          uint8_t unpaired,
+                                          uint16_t *format,
+                                          uint8_t *start_symbol,
+                                          uint8_t *N_t_slot,
+                                          uint8_t *N_dur,
+                                          uint8_t *N_RA_slot,
+                                          uint16_t *N_RA_sfn,
+                                          uint8_t *max_association_period)
+{
   int x;
-  int64_t s_map;
+  uint64_t s_map;
   uint8_t format2 = 0xff;
   if (pointa > 2016666) { //FR2
     x = table_6_3_3_2_4_prachConfig_Index[index][2];
     s_map = table_6_3_3_2_4_prachConfig_Index[index][5];
-    for(int i = 0; i < 64 ;i++) {
-      if ( (s_map >> i) & 0x01) {
-        (*N_RA_sfn)++;
-      }
-    }
+    *N_RA_sfn += count_bits_set(s_map);
     *N_RA_slot = table_6_3_3_2_4_prachConfig_Index[index][7]; // Number of RACH slots within a subframe
     *max_association_period = 160/(x * 10); 
     if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1722,15 +1718,10 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
     return 1;
  }
   else {
-
     if (unpaired) {
       x = table_6_3_3_2_3_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_3_prachConfig_Index[index][4];
-		  for(int i = 0; i < 64 ;i++) {
-        if ( (s_map >> i) & 0x01) {
-          (*N_RA_sfn)++;
-				}
-      }
+      *N_RA_sfn += count_bits_set(s_map);
       *N_RA_slot = table_6_3_3_2_3_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
       *max_association_period = 160/(x * 10); 
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1748,18 +1739,14 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
               *start_symbol,
               *N_t_slot,
               *N_dur,
-							*N_RA_sfn);
+              *N_RA_sfn);
       }
-		  return 1;
-	  }
+      return 1;
+    }
     else { // FDD
       x = table_6_3_3_2_2_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_2_prachConfig_Index[index][4];
-      for(int i = 0; i < 64 ; i++) {
-        if ( (s_map >> i) & 0x01) {
-          (*N_RA_sfn)++;
-        }
-      }
+      *N_RA_sfn += count_bits_set(s_map);
       *N_RA_slot = table_6_3_3_2_2_prachConfig_Index[index][6];
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
         *start_symbol = table_6_3_3_2_2_prachConfig_Index[index][5];
@@ -2656,13 +2643,19 @@ uint16_t get_nr_srs_offset(NR_SRS_PeriodicityAndOffset_t periodicityAndOffset) {
 // - "UE procedure for applying transform precoding on PUSCH"
 long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_t dci_format, uint8_t configuredGrant)
 {
-  if (configuredGrant && current_UL_BWP->configuredGrantConfig && current_UL_BWP->configuredGrantConfig->transformPrecoder)
+  if (configuredGrant
+      && current_UL_BWP
+      && current_UL_BWP->configuredGrantConfig
+      && current_UL_BWP->configuredGrantConfig->transformPrecoder)
     return *current_UL_BWP->configuredGrantConfig->transformPrecoder;
 
-  if (dci_format == NR_UL_DCI_FORMAT_0_1 && current_UL_BWP && current_UL_BWP->pusch_Config && current_UL_BWP->pusch_Config->transformPrecoder)
+  if (dci_format == NR_UL_DCI_FORMAT_0_1
+      && current_UL_BWP
+      && current_UL_BWP->pusch_Config
+      && current_UL_BWP->pusch_Config->transformPrecoder)
     return *current_UL_BWP->pusch_Config->transformPrecoder;
 
-  if (current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
+  if (current_UL_BWP && current_UL_BWP->rach_ConfigCommon && current_UL_BWP->rach_ConfigCommon->msg3_transformPrecoder)
     return NR_PUSCH_Config__transformPrecoder_enabled;
 
   return NR_PUSCH_Config__transformPrecoder_disabled;
@@ -2670,8 +2663,8 @@ long get_transformPrecoding(const NR_UE_UL_BWP_t *current_UL_BWP, nr_dci_format_
 
 uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
                                    NR_SRS_Config_t *srs_config,
-                                   dci_field_t srs_resource_indicator) {
-
+                                   dci_field_t srs_resource_indicator)
+{
   uint8_t n_antenna_port = 1;
   if (get_softmodem_params()->phy_test == 1) {
     // temporary hack to allow UL-MIMO in phy-test mode without SRS
@@ -2687,7 +2680,7 @@ uint8_t get_pusch_nb_antenna_ports(NR_PUSCH_Config_t *pusch_Config,
         // shall be configured with the same value for all these SRS resources.
         if (srs_resource_set->usage == NR_SRS_ResourceSet__usage_codebook) {
           NR_SRS_Resource_t *srs_resource = srs_config->srs_ResourceToAddModList->list.array[sri];
-          AssertFatal(srs_resource != NULL, "SRS resource indicated by DCI does not exist\n");
+          AssertFatal(srs_resource, "SRS resource indicated by DCI does not exist\n");
           n_antenna_port = 1 << srs_resource->nrofSRS_Ports;
           break;
         }
@@ -2819,8 +2812,8 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
                                       dci_field_t srs_resource_indicator,
                                       nr_srs_feedback_t *srs_feedback,
                                       const uint8_t *nrOfLayers,
-                                      uint32_t *val) {
-
+                                      uint32_t *val)
+{
   // It is only applicable to codebook based transmission. This field occupies 0 bits for non-codebook based
   // transmission. It also occupies 0 bits for codebook based transmission using a single antenna port.
   uint8_t nbits = 0;
@@ -2829,8 +2822,9 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
   }
 
   uint8_t pusch_antenna_ports = get_pusch_nb_antenna_ports(pusch_Config, srs_config, srs_resource_indicator);
-  if ((pusch_Config && pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook) ||
-      pusch_antenna_ports == 1) {
+  if (!pusch_Config
+      || (pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook)
+      || pusch_antenna_ports == 1) {
     return nbits;
   }
 
@@ -3054,7 +3048,6 @@ uint8_t compute_precoding_information(NR_PUSCH_Config_t *pusch_Config,
     }
 
   }
-
   return nbits;
 }
 
@@ -3612,8 +3605,7 @@ int16_t fill_dmrs_mask(const NR_PDSCH_Config_t *pdsch_Config,
     AssertFatal(startSymbol <= l0, "Wrong config, Start symbol %d cannot be later than dmrs_TypeA_Position %d \n", startSymbol, l0);
 
     // Section 7.4.1.1.2 in Spec 38.211
-    AssertFatal(l0 == 2 || (l0 == 3 && (ld != 3 || ld != 4)), "ld 3 or 4 symbols only possible with dmrs_TypeA_Position POS2 \n");
-
+    AssertFatal(l0 == 2 || (l0 == 3 && (ld != 3 && ld != 4)), "ld 3 or 4 symbols only possible with dmrs_TypeA_Position POS2 \n");
   }
 
   // number of front loaded symbols
@@ -4274,11 +4266,8 @@ void get_type0_PDCCH_CSS_config_parameters(NR_Type0_PDCCH_CSS_config_t *type0_PD
 
 void fill_coresetZero(NR_ControlResourceSet_t *coreset0, NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-  if (coreset0 == NULL)
-    coreset0 = calloc(1,sizeof(*coreset0));
-
-  AssertFatal(type0_PDCCH_CSS_config!=NULL,"No type0 CSS configuration\n");
-
+  AssertFatal(type0_PDCCH_CSS_config, "No type0 CSS configuration\n");
+  AssertFatal(coreset0, "Coreset0 should have been allocated outside of this function\n");
   coreset0->controlResourceSetId = 0;
   int duration = type0_PDCCH_CSS_config->num_symbols;
 
@@ -4327,8 +4316,7 @@ void fill_searchSpaceZero(NR_SearchSpace_t *ss0,
                           int slots_per_frame,
                           NR_Type0_PDCCH_CSS_config_t *type0_PDCCH_CSS_config)
 {
-  if(ss0 == NULL)
-    ss0 = calloc(1, sizeof(*ss0));
+  AssertFatal(ss0, "SearchSpace0 should have been allocated outside of this function\n");
   if(ss0->controlResourceSetId == NULL)
     ss0->controlResourceSetId = calloc(1, sizeof(*ss0->controlResourceSetId));
   if(ss0->monitoringSymbolsWithinSlot == NULL)
