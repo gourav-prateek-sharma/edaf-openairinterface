@@ -137,11 +137,6 @@ NR_gNB_DLSCH_t new_gNB_dlsch(NR_DL_FRAME_PARMS *frame_parms, uint16_t N_RB)
   return(dlsch);
 }
 
-void clean_gNB_dlsch(NR_gNB_DLSCH_t *dlsch) {
-  AssertFatal(dlsch!=NULL,"dlsch is null\n");
-  dlsch->active = 0;
-}
-
 void ldpc8blocks(void *p)
 {
   encoder_implemparams_t *impp=(encoder_implemparams_t *) p;

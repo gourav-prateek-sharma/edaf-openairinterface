@@ -293,8 +293,7 @@ static size_t dump_L1_meas_stats(PHY_VARS_gNB *gNB, RU_t *ru, char *output, size
   output += print_meas_log(&gNB->phy_proc_tx, "L1 Tx processing", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_encoding_stats, "DLSCH encoding", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_scrambling_stats, "DLSCH scrambling", NULL, NULL, output, end-output);
-  output += print_meas_log(&gNB->dlsch_modulation_stats, "DLSCH modulation", NULL, NULL, output, end-output);
-  output += print_meas_log(&gNB->dlsch_layer_mapping_stats, "DLSCH layer mapping", NULL, NULL, output,end-output);
+  output += print_meas_log(&gNB->dlsch_modulation_stats, "DLSCH modulation", NULL, NULL, output, end - output);
   output += print_meas_log(&gNB->dlsch_resource_mapping_stats, "DLSCH resource mapping", NULL, NULL, output,end-output);
   output += print_meas_log(&gNB->dlsch_precoding_stats, "DLSCH precoding", NULL, NULL, output,end-output);
   output += print_meas_log(&gNB->phy_proc_rx, "L1 Rx processing", NULL, NULL, output, end - output);
@@ -347,7 +346,6 @@ void *nrL1_stats_thread(void *param) {
   reset_meas(&gNB->schedule_response_stats);
   reset_meas(&gNB->dlsch_scrambling_stats);
   reset_meas(&gNB->dlsch_modulation_stats);
-  reset_meas(&gNB->dlsch_layer_mapping_stats);
   reset_meas(&gNB->dlsch_resource_mapping_stats);
   reset_meas(&gNB->dlsch_precoding_stats);
   while (!oai_exit) {
