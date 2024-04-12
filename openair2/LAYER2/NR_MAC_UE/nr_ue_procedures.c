@@ -2436,80 +2436,80 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *p
     return false; // SR not configured
 
   int sr_count = 0;
-  for (int SR_resource_id =0; SR_resource_id < pucch_Config->schedulingRequestResourceToAddModList->list.count;SR_resource_id++) {
-    NR_SchedulingRequestResourceConfig_t *SchedulingRequestResourceConfig = pucch_Config->schedulingRequestResourceToAddModList->list.array[SR_resource_id];
+  for (int id = 0; id < pucch_Config->schedulingRequestResourceToAddModList->list.count; id++) {
+    NR_SchedulingRequestResourceConfig_t *sr_Config = pucch_Config->schedulingRequestResourceToAddModList->list.array[id];
     int SR_period; int SR_offset;
 
-    find_period_offset_SR(SchedulingRequestResourceConfig,&SR_period,&SR_offset);
+    find_period_offset_SR(sr_Config, &SR_period, &SR_offset);
     const int n_slots_frame = nr_slots_per_frame[current_UL_BWP->scs];
     int sfn_sf = frame * n_slots_frame + slot;
 
     if ((sfn_sf - SR_offset) % SR_period == 0) {
       LOG_D(MAC, "Scheduling Request active in frame %d slot %d \n", frame, slot);
-      if (!SchedulingRequestResourceConfig->resource) {
+      if (!sr_Config->resource) {
         LOG_E(MAC, "No resource associated with SR. SR not scheduled\n");
         break;
       }
       NR_PUCCH_Resource_t *sr_pucch =
-          find_pucch_resource_from_list(pucch_Config->resourceToAddModList, *SchedulingRequestResourceConfig->resource);
+          find_pucch_resource_from_list(pucch_Config->resourceToAddModList, *sr_Config->resource);
       AssertFatal(sr_pucch != NULL, "Couldn't find PUCCH Resource ID for SR in PUCCH resource list\n");
       pucch->pucch_resource = sr_pucch;
       pucch->n_sr = 1;
+      /* sr_payload = 1 means that this is a positive SR, sr_payload = 0 means that it is a negative SR */
+      pucch->sr_payload = nr_ue_get_SR(mac, frame, slot, sr_Config->schedulingRequestID);
       sr_count++;
+      AssertFatal(sr_count < 2, "Cannot handle more than 1 SR per slot yet\n");
     }
   }
-  AssertFatal(sr_count < 2, "Cannot handle more than 1 SR per slot yet\n");
   return sr_count > 0 ? true : false;
 }
 
-int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slot)
+int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_SchedulingRequestId_t sr_id)
 {
   // no UL-SCH resources available for this tti && UE has a valid PUCCH resources for SR configuration for this tti
   NR_UE_SCHEDULING_INFO *si = &mac->scheduling_info;
-  int max_sr_transmissions = (1 << (2 + si->sr_TransMax));
-  LOG_D(NR_MAC, "[UE %d] Frame %d slot %d send SR indication (SR_COUNTER/sr_TransMax %d/%d), SR_pending %d\n",
-        mac->ue_id,
-        frameP,
-        slot,
-        si->SR_COUNTER,
-        max_sr_transmissions,
-        si->SR_pending); // todo
-
-  if ((si->SR_pending == 1) &&
-      (si->SR_COUNTER < max_sr_transmissions)) {
-    LOG_D(NR_MAC, "[UE %d] Frame %d slot %d PHY asks for SR (SR_COUNTER/sr_TransMax %d/%d), SR_pending %d, increment SR_COUNTER\n",
-          mac->ue_id,
-          frameP,
-          slot,
-          si->SR_COUNTER,
-          max_sr_transmissions,
-          si->SR_pending); // todo
-    si->SR_COUNTER++;
-
-    // start the sr-prohibittimer : rel 9 and above
-    if (si->sr_ProhibitTimer > 0) { // timer configured
-      si->sr_ProhibitTimer--;
-      si->sr_ProhibitTimer_Running = 1;
-    } else {
-      si->sr_ProhibitTimer_Running = 0;
-    }
-    //mac->ul_active =1;
-    return (1);   //instruct phy to signal SR
-  } else {
-    // notify RRC to relase PUCCH/SRS
-    // clear any configured dl/ul
-    // initiate RA
-    if (si->SR_pending) {
-      // release all pucch resource
-      //mac->physicalConfigDedicated = NULL; // todo
-      //mac->ul_active = 0; // todo
-      si->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
-      LOG_I(NR_MAC, "[UE %d] Release all SRs \n", mac->ue_id);
-    }
-    si->SR_pending = 0;
-    si->SR_COUNTER = 0;
-    return (0);
+  nr_sr_info_t *sr_info = &si->sr_info[sr_id];
+  if (!sr_info->active_SR_ID) {
+    LOG_E(NR_MAC, "SR triggered for an inactive SR with ID %ld\n", sr_id);
+    return 0;
   }
+
+  LOG_D(NR_MAC, "[UE %d] Frame %d slot %d SR %s for ID %ld\n",
+        mac->ue_id,
+        frame,
+        slot,
+        sr_info->pending ? "pending" : "not pending",
+        sr_id); // todo
+
+  // TODO check if the PUCCH resource for the SR transmission occasion does not overlap with a UL-SCH resource
+  if (!sr_info->pending || is_nr_timer_active(sr_info->prohibitTimer))
+    return 0;
+
+  if (sr_info->counter < sr_info->maxTransmissions) {
+    sr_info->counter++;
+    // start the sr-prohibittimer
+    nr_timer_start(&sr_info->prohibitTimer);
+    LOG_D(NR_MAC, "[UE %d] Frame %d slot %d instruct the physical layer to signal the SR (counter/sr_TransMax %d/%d)\n",
+          mac->ue_id,
+          frame,
+          slot,
+          sr_info->counter,
+          sr_info->maxTransmissions);
+    return 1;
+  }
+
+  // TODO
+  // notify RRC to release PUCCH for all Serving Cells;
+  // notify RRC to release SRS for all Serving Cells;
+  // clear any configured downlink assignments and uplink grants;
+  // clear any PUSCH resources for semi-persistent CSI reporting;
+  // initiate a Random Access procedure (see clause 5.1) on the SpCell and cancel all pending SRs.
+  LOG_E(NR_MAC, "[UE %d] SR not served. Triggering of new RA procedure not implemented yet.\n", mac->ue_id);
+  sr_info->pending = false;
+  sr_info->counter = 0;
+  nr_timer_stop(&sr_info->prohibitTimer);
+
+  return 0;
 }
 
 // section 5.2.5 of 38.214
