@@ -21,19 +21,35 @@
 
 -->
 <testCaseList>
-        <htmlTabRef>cn5g-stop-tab</htmlTabRef>
-        <htmlTabName>CN5G-Stop</htmlTabName>
-        <htmlTabIcon>log-in</htmlTabIcon>
-        <TestCaseRequestedList>
-                000300
-        </TestCaseRequestedList>
-        <TestCaseExclusionList>
-        </TestCaseExclusionList>
+  <htmlTabRef>test-cleanup</htmlTabRef>
+  <htmlTabName>CleanUp SA 2x2</htmlTabName>
+  <htmlTabIcon>trash</htmlTabIcon>
+  <TestCaseRequestedList>
+    111111
+    222222
+    333333
+  </TestCaseRequestedList>
+  <TestCaseExclusionList></TestCaseExclusionList>
 
-        <testCase id="000300">
-                <class>Terminate_5GCN</class>
-                <desc>Terminate 5G Core</desc>
-                <args>--type stop-basic</args>
-        </testCase>
+  <testCase id="111111">
+    <class>Detach_UE</class>
+    <desc>Detach UE</desc>
+    <id>up2</id>
+  </testCase>
+
+  <testCase id="222222">
+    <class>Undeploy_Object</class>
+    <desc>Undeploy gNB</desc>
+    <yaml_path>ci-scripts/yaml_files/5g_sa_n310_2x2_60MHz</yaml_path>
+    <eNB_instance>0</eNB_instance>
+    <eNB_serverId>0</eNB_serverId>
+    <services>oai-gnb</services>
+  </testCase>
+
+  <testCase id="333333">
+    <class>Clean_Test_Server_Images</class>
+    <desc>Clean Test Images on Test Server</desc>
+    <test_svr_id>0</test_svr_id>
+  </testCase>
+
 </testCaseList>
-

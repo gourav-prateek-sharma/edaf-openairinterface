@@ -61,6 +61,12 @@ oc-cn5g:
   NetworkScript: echo "inet 172.21.6.102"
   RunIperf3Server: False
 
+matix-cn5g:
+  Host: matix
+  NetworkScript: docker exec prod-trf-gen ip a show dev eth0
+  CmdPrefix: docker exec prod-trf-gen
+  RunIperf3Server: False
+
 porcepix-cn4g:
   Host: porcepix
   NetworkScript: docker exec prod-trf-gen ip a show dev eth0
