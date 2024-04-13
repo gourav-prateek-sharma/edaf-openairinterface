@@ -593,7 +593,7 @@ typedef struct PHY_VARS_NR_UE_s {
 
   notifiedFIFO_t tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
 
-  //Sidelink parameters
+  // Sidelink parameters
   sl_nr_sidelink_mode_t sl_mode;
   sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
 } PHY_VARS_NR_UE;
@@ -618,7 +618,7 @@ typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
 
-  //Sidelink Rx action decided by MAC 
+  // Sidelink Rx action decided by MAC
   sl_nr_tx_config_type_enum_t sl_tx_action;
   sl_nr_tx_config_psbch_pdu_t psbch_vars;
 
@@ -628,7 +628,7 @@ typedef struct nr_phy_data_s {
   NR_UE_PDCCH_CONFIG phy_pdcch_config;
   NR_UE_DLSCH_t dlsch[2];
 
-  //Sidelink Rx action decided by MAC 
+  // Sidelink Rx action decided by MAC
   sl_nr_rx_config_type_enum_t sl_rx_action;
 
 } nr_phy_data_t;

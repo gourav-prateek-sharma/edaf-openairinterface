@@ -242,11 +242,9 @@ extern "C" {
     };
   }
 
-  __attribute__((always_inline)) inline c16_t c16xmulConstShift(const c16_t a, const int b, const int Shift) {
-    return (c16_t) {
-      .r = (int16_t)((a.r * b) >> Shift),
-      .i = (int16_t)((a.i * b) >> Shift)
-    };
+  __attribute__((always_inline)) inline c16_t c16xmulConstShift(const c16_t a, const int b, const int Shift)
+  {
+    return (c16_t){.r = (int16_t)((a.r * b) >> Shift), .i = (int16_t)((a.i * b) >> Shift)};
   }
 
   __attribute__((always_inline)) inline c32_t c32x16maddShift(const c16_t a, const c16_t b, const c32_t c, const int Shift) {

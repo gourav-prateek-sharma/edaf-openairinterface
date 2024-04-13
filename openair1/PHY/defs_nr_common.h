@@ -96,7 +96,7 @@
 
 #define MAX_DELAY_COMP 20
 
-#define PBCH_MAX_RE_PER_SYMBOL (20*12)
+#define PBCH_MAX_RE_PER_SYMBOL (20 * 12)
 
 typedef enum {
   NR_MU_0=0,

@@ -865,12 +865,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
           __attribute__ ((aligned(32))) struct complex16 dl_ch_estimates_time[fp->nb_antennas_rx][fp->ofdm_symbol_size];
 
           for (int i=1; i<4; i++) {
-            nr_slot_fep(ue,
-                        fp,
-                        proc,
-                        (ssb_start_symbol+i)%(fp->symbols_per_slot),
-                        rxdataF,
-                        link_type_dl);
+            nr_slot_fep(ue, fp, proc, (ssb_start_symbol + i) % (fp->symbols_per_slot), rxdataF, link_type_dl);
 
             start_meas(&ue->dlsch_channel_estimation_stats);
             nr_pbch_channel_estimation(ue,
@@ -879,9 +874,9 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
                                        dl_ch_estimates,
                                        dl_ch_estimates_time,
                                        proc,
-                                       (ssb_start_symbol+i)%(fp->symbols_per_slot),
-                                       i-1,
-                                       ssb_index&7,
+                                       (ssb_start_symbol + i) % (fp->symbols_per_slot),
+                                       i - 1,
+                                       ssb_index & 7,
                                        ssb_slot_2 == nr_slot_rx,
                                        rxdataF,
                                        false,
@@ -926,12 +921,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
         {
           for(int j = prs_config->SymbolStart; j < (prs_config->SymbolStart+prs_config->NumPRSSymbols); j++)
           {
-            nr_slot_fep(ue,
-                        fp,
-                        proc,
-                        (j%fp->symbols_per_slot),
-                        rxdataF,
-                        link_type_dl);
+            nr_slot_fep(ue, fp, proc, (j % fp->symbols_per_slot), rxdataF, link_type_dl);
           }
           nr_prs_channel_estimation(gNB_id, rsc_id, i, ue, proc, fp, rxdataF);
         }
@@ -962,12 +952,7 @@ int pbch_pdcch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_
   for (uint16_t l=0; l<nb_symb_pdcch; l++) {
 
     start_meas(&ue->ofdm_demod_stats);
-    nr_slot_fep(ue,
-                fp,
-                proc,
-                l,
-                rxdataF,
-                link_type_dl);
+    nr_slot_fep(ue, fp, proc, l, rxdataF, link_type_dl);
   }
 
     // Hold the channel estimates in frequency domain.
@@ -1027,7 +1012,7 @@ void pdsch_processing(PHY_VARS_NR_UE *ue, const UE_nr_rxtx_proc_t *proc, nr_phy_
       nr_slot_fep(ue,
                   &ue->frame_parms,
                   proc,
-                  m,  //to be updated from higher layer
+                  m, // to be updated from higher layer
                   rxdataF,
                   link_type_dl);
     }

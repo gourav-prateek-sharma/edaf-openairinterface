@@ -533,7 +533,6 @@ bool rx_sss_nr(PHY_VARS_NR_UE *ue,
 
 void sl_generate_sss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint16_t slss_id, uint16_t scaling)
 {
-
   int i = 0;
   int m0, m1;
   int n_sl_id1, n_sl_id2;
@@ -541,7 +540,7 @@ void sl_generate_sss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint16_t slss_id, u
   int16_t *sl_sss_for_sync = sl_init_params->sl_sss_for_sync[slss_id];
 
   int16_t x0[SL_NR_SSS_SEQUENCE_LENGTH], x1[SL_NR_SSS_SEQUENCE_LENGTH];
-  const int x_initial[7] = { 1, 0, 0, 0, 0, 0, 0 };
+  const int x_initial[7] = {1, 0, 0, 0, 0, 0, 0};
 
   n_sl_id1 = slss_id % 336;
   n_sl_id2 = slss_id / 336;
@@ -552,32 +551,30 @@ void sl_generate_sss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint16_t slss_id, u
   printf("SIDELINK: SSS Generation with slss_id:%d, N_SL_id1:%d, N_SL_id2:%d\n", slss_id, n_sl_id1, n_sl_id2);
 #endif
 
-  for ( i=0 ; i < 7 ; i++) {
+  for (i = 0; i < 7; i++) {
     x0[i] = x_initial[i];
     x1[i] = x_initial[i];
   }
 
-  for ( i=0 ; i < SL_NR_SSS_SEQUENCE_LENGTH - 7 ; i++) {
-    x0[i+7] = (x0[i + 4] + x0[i]) % 2;
-    x1[i+7] = (x1[i + 1] + x1[i]) % 2;
+  for (i = 0; i < SL_NR_SSS_SEQUENCE_LENGTH - 7; i++) {
+    x0[i + 7] = (x0[i + 4] + x0[i]) % 2;
+    x1[i + 7] = (x1[i + 1] + x1[i]) % 2;
   }
 
-  m0 = 15*(n_sl_id1/112) + (5*n_sl_id2);
+  m0 = 15 * (n_sl_id1 / 112) + (5 * n_sl_id2);
   m1 = n_sl_id1 % 112;
 
-  for (i = 0; i < SL_NR_SSS_SEQUENCE_LENGTH ; i++) {
-    sl_sss_for_sync[i] = (1 - 2*x0[(i + m0) % SL_NR_SSS_SEQUENCE_LENGTH] ) * (1 - 2*x1[(i + m1) % SL_NR_SSS_SEQUENCE_LENGTH] );
+  for (i = 0; i < SL_NR_SSS_SEQUENCE_LENGTH; i++) {
+    sl_sss_for_sync[i] = (1 - 2 * x0[(i + m0) % SL_NR_SSS_SEQUENCE_LENGTH]) * (1 - 2 * x1[(i + m1) % SL_NR_SSS_SEQUENCE_LENGTH]);
     sl_sss[i] = sl_sss_for_sync[i] * scaling;
 
 #ifdef SL_DEBUG_INIT_DATA
-  printf("m0:%d, m1:%d, sl_sss_for_sync[%d]:%d, sl_sss[%d]:%d\n", m0, m1, i, sl_sss_for_sync[i], i, sl_sss[i]);
+    printf("m0:%d, m1:%d, sl_sss_for_sync[%d]:%d, sl_sss[%d]:%d\n", m0, m1, i, sl_sss_for_sync[i], i, sl_sss[i]);
 #endif
-
   }
 
 #ifdef SL_DUMP_PSBCH_TX_SAMPLES
-  LOG_M("sl_sss_seq.m", "sl_sss", (void*)sl_sss, SL_NR_SSS_SEQUENCE_LENGTH, 1, 0);
-  LOG_M("sl_sss_forsync_seq.m", "sl_sss_for_sync", (void*)sl_sss_for_sync, SL_NR_SSS_SEQUENCE_LENGTH, 1, 0);
+  LOG_M("sl_sss_seq.m", "sl_sss", (void *)sl_sss, SL_NR_SSS_SEQUENCE_LENGTH, 1, 0);
+  LOG_M("sl_sss_forsync_seq.m", "sl_sss_for_sync", (void *)sl_sss_for_sync, SL_NR_SSS_SEQUENCE_LENGTH, 1, 0);
 #endif
-
 }

@@ -241,7 +241,7 @@ void nr_pbch_channel_compensation(struct complex16 rxdataF_ext[][PBCH_MAX_RE_PER
     simde__m128i *rxdataF128        = (simde__m128i *)rxdataF_ext[aarx];
     simde__m128i *rxdataF_comp128   = (simde__m128i *)rxdataF_comp[aarx];
 
-    for (int re=0; re<nb_re; re+=4) {
+    for (int re = 0; re < nb_re; re += 4) {
       *rxdataF_comp128++ = mulByConjugate128(rxdataF128++, dl_ch128++, output_shift);
     }
   }
@@ -271,14 +271,14 @@ void nr_pbch_detection_mrc(NR_DL_FRAME_PARMS *frame_parms,
 }
 
 void nr_pbch_unscrambling(int16_t *demod_pbch_e,
-                                 uint16_t Nid,
-                                 uint8_t nushift,
-                                 uint16_t M,
-                                 uint16_t length,
-                                 uint8_t bitwise,
-                                 uint32_t unscrambling_mask,
-                                 uint32_t pbch_a_prime,
-                                 uint32_t *pbch_a_interleaved)
+                          uint16_t Nid,
+                          uint8_t nushift,
+                          uint16_t M,
+                          uint16_t length,
+                          uint8_t bitwise,
+                          uint32_t unscrambling_mask,
+                          uint32_t pbch_a_prime,
+                          uint32_t *pbch_a_interleaved)
 {
   uint8_t reset, offset;
   uint32_t x1 = 0, x2 = 0, s = 0;
@@ -332,9 +332,8 @@ void nr_pbch_unscrambling(int16_t *demod_pbch_e,
   }
 }
 
-void nr_pbch_quantize(int16_t *pbch_llr8,
-                             int16_t *pbch_llr,
-                             uint16_t len) {
+void nr_pbch_quantize(int16_t *pbch_llr8, int16_t *pbch_llr, uint16_t len)
+{
   for (int i=0; i<len; i++) {
     if (pbch_llr[i]>31)
       pbch_llr8[i]=32;

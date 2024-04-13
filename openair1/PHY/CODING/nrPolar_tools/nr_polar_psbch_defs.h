@@ -33,11 +33,11 @@
 #ifndef __NR_POLAR_PSBCH_DEFS__H__
 #define __NR_POLAR_PSBCH_DEFS__H__
 
-//PSBCH related polar parameters.
+// PSBCH related polar parameters.
 
-//PSBCH symbols sent in 11RBS, 9 symbols. 11*9*(12-3(for DMRS))*2bits = 1782 bits
+// PSBCH symbols sent in 11RBS, 9 symbols. 11*9*(12-3(for DMRS))*2bits = 1782 bits
 #define SL_NR_POLAR_PSBCH_E_NORMAL_CP 1782
-//PSBCH symbols sent in 11RBS, 7 symbols. 11*7*(12-3(for DMRS))*2bits = 1386 bits
+// PSBCH symbols sent in 11RBS, 7 symbols. 11*7*(12-3(for DMRS))*2bits = 1386 bits
 #define SL_NR_POLAR_PSBCH_E_EXT_CP 1386
 // SL_NR_POLAR_PSBCH_E_NORMAL_CP/32
 #define SL_NR_POLAR_PSBCH_E_DWORD 56

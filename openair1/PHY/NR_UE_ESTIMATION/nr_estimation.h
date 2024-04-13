@@ -65,7 +65,7 @@ c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
                                const c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP]);
 
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
-                                NR_DL_FRAME_PARMS *fp,
+                               NR_DL_FRAME_PARMS *fp,
                                int estimateSz,
                                struct complex16 dl_ch_estimates[][estimateSz],
                                struct complex16 dl_ch_estimates_time[][fp->ofdm_symbol_size],

@@ -717,7 +717,7 @@ c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
 }
 
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
-                                NR_DL_FRAME_PARMS *fp,
+                               NR_DL_FRAME_PARMS *fp,
                                int estimateSz,
                                struct complex16 dl_ch_estimates[][estimateSz],
                                struct complex16 dl_ch_estimates_time[][fp->ofdm_symbol_size],
@@ -738,47 +738,42 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
   uint32_t *gold_seq = NULL;
 
   if (sidelink) {
-
-    AssertFatal(dmrss == 0 || (dmrss >= 5 && dmrss <= 12),
-	      "symbol %d is illegal for PSBCH DM-RS \n",
-	      dmrss);
+    AssertFatal(dmrss == 0 || (dmrss >= 5 && dmrss <= 12), "symbol %d is illegal for PSBCH DM-RS \n", dmrss);
 
     sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
 
-    LOG_D(PHY,"PSBCH Channel Estimation SLSSID:%d\n", Nid);
+    LOG_D(PHY, "PSBCH Channel Estimation SLSSID:%d\n", Nid);
 
     gold_seq = sl_phy_params->init_params.psbch_dmrs_gold_sequences[Nid];
     lastsymbol = 12;
     num_rbs = SL_NR_NUM_PSBCH_RBS_IN_ONE_SYMBOL;
 
   } else {
+    nushift = fp->Nid_cell % 4;
 
-    nushift =  fp->Nid_cell%4;
-
-    AssertFatal(dmrss >= 0 && dmrss < 3,
-	      "symbol %d is illegal for PBCH DM-RS \n",
-	      dmrss);
+    AssertFatal(dmrss >= 0 && dmrss < 3, "symbol %d is illegal for PBCH DM-RS \n", dmrss);
 
     gold_seq = ue->nr_gold_pbch[n_hf][ssb_index];
     lastsymbol = 2;
     num_rbs = 20;
   }
 
-  unsigned int  ssb_offset = fp->first_carrier_offset + fp->ssb_start_subcarrier;
-  if (ssb_offset>= fp->ofdm_symbol_size) ssb_offset-= fp->ofdm_symbol_size;
+  unsigned int ssb_offset = fp->first_carrier_offset + fp->ssb_start_subcarrier;
+  if (ssb_offset >= fp->ofdm_symbol_size)
+    ssb_offset -= fp->ofdm_symbol_size;
 
-  const int ch_offset = fp->ofdm_symbol_size*symbol;
-  const int symbol_offset = fp->ofdm_symbol_size*symbol;
+  const int ch_offset = fp->ofdm_symbol_size * symbol;
+  const int symbol_offset = fp->ofdm_symbol_size * symbol;
   const int k = nushift;
 
   DEBUG_PBCH("PBCH Channel Estimation : gNB_id %d ch_offset %d, OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n",
-              proc->gNB_id,
-              ch_offset,
-              fp->ofdm_symbol_size,
-              fp->Ncp,
-              Ns,
-              k,
-              symbol);
+             proc->gNB_id,
+             ch_offset,
+             fp->ofdm_symbol_size,
+             fp->Ncp,
+             Ns,
+             k,
+             symbol);
 
   const c16_t *fl, *fm, *fr;
 
@@ -814,59 +809,58 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
   }
 
   idft_size_idx_t idftsizeidx;
-  
-  switch (fp->ofdm_symbol_size) {
-  case 128:
-    idftsizeidx = IDFT_128;
-    break;
-    
-  case 256:
-    idftsizeidx = IDFT_256;
-    break;
-    
-  case 512:
-    idftsizeidx = IDFT_512;
-    break;
-    
-  case 768:
-    idftsizeidx = IDFT_768;
-    break;
 
-  case 1024:
-    idftsizeidx = IDFT_1024;
-    break;
-    
-  case 1536:
-    idftsizeidx = IDFT_1536;
-    break;
-    
-  case 2048:
-    idftsizeidx = IDFT_2048;
-    break;
-    
-  case 3072:
-    idftsizeidx = IDFT_3072;
-    break;
-    
-  case 4096:
-    idftsizeidx = IDFT_4096;
-    break;
-  
-  case 6144:
-    idftsizeidx = IDFT_6144;
-    break;
- 
-  default:
-    printf("unsupported ofdm symbol size \n");
-    assert(0);
+  switch (fp->ofdm_symbol_size) {
+    case 128:
+      idftsizeidx = IDFT_128;
+      break;
+
+    case 256:
+      idftsizeidx = IDFT_256;
+      break;
+
+    case 512:
+      idftsizeidx = IDFT_512;
+      break;
+
+    case 768:
+      idftsizeidx = IDFT_768;
+      break;
+
+    case 1024:
+      idftsizeidx = IDFT_1024;
+      break;
+
+    case 1536:
+      idftsizeidx = IDFT_1536;
+      break;
+
+    case 2048:
+      idftsizeidx = IDFT_2048;
+      break;
+
+    case 3072:
+      idftsizeidx = IDFT_3072;
+      break;
+
+    case 4096:
+      idftsizeidx = IDFT_4096;
+      break;
+
+    case 6144:
+      idftsizeidx = IDFT_6144;
+      break;
+
+    default:
+      printf("unsupported ofdm symbol size \n");
+      assert(0);
   }
-  
+
   // generate pilot
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
-  nr_pbch_dmrs_rx(dmrss,gold_seq, &pilot[0], sidelink);
+  nr_pbch_dmrs_rx(dmrss, gold_seq, &pilot[0], sidelink);
 
-  for (int aarx=0; aarx<fp->nb_antennas_rx; aarx++) {
-
+  for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
     int re_offset = ssb_offset;
     c16_t *pil = pilot;
     c16_t *rxF = &rxdataF[aarx][symbol_offset + k];
@@ -922,7 +916,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
       multaddRealVectorComplexScalar(fl, ch, dl_ch, 16);
 
       pil++;
-      re_offset = (re_offset+4) % fp->ofdm_symbol_size;
+      re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
       ch = c16mulShift(*pil, rxF[re_offset], 15);
       DEBUG_PBCH("pilot %u: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n",
                  pilot_cnt + 1,
@@ -934,7 +928,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                  pil->i);
       multaddRealVectorComplexScalar(fm, ch, dl_ch, 16);
       pil++;
-      re_offset = (re_offset+4) % fp->ofdm_symbol_size;
+      re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
       ch = c16mulShift(*pil, rxF[re_offset], 15);
       DEBUG_PBCH("pilot %u: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n",
                  pilot_cnt + 2,
@@ -950,7 +944,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
       dl_ch += 12;
     }
 
-    if( dmrss == lastsymbol) // update time statistics for last PBCH symbol
+    if (dmrss == lastsymbol) // update time statistics for last PBCH symbol
     {
       // do ifft of channel estimate
       LOG_D(PHY,"Channel Impulse Computation Slot %d Symbol %d ch_offset %d\n", Ns, symbol, ch_offset);
@@ -962,13 +956,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
   }
 
   if (!sidelink && dmrss == lastsymbol)
-    UEscopeCopy(ue,
-                pbchDlChEstimateTime,
-                (void *)dl_ch_estimates_time,
-                sizeof(c16_t),
-                fp->nb_antennas_rx,
-                fp->ofdm_symbol_size,
-                0);
+    UEscopeCopy(ue, pbchDlChEstimateTime, (void *)dl_ch_estimates_time, sizeof(c16_t), fp->nb_antennas_rx, fp->ofdm_symbol_size, 0);
 
   return(0);
 }
