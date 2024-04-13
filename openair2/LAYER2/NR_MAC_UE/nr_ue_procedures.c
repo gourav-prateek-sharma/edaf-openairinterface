@@ -2512,11 +2512,10 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_Schedu
         sr_info->maxTransmissions);
 
   // initiate a Random Access procedure (see clause 5.1) on the SpCell and cancel all pending SRs.
-  schedule_RA_after_SR_failure(mac);
   sr_info->pending = false;
   sr_info->counter = 0;
   nr_timer_stop(&sr_info->prohibitTimer);
-
+  schedule_RA_after_SR_failure(mac);
   return -1;
 }
 
