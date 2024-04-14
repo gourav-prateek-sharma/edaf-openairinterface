@@ -32,6 +32,7 @@
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/NR_REFSIG/nr_refsig.h"
+#include "PHY/NR_REFSIG/nr_mod_table.h"
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 
@@ -711,6 +712,42 @@ void phy_term_nr_top(void)
 {
   free_ul_reference_signal_sequences();
   free_context_synchro_nr();
+}
+
+static void sl_generate_psbch_dmrs_qpsk_sequences(PHY_VARS_NR_UE *UE, struct complex16 *modulated_dmrs_sym, uint16_t slss_id)
+{
+  uint8_t idx = 0;
+  uint32_t *sl_dmrs_sequence = UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_gold_sequences[slss_id];
+  c16_t *mod_table = (c16_t *)nr_qpsk_mod_table;
+
+#ifdef SL_DEBUG_INIT
+  printf("SIDELINK INIT: PSBCH DMRS Generation with slss_id:%d\n", slss_id);
+#endif
+
+  /// QPSK modulation
+  for (int m = 0; m < SL_NR_NUM_PSBCH_DMRS_RE; m++) {
+    idx = (((sl_dmrs_sequence[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 3);
+    modulated_dmrs_sym[m].r = mod_table[idx].r;
+    modulated_dmrs_sym[m].i = mod_table[idx].i;
+
+#ifdef SL_DEBUG_INIT_DATA
+    printf("m:%d gold seq: %d b0-b1: %d-%d DMRS Symbols: %d %d\n",
+           m,
+           sl_dmrs_sequence[(m << 1) >> 5],
+           (((sl_dmrs_sequence[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 1),
+           (((sl_dmrs_sequence[((m << 1) + 1) >> 5]) >> (((m << 1) + 1) & 0x1f)) & 1),
+           modulated_dmrs_sym[m].r,
+           modulated_dmrs_sym[m].i);
+    printf("idx:%d, qpsk_table.r:%d, qpsk_table.i:%d\n", idx, mod_table[idx].r, mod_table[idx].i);
+#endif
+  }
+
+#ifdef SL_DUMP_INIT_SAMPLES
+  char filename[40], varname[25];
+  sprintf(filename, "sl_psbch_dmrs_slssid_%d.m", slss_id);
+  sprintf(varname, "sl_dmrs_id_%d.m", slss_id);
+  LOG_M(filename, varname, (void *)modulated_dmrs_sym, SL_NR_NUM_PSBCH_DMRS_RE, 1, 1);
+#endif
 }
 
 void sl_ue_phy_init(PHY_VARS_NR_UE *UE)
