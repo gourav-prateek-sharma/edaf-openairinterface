@@ -581,8 +581,8 @@ elif re.match('^InitiateHtml$', mode, re.IGNORECASE):
 		if (os.path.isfile(xml_test_file)):
 			try:
 				xmlTree = ET.parse(xml_test_file)
-			except:
-				print("Error while parsing file: " + xml_test_file)
+			except Exception as e:
+				print(f"Error: {e} while parsing file: {xml_test_file}.")
 			xmlRoot = xmlTree.getroot()
 			HTML.htmlTabRefs.append(xmlRoot.findtext('htmlTabRef',default='test-tab-' + str(count)))
 			HTML.htmlTabNames.append(xmlRoot.findtext('htmlTabName',default='test-tab-' + str(count)))

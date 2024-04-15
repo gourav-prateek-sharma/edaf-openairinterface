@@ -164,13 +164,19 @@
 #define PRACH_MASK_INDEX                54
 #define RESERVED_NR_DCI                 55
 
+// Define the UE L2 states with X-Macro
+#define NR_UE_L2_STATES \
+  UE_STATE(UE_NOT_SYNC) \
+  UE_STATE(UE_SYNC) \
+  UE_STATE(UE_PERFORMING_RA) \
+  UE_STATE(UE_CONNECTED) \
+  UE_STATE(UE_DETACHING)
+
 /*!\brief UE layer 2 status */
 typedef enum {
-  UE_NOT_SYNC = 0,
-  UE_SYNC,
-  UE_PERFORMING_RA,
-  UE_CONNECTED,
-  UE_DETACHING
+#define UE_STATE(state) state,
+  NR_UE_L2_STATES
+#undef UE_STATE
 } NR_UE_L2_STATE_t;
 
 typedef enum {

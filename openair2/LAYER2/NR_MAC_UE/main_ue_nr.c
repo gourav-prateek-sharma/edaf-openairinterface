@@ -115,6 +115,12 @@ void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac)
   mac->ra.ra_state = nrRA_UE_IDLE;
 }
 
+NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  return mac->state;
+}
+
 NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
 {
   //init mac here

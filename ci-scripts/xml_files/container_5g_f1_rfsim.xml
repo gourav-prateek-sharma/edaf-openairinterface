@@ -31,6 +31,7 @@
  000022
  000023
  020021
+ 030020
  030021
  030022
  100021
@@ -74,10 +75,18 @@
                 <ping_packetloss_threshold>5</ping_packetloss_threshold>
         </testCase>
 
+        <testCase id="030020">
+                <class>Custom_Command</class>
+                <desc>Simulate a DL radio channel with noise (3 dB)</desc>
+                <node>localhost</node>
+                <command>echo channelmod modify 0 noise_power_dB 3 | nc --send-only 192.168.71.181 8091</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
         <testCase id="030021">
                 <class>Iperf</class>
-                <desc>Iperf (DL/20Mbps/UDP)(30 sec)</desc>
-                <iperf_args>-u -b 20M -t 30 -R</iperf_args>
+                <desc>Iperf (DL/5Mbps/UDP)(30 sec)</desc>
+                <iperf_args>-u -b 5M -t 30 -R</iperf_args>
                 <id>rfsim5g_ue</id>
                 <svr_id>rfsim5g_ext_dn</svr_id>
                 <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
@@ -86,20 +95,52 @@
 
         <testCase id="030022">
                 <class>Iperf</class>
-                <desc>Iperf (UL/5Mbps/UDP)(30 sec)</desc>
-                <iperf_args>-u -b 5M -t 30</iperf_args>
+                <desc>Iperf (UL/3Mbps/UDP)(30 sec)</desc>
+                <iperf_args>-u -b 3M -t 30</iperf_args>
                 <id>rfsim5g_ue</id>
                 <svr_id>rfsim5g_ext_dn</svr_id>
                 <iperf_packetloss_threshold>5</iperf_packetloss_threshold>
                 <iperf_bitrate_threshold>90</iperf_bitrate_threshold>
         </testCase>
 
+        <testCase id="040021">
+                <class>Custom_Command</class>
+                <desc>Simulate a disruption of DL radio channel (ploss 55)(5 sec)</desc>
+                <node>localhost</node>
+                <command>echo channelmod modify 0 ploss 55 | nc -N 192.168.71.181 8091 &amp;&amp; sleep 5</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
+        <testCase id="040022">
+                <class>Custom_Command</class>
+                <desc>Get UE sync state (UE ID 0)</desc>
+                <node>localhost</node>
+                <command>echo ciUE sync_state 0 | nc -N 192.168.71.181 8091 | grep -E UE_NOT_SYNC</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
+        <testCase id="040023">
+                <class>Custom_Command</class>
+                <desc>Restoration of the original DL channel conditions (ploss 0)(5 sec)</desc>
+                <node>localhost</node>
+                <command>echo channelmod modify 0 ploss 0 | nc -N 192.168.71.181 8091 &amp;&amp; sleep 5</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
+        <testCase id="040024">
+                <class>Custom_Command</class>
+                <desc>Get UE sync state (UE ID 0)</desc>
+                <node>localhost</node>
+                <command>echo ciUE sync_state 0 | nc -N 192.168.71.181 8091 | grep -E UE_CONNECTED &amp;&amp; sleep 10</command>
+                <command_fail>yes</command_fail>
+        </testCase>
+
         <testCase id="100021">
                 <class>UndeployGenObject</class>
                 <desc>Undeploy all OAI 5G stack</desc>
                 <yaml_path>yaml_files/5g_f1_rfsimulator</yaml_path>
-                <d_retx_th>1,0,0,0</d_retx_th>
-                <u_retx_th>1,0,0,0</u_retx_th>
+                <d_retx_th>30,30,100,100</d_retx_th>
+                <u_retx_th>30,30,100,100</u_retx_th>
         </testCase>
 
 </testCaseList>
