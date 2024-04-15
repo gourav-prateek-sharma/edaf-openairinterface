@@ -76,3 +76,20 @@ openairinterface5g
 ├── radio             : Drivers for various radios such as USRP, AW2S, RFsim, ...
 └── targets           : Some configuration files; only historical relevance, and might be deleted in the future
 ```
+
+# How to get support from the OAI Community # 
+
+You can ask your question on the [mailing lists](https://gitlab.eurecom.fr/oai/openairinterface5g/-/wikis/MailingList).
+
+Your email should contain below information:
+
+- A clear subject in your email.
+- For all the queries there should be [Query\] in the subject of the email and for problems there should be [Problem\].
+- In case of a problem, add a small description.
+- Do not share any photos unless you want to share a diagram.
+- OAI gNB/DU/CU/CU-CP/CU-UP configuration file in `.conf` format only.
+- Logs of OAI gNB/DU/CU/CU-CP/CU-UP in `.log` or `.txt` format only.
+- In case your question is related to performance, include a small description of the machine (Operating System, Kernel version, CPU, RAM and networking card) and diagram of your testing environment.
+- Known/open issues are present on [GitLab](https://gitlab.eurecom.fr/oai/openairinterface5g/-/issues), so keep checking.
+
+Always remember a structured email will help us understand your issues quickly.
