@@ -1164,8 +1164,6 @@ void UE_config_stub_pnf(void) {
       // eth_params in the UE_mac_inst. Later I think we have to change that to
       // attribute eth_params to a global element for all the UEs.
       else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        stub_eth_params.local_if_name = strdup(
-            *(L1_ParamList.paramarray[j][L1_LOCAL_N_IF_NAME_IDX].strptr));
         stub_eth_params.my_addr = strdup(
             *(L1_ParamList.paramarray[j][L1_LOCAL_N_ADDRESS_IDX].strptr));
         stub_eth_params.remote_addr = strdup(

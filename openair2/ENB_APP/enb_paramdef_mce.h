@@ -67,30 +67,24 @@
 
 #define MCE_CONFIG_STRING_NETWORK_INTERFACES_CONFIG     "NETWORK_INTERFACES"
 
-#define MCE2_INTERFACE_NAME_FOR_M2_ENB_IDX	0
-#define MCE2_IPV4_ADDR_FOR_M2C_IDX            	1
-#define MCE2_PORT_FOR_M2C_IDX             	2
-#define MCE2_INTERFACE_NAME_FOR_M3_MME_IDX      3
-#define MCE2_IPV4_ADDR_FOR_M3C_IDX            	4
-#define MCE2_PORT_FOR_M3C_IDX                	5
+#define MCE2_IPV4_ADDR_FOR_M2C_IDX          0
+#define MCE2_PORT_FOR_M2C_IDX               1
+#define MCE2_IPV4_ADDR_FOR_M3C_IDX          2
+#define MCE2_PORT_FOR_M3C_IDX               3
 
 /* interface configuration parameters names   */
 /* M2 interface configuration parameters names */
-#define MCE_CONFIG_STRING_MCE_INTERFACE_NAME_FOR_M2_ENB "ENB_INTERFACE_NAME_FOR_M2_ENB"
 #define MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M2C "MCE_IPV4_ADDRESS_FOR_M2C"
 #define MCE_CONFIG_STRING_MCE_PORT_FOR_M2C "MCE_PORT_FOR_M2C"
 
 /* M3 interface configuration parameters names */
-#define MCE_CONFIG_STRING_MCE_INTERFACE_NAME_FOR_M3_MME "MCE_INTERFACE_NAME_FOR_M3_MME"
 #define MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M3C "MCE_IPV4_ADDRESS_FOR_M3C"
 #define MCE_CONFIG_STRING_MCE_PORT_FOR_M3C "MCE_PORT_FOR_M3C"
 
 
 #define MCE_NETPARAMS_DESC {  \
-{MCE_CONFIG_STRING_MCE_INTERFACE_NAME_FOR_M2_ENB,        NULL,      0,         .strptr=&mce_interface_name_for_m2_enb,    .defstrval="lo",      TYPE_STRING,      0},      \
 {MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M2C,             NULL,      0,         .strptr=&mce_ipv4_address_for_m2c,         .defstrval=NULL,      TYPE_STRING,      0},      \
 {MCE_CONFIG_STRING_MCE_PORT_FOR_M2C,                     NULL,      0,         .uptr=&mce_port_for_m2c,           	 .defintval=36443L,    TYPE_UINT,        0},      \
-{MCE_CONFIG_STRING_MCE_INTERFACE_NAME_FOR_M3_MME,        NULL,      0,         .strptr=&mce_interface_name_for_m3_mme,    .defstrval=NULL,      TYPE_STRING,      0},      \
 {MCE_CONFIG_STRING_MCE_IPV4_ADDRESS_FOR_M3C,             NULL,      0,         .strptr=&mce_ipv4_address_for_m3c,         .defstrval=NULL,      TYPE_STRING,      0},      \
 {MCE_CONFIG_STRING_MCE_PORT_FOR_M3C,                     NULL,      0,         .uptr=&mce_port_for_m3c,           	 .defintval=36444L,    TYPE_UINT,        0},      \
 } 
@@ -102,18 +96,12 @@
 #define MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS                "target_mme_m3_ip_address"
 /* M3 configuration parameters names   */
 #define MCE_CONFIG_STRING_TARGET_MME_M3_IPV4_ADDRESS              "ipv4"
-#define MCE_CONFIG_STRING_TARGET_MME_M3_IPV6_ADDRESS              "ipv6"
-#define MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS_PREFERENCE     "preference"
 /*   optname                                          helpstr   paramflags    XXXptr       defXXXval         type           numelt     */
 #define M3PARAMS_DESC {  \
-{MCE_CONFIG_STRING_TARGET_MME_M3_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{MCE_CONFIG_STRING_TARGET_MME_M3_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-{MCE_CONFIG_STRING_TARGET_MME_M3_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
+  {MCE_CONFIG_STRING_TARGET_MME_M3_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 }
 
 #define MCE2_M3_IPV4_ADDRESS_IDX          0
-#define MCE2_M3_IPV6_ADDRESS_IDX          1
-#define MCE2_M3_IP_ADDRESS_PREFERENCE_IDX 2
 
 
 /*-----------------------------------------------------------------------------------------------------------------------------------*/

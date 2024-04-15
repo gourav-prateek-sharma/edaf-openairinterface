@@ -1303,8 +1303,6 @@ void RCconfig_nr_ue_macrlc(void) {
   if (MACRLC_ParamList.numelt > 0) {
     for (j = 0; j < MACRLC_ParamList.numelt; j++) {
       if (strcmp(*(MACRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        stub_eth_params.local_if_name = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
         stub_eth_params.my_addr = strdup(
             *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
         stub_eth_params.remote_addr = strdup(

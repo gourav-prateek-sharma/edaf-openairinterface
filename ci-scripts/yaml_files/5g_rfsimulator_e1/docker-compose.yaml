@@ -187,8 +187,9 @@ services:
         container_name: rfsim5g-oai-du
         environment:
             USE_ADDITIONAL_OPTIONS: --sa --rfsim --log_config.global_log_options level,nocolor,time
-                                    --MACRLCs.[0].local_n_address 192.168.73.3
-                                    --MACRLCs.[0].remote_n_address 192.168.72.2
+                                    --MACRLCs.[0].local_n_address 192.168.72.3
+                                    --MACRLCs.[0].remote_n_address oai-cucp
+                                    --MACRLCs.[0].local_n_address_f1u 192.168.73.3
             ASAN_OPTIONS: detect_leaks=0
         depends_on:
             - oai-cucp
@@ -217,8 +218,9 @@ services:
                                     --gNBs.[0].gNB_DU_ID 0xe01
                                     --gNBs.[0].nr_cellid 87654321
                                     --gNBs.[0].servingCellConfigCommon.[0].physCellId 1
-                                    --MACRLCs.[0].local_n_address 192.168.74.3
-                                    --MACRLCs.[0].remote_n_address 192.168.72.2
+                                    --MACRLCs.[0].remote_n_address oai-cucp
+                                    --MACRLCs.[0].local_n_address 192.168.72.4
+                                    --MACRLCs.[0].local_n_address_f1u 192.168.74.3
             ASAN_OPTIONS: detect_leaks=0
         depends_on:
             - oai-cucp
@@ -247,8 +249,9 @@ services:
                                     --gNBs.[0].gNB_DU_ID 0xe02
                                     --gNBs.[0].nr_cellid 11111111
                                     --gNBs.[0].servingCellConfigCommon.[0].physCellId 2
-                                    --MACRLCs.[0].local_n_address 192.168.76.3
-                                    --MACRLCs.[0].remote_n_address 192.168.72.2
+                                    --MACRLCs.[0].remote_n_address oai-cucp
+                                    --MACRLCs.[0].local_n_address 192.168.72.5
+                                    --MACRLCs.[0].local_n_address_f1u 192.168.76.3
             ASAN_OPTIONS: detect_leaks=0
         depends_on:
             - oai-cucp

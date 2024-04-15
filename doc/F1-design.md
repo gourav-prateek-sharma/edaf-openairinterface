@@ -124,11 +124,12 @@ gNB, are, in order:
    (`tr_s_preference`), it is a CU.
 3. It is a (monolithic) gNB.
 
-## Local network deployment of F1
+## F1 IP configuration for Local network deployment of F1
 
-For a local deployment, you should update the following fields.
-We assume that the CU will bind on `192.168.70.129` towards the core,
-`127.0.0.3` towards the DU, and the DU `127.0.0.4` towards the CU.
+The following paragraphs explain the IP configuration for F1 in the OAI config
+files on the example of a a local deployment.  We assume that the CU will bind
+on `192.168.70.129` towards the core, `127.0.0.3` towards the DU, and the DU
+`127.0.0.4` towards the CU.
 
 In the CU file:
 - Update the `gNBs.[0].amf_ip_address` and `gNBs.[0].NETWORK_INTERFACES`
@@ -138,8 +139,8 @@ In the CU file:
   - `gNBs.[0].NETWORK_INTERFACES.GNB_IPV4_ADDRESS_FOR_NG_AMF 192.168.70.129`
   - `gNBs.[0].NETWORK_INTERFACES.GNB_IPV4_ADDRESS_FOR_NGU 192.168.70.132`
 - Set `gNBs.[0].tr_s_preference` (transport south-bound) to `f1`
-- Update the `gNBs.[0].local_s_address` (CU-local south address) for the F1-C
-  south-bound interface: `127.0.0.3`
+- Update the `gNBs.[0].local_s_address` (CU-local south address) for the
+  F1-C/SCTP and F1-U/GTP/UDP south-bound interfaces: `127.0.0.3`
 - Note: the `gNBs.[0].remote_s_address` (CU-remote/DU south address) is
   ignored, but we recommend to put `0.0.0.0` ("any")
 - Ports should match the ones in the DU config, but for simplicity and
@@ -152,13 +153,20 @@ In the CU file:
 In the DU file:
 - Set `MACRLCs.[0].tr_n_preference` to `f1`
 - Update `MACRLCs.[0].local_n_address` (local north-bound address of the DU) to
-  `127.0.0.4`. This IP address is used to bind the GTP socket (F1-U user plane
-  traffic).
+  `127.0.0.4`. This IP address is used to bind the F1-C/SCTP and F1-U/GTP/UDP
+  socket.
+- If you need to bind to different addresses for F1-C and F1-U, there is a
+  second option `MACRLCs.[0].local_n_address_f1u` which is used to bind
+  F1-U/GTP/UDP instead; F1-C/SCTP will still bind to the address in
+  `MACRLCs.[0].local_n_address`.
 - Update `MACRLCs.[].remote_n_address` (remote north-bound address of the CU)
   to `127.0.0.3`. This IP address is used as the CU destination IP address for
   F1AP communication.
 
-Note: all `local_*_if_name` parameters are ignored.
+Note: at the DU, you can bind to different interfaces for F1-C and F1-U with
+the options `MACRLCs.[0].local_n_address` and
+`MACRLCs.[0].local_n_address_f1u`, respectively. Note that this is not foreseen
+for the CU; in the case of the CU, please use separate CU-UP and CU-CP.
 
 ## Configuration of multiple DUs
 

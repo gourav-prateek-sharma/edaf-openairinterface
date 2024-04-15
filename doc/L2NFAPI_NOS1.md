@@ -131,7 +131,6 @@ First verify the nFAPI interface setup on the physical ethernet interface of mac
 MACRLCs = (
         {
         num_cc = 1;
-        local_s_if_name  = "ens3";             // <-- HERE
         remote_s_address = "192.168.122.169";  // <-- HERE
         local_s_address  = "192.168.122.31";   // <-- HERE
         local_s_portc    = 50001;
@@ -166,18 +165,11 @@ Last, the S1 interface shall be properly set.
 
 ```
     ////////// MME parameters:
-    mme_ip_address      = ( { ipv4       = "CI_MME_IP_ADDR"; // replace with 192.168.122.195
-                              ipv6       = "192:168:30::17";
-                              active     = "yes";
-                              preference = "ipv4";
-                            }
-                          );
+    mme_ip_address = ({ ipv4 = "CI_MME_IP_ADDR"; }); // replace with 192.168.122.195
 
     NETWORK_INTERFACES :
     {
-        ENB_INTERFACE_NAME_FOR_S1_MME            = "ens3";            // replace with the proper interface name
         ENB_IPV4_ADDRESS_FOR_S1_MME              = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
-        ENB_INTERFACE_NAME_FOR_S1U               = "ens3";            // replace with the proper interface name
         ENB_IPV4_ADDRESS_FOR_S1U                 = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
         ENB_PORT_FOR_S1U                         = 2152; # Spec 2152
         ENB_IPV4_ADDRESS_FOR_X2C                 = "CI_ENB_IP_ADDR";  // replace with 192.168.122.31
@@ -201,7 +193,6 @@ L1s = (
         {
         num_cc = 1;
         tr_n_preference = "nfapi";
-        local_n_if_name  = "ens3";            // <- HERE
         remote_n_address = "192.168.122.31";  // <- HERE
         local_n_address  = "192.168.122.169"; // <- HERE
         local_n_portc    = 50000;

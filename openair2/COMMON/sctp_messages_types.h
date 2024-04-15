@@ -128,14 +128,7 @@ typedef struct sctp_data_ind_s {
 } sctp_data_ind_t;
 
 typedef struct sctp_init_s {
-  /* Request usage of ipv4 */
-  unsigned  ipv4:1;
-  /* Request usage of ipv6 */
-  unsigned  ipv6:1;
-  uint8_t   nb_ipv4_addr;
-  uint32_t  ipv4_address[10];
-  uint8_t   nb_ipv6_addr;
-  char     *ipv6_address[10];
+  char *bind_address;
   uint16_t  port;
   uint32_t  ppid;
 } sctp_init_t;
