@@ -139,61 +139,7 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
   volatile int *output_ptr=(int*)0;
 
   int *temp_ptr=(int*)0;
-  idft_size_idx_t idftsize;
-
-  switch (fftsize) {
-  case 128:
-    idftsize = IDFT_128;
-    break;
-
-  case 256:
-    idftsize = IDFT_256;
-    break;
-
-  case 512:
-    idftsize = IDFT_512;
-    break;
-
-  case 768:
-    idftsize = IDFT_768;
-    break;
-
-  case 1024:
-    idftsize = IDFT_1024;
-    break;
-
-  case 1536:
-    idftsize = IDFT_1536;
-    break;
-
-  case 2048:
-    idftsize = IDFT_2048;
-    break;
-
-  case 3072:
-    idftsize = IDFT_3072;
-    break;
-
-  case 4096:
-    idftsize = IDFT_4096;
-    break;
-
-  case 6144:
-    idftsize= IDFT_6144;
-    break;
-
- case 12288:
-    idftsize= IDFT_12288;
-    break;
-
- case 24576:
-    idftsize= IDFT_24576;
-    break;
-
-  default:
-    idftsize = IDFT_512;
-    break;
-  }
+  idft_size_idx_t idft_size = get_idft(fftsize);
 
 #ifdef DEBUG_OFDM_MOD
   printf("[PHY] OFDM mod (size %d,prefix %d) Symbols %d, input %p, output %p\n",
@@ -209,9 +155,7 @@ void PHY_ofdm_mod(int *input,                       /// pointer to complex input
 #endif
 
     // on AVX2 need 256-bit alignment
-    idft(idftsize,(int16_t *)&input[i*fftsize],
-         (int16_t *)temp,
-         1);
+    idft(idft_size, (int16_t *)&input[i * fftsize], (int16_t *)temp, 1);
 
     // Copy to frame buffer with Cyclic Extension
     // Note:  will have to adjust for synchronization offset!
