@@ -27,6 +27,7 @@ global:
     nrpbschsim106rb: dedale
     nrpbchsim217rb: dedale
     nrpbchsim273rb: dedale
+    nrpsbchsim: dedale
     nrprachsim: dedale
     nrpucchsim: dedale
     nrulschsim: theseus

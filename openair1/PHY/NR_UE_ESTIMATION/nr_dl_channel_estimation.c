@@ -581,7 +581,7 @@ c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
   // generate pilot
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
   c16_t pilot[200] __attribute__((aligned(16)));
-  nr_pbch_dmrs_rx(dmrss, nr_gold_pbch, pilot);
+  nr_pbch_dmrs_rx(dmrss, (uint32_t *)nr_gold_pbch, pilot, false);
   c32_t computed_val = {0};
   for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
 
@@ -641,42 +641,65 @@ c32_t nr_pbch_dmrs_correlation(const PHY_VARS_NR_UE *ue,
 }
 
 int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
+                               NR_DL_FRAME_PARMS *fp,
                                int estimateSz,
                                struct complex16 dl_ch_estimates[][estimateSz],
-                               struct complex16 dl_ch_estimates_time[][ue->frame_parms.ofdm_symbol_size],
+                               struct complex16 dl_ch_estimates_time[][fp->ofdm_symbol_size],
                                const UE_nr_rxtx_proc_t *proc,
                                unsigned char symbol,
                                int dmrss,
                                uint8_t ssb_index,
                                uint8_t n_hf,
-                               c16_t rxdataF[][ue->frame_parms.samples_per_slot_wCP])
+                               c16_t rxdataF[][fp->samples_per_slot_wCP],
+                               bool sidelink,
+                               uint16_t Nid)
 {
   int Ns = proc->nr_slot_rx;
   c16_t pilot[200] __attribute__((aligned(16)));
   //int slot_pbch;
 
-  const int nushift = ue->frame_parms.Nid_cell % 4;
-  unsigned int  ssb_offset = ue->frame_parms.first_carrier_offset + ue->frame_parms.ssb_start_subcarrier;
-  if (ssb_offset>= ue->frame_parms.ofdm_symbol_size) ssb_offset-=ue->frame_parms.ofdm_symbol_size;
+  uint8_t nushift = 0, lastsymbol = 0, num_rbs = 0;
+  uint32_t *gold_seq = NULL;
 
-  const int ch_offset = ue->frame_parms.ofdm_symbol_size * symbol;
+  if (sidelink) {
+    AssertFatal(dmrss == 0 || (dmrss >= 5 && dmrss <= 12), "symbol %d is illegal for PSBCH DM-RS \n", dmrss);
 
-  AssertFatal(dmrss >= 0 && dmrss < 3,
-	      "symbol %d is illegal for PBCH DM-RS \n",
-	      dmrss);
+    sl_nr_ue_phy_params_t *sl_phy_params = &ue->SL_UE_PHY_PARAMS;
 
-  const int symbol_offset = ue->frame_parms.ofdm_symbol_size * symbol;
+    LOG_D(PHY, "PSBCH Channel Estimation SLSSID:%d\n", Nid);
 
+    gold_seq = sl_phy_params->init_params.psbch_dmrs_gold_sequences[Nid];
+    lastsymbol = 12;
+    num_rbs = SL_NR_NUM_PSBCH_RBS_IN_ONE_SYMBOL;
+
+  } else {
+    nushift = fp->Nid_cell % 4;
+
+    AssertFatal(dmrss >= 0 && dmrss < 3, "symbol %d is illegal for PBCH DM-RS \n", dmrss);
+
+    gold_seq = ue->nr_gold_pbch[n_hf][ssb_index];
+    lastsymbol = 2;
+    num_rbs = 20;
+  }
+
+  unsigned int ssb_offset = fp->first_carrier_offset + fp->ssb_start_subcarrier;
+  if (ssb_offset >= fp->ofdm_symbol_size)
+    ssb_offset -= fp->ofdm_symbol_size;
+
+  const int ch_offset = fp->ofdm_symbol_size * symbol;
+  const int symbol_offset = fp->ofdm_symbol_size * symbol;
   const int k = nushift;
-  const c16_t *fl, *fm, *fr;
+
   DEBUG_PBCH("PBCH Channel Estimation : gNB_id %d ch_offset %d, OFDM size %d, Ncp=%d, Ns=%d, k=%d symbol %d\n",
              proc->gNB_id,
              ch_offset,
-             ue->frame_parms.ofdm_symbol_size,
-             ue->frame_parms.Ncp,
+             fp->ofdm_symbol_size,
+             fp->Ncp,
              Ns,
              k,
              symbol);
+
+  const c16_t *fl, *fm, *fr;
 
   switch (k) {
   case 0:
@@ -709,22 +732,20 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     break;
   }
 
-  
   // generate pilot
   // Note: pilot returned by the following function is already the complex conjugate of the transmitted DMRS
-  nr_pbch_dmrs_rx(dmrss, ue->nr_gold_pbch[n_hf][ssb_index], pilot);
+  nr_pbch_dmrs_rx(dmrss, gold_seq, &pilot[0], sidelink);
 
-  for (int aarx=0; aarx<ue->frame_parms.nb_antennas_rx; aarx++) {
-
+  for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
     int re_offset = ssb_offset;
     c16_t *pil = pilot;
     c16_t *rxF = &rxdataF[aarx][symbol_offset + k];
     c16_t *dl_ch = &dl_ch_estimates[aarx][ch_offset];
 
-    memset(dl_ch, 0, sizeof(c16_t) * ue->frame_parms.ofdm_symbol_size);
+    memset(dl_ch, 0, sizeof(c16_t) * fp->ofdm_symbol_size);
 
-    DEBUG_PBCH("pbch ch est pilot RB_DL %d\n", ue->frame_parms.N_RB_DL);
-    DEBUG_PBCH("k %d, first_carrier %d\n", k, ue->frame_parms.first_carrier_offset);
+    DEBUG_PBCH("pbch ch est pilot RB_DL %d\n", fp->N_RB_DL);
+    DEBUG_PBCH("k %d, first_carrier %d\n", k, fp->first_carrier_offset);
 
     // Treat first 2 pilots specially (left edge)
     c16_t ch;
@@ -732,31 +753,31 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     DEBUG_PBCH("pilot 0: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n", rxF[re_offset].r, rxF[re_offset].i, ch.r, ch.i, pil->r, pil->i);
     multaddRealVectorComplexScalar(fl, ch, dl_ch, 16);
     pil++;
-    re_offset = (re_offset + 4) % ue->frame_parms.ofdm_symbol_size;
+    re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
 
     ch = c16mulShift(*pil, rxF[re_offset], 15);
 
     DEBUG_PBCH("pilot 1: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n", rxF[re_offset].r, rxF[re_offset].i, ch.r, ch.i, pil->r, pil->i);
     multaddRealVectorComplexScalar(fm, ch, dl_ch, 16);
     pil++;
-    re_offset = (re_offset + 4) % ue->frame_parms.ofdm_symbol_size;
+    re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
 
     ch = c16mulShift(*pil, rxF[re_offset], 15);
 
     DEBUG_PBCH("pilot 2: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n", rxF[re_offset].r, rxF[re_offset].i, ch.r, ch.i, pil->r, pil->i);
     multaddRealVectorComplexScalar(fr, ch, dl_ch, 16);
     pil++;
-    re_offset = (re_offset + 4) % ue->frame_parms.ofdm_symbol_size;
+    re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
     dl_ch += 24;
 
-    for (int pilot_cnt = 3; pilot_cnt < (3 * 20); pilot_cnt += 3) {
+    for (int pilot_cnt = 3; pilot_cnt < (3 * num_rbs); pilot_cnt += 3) {
       //	if (pilot_cnt == 30)
       //	  rxF   = (int16_t *)&rxdataF[aarx][(symbol_offset+k)];
 
       // in 2nd symbol, skip middle  REs (48 with DMRS,  144 for SSS, and another 48 with DMRS) 
       if (dmrss == 1 && pilot_cnt == 12) {
         pilot_cnt=48;
-        re_offset = (re_offset + 144) % ue->frame_parms.ofdm_symbol_size;
+        re_offset = (re_offset + 144) % fp->ofdm_symbol_size;
         dl_ch += 288;
       }
       ch = c16mulShift(*pil, rxF[re_offset], 15);
@@ -771,7 +792,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
       multaddRealVectorComplexScalar(fl, ch, dl_ch, 16);
 
       pil++;
-      re_offset = (re_offset+4) % ue->frame_parms.ofdm_symbol_size;
+      re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
       ch = c16mulShift(*pil, rxF[re_offset], 15);
       DEBUG_PBCH("pilot %u: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n",
                  pilot_cnt + 1,
@@ -783,7 +804,7 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                  pil->i);
       multaddRealVectorComplexScalar(fm, ch, dl_ch, 16);
       pil++;
-      re_offset = (re_offset+4) % ue->frame_parms.ofdm_symbol_size;
+      re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
       ch = c16mulShift(*pil, rxF[re_offset], 15);
       DEBUG_PBCH("pilot %u: rxF= (%d,%d), ch= (%d,%d), pil=(%d,%d)\n",
                  pilot_cnt + 2,
@@ -795,11 +816,11 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
                  pil->i);
       multaddRealVectorComplexScalar(fr, ch, dl_ch, 16);
       pil++;
-      re_offset = (re_offset + 4) % ue->frame_parms.ofdm_symbol_size;
+      re_offset = (re_offset + 4) % fp->ofdm_symbol_size;
       dl_ch += 12;
     }
 
-    if( dmrss == 2) // update time statistics for last PBCH symbol
+    if (dmrss == lastsymbol) // update time statistics for last PBCH symbol
     {
       // do ifft of channel estimate
       LOG_D(PHY,"Channel Impulse Computation Slot %d Symbol %d ch_offset %d\n", Ns, symbol, ch_offset);
@@ -809,14 +830,8 @@ int nr_pbch_channel_estimation(PHY_VARS_NR_UE *ue,
     }
   }
 
-  if (dmrss == 2)
-    UEscopeCopy(ue,
-                pbchDlChEstimateTime,
-                (void *)dl_ch_estimates_time,
-                sizeof(c16_t),
-                ue->frame_parms.nb_antennas_rx,
-                ue->frame_parms.ofdm_symbol_size,
-                0);
+  if (!sidelink && dmrss == lastsymbol)
+    UEscopeCopy(ue, pbchDlChEstimateTime, (void *)dl_ch_estimates_time, sizeof(c16_t), fp->nb_antennas_rx, fp->ofdm_symbol_size, 0);
 
   return(0);
 }

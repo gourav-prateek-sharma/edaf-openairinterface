@@ -101,6 +101,7 @@ static bool nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
 
     for(int i=pbch_initial_symbol; i<pbch_initial_symbol+3;i++)
       nr_pbch_channel_estimation(ue,
+                                 &ue->frame_parms,
                                  estimateSz,
                                  dl_ch_estimates,
                                  dl_ch_estimates_time,
@@ -109,7 +110,9 @@ static bool nr_pbch_detection(const UE_nr_rxtx_proc_t *proc,
                                  i - pbch_initial_symbol,
                                  ssb->i_ssb,
                                  ssb->n_hf,
-                                 rxdataF);
+                                 rxdataF,
+                                 false,
+                                 frame_parms->Nid_cell);
 
     stop_meas(&ue->dlsch_channel_estimation_stats);
     fapiPbch_t result = {0};

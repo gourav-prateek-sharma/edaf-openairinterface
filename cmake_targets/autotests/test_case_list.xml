@@ -529,4 +529,16 @@
       <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>
       <nruns>3</nruns>
     </testCase>
+
+    <testCase id="nr_psbchsim">
+      <desc>NR-Sidelink PSBCH test cases. (Test1: SLSS Search),
+                                          (Test2: PSBCH TxRx)</desc>
+      <main_exec>nr_psbchsim</main_exec>
+      <main_exec_args>-I
+                      -n 10</main_exec_args>
+      <tags>test1 test2</tags>
+      <search_expr_true>PSBCH test OK</search_expr_true>
+      <search_expr_false>segmentation fault|assertion|exiting|fatal</search_expr_false>
+      <nruns>3</nruns>
+    </testCase>
   </testCaseList>

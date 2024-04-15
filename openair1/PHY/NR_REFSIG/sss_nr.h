@@ -67,7 +67,27 @@
 
 #define PHASE_HYPOTHESIS_NUMBER       (16)
 #define INDEX_NO_PHASE_DIFFERENCE (3) /* this is for no phase shift case */
+
 /************** FUNCTION ******************************************/
+
+static const c16_t phase_nr[PHASE_HYPOTHESIS_NUMBER] = {
+    // {pi/3 ---- pi/3, -pi/3 ---- pi/3}
+    {16384, -28377},
+    {20173, -25821},
+    {23571, -22762},
+    {26509, -19260},
+    {28932, -15383},
+    {30791, -11207},
+    {32051, -6813},
+    {32687, -2286},
+    {32687, 2286},
+    {32051, 6813},
+    {30791, 11207},
+    {28932, 15383},
+    {26509, 19260},
+    {23571, 22762},
+    {20173, 25821},
+    {16384, 28377}};
 
 void init_context_sss_nr(int amp);
 void free_context_sss_nr(void);

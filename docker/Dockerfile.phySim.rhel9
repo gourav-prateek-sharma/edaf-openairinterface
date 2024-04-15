@@ -69,6 +69,7 @@ COPY --from=phy-sim-build \
     /oai-ran/cmake_targets/ran_build/build/ldpctest \
     /oai-ran/cmake_targets/ran_build/build/nr_dlschsim \
     /oai-ran/cmake_targets/ran_build/build/nr_pbchsim \
+    /oai-ran/cmake_targets/ran_build/build/nr_psbchsim \
     /oai-ran/cmake_targets/ran_build/build/nr_pucchsim \
     /oai-ran/cmake_targets/ran_build/build/nr_ulsim \
     /oai-ran/cmake_targets/ran_build/build/smallblocktest \
