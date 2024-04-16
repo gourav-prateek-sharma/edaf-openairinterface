@@ -32,7 +32,7 @@
 #include "PHY/NR_REFSIG/ul_ref_seq_nr.h"
 #include "PHY/NR_REFSIG/refsig_defs_ue.h"
 #include "PHY/NR_REFSIG/nr_refsig.h"
-#include "PHY/MODULATION/nr_modulation.h"
+#include "PHY/NR_REFSIG/nr_mod_table.h"
 #include "openair2/COMMON/prs_nr_paramdef.h"
 #include "SCHED_NR_UE/harq_nr.h"
 
@@ -384,6 +384,15 @@ int init_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
   return 0;
 }
 
+static void sl_ue_free(PHY_VARS_NR_UE *UE)
+{
+  if (UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation) {
+    free_and_zero(UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[0]);
+    free_and_zero(UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[1]);
+    free_and_zero(UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation);
+  }
+}
+
 void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 {
   const NR_DL_FRAME_PARMS* fp = &ue->frame_parms;
@@ -489,6 +498,8 @@ void term_nr_ue_signal(PHY_VARS_NR_UE *ue, int nb_connected_gNB)
 
     free_and_zero(ue->prs_vars[idx]);
   }
+
+  sl_ue_free(ue);
 }
 
 void free_nr_ue_dl_harq(NR_DL_UE_HARQ_t harq_list[2][NR_MAX_DLSCH_HARQ_PROCESSES], int number_of_processes, int num_rb) {
@@ -701,4 +712,71 @@ void phy_term_nr_top(void)
 {
   free_ul_reference_signal_sequences();
   free_context_synchro_nr();
+}
+
+static void sl_generate_psbch_dmrs_qpsk_sequences(PHY_VARS_NR_UE *UE, struct complex16 *modulated_dmrs_sym, uint16_t slss_id)
+{
+  uint8_t idx = 0;
+  uint32_t *sl_dmrs_sequence = UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_gold_sequences[slss_id];
+  c16_t *mod_table = (c16_t *)nr_qpsk_mod_table;
+
+#ifdef SL_DEBUG_INIT
+  printf("SIDELINK INIT: PSBCH DMRS Generation with slss_id:%d\n", slss_id);
+#endif
+
+  /// QPSK modulation
+  for (int m = 0; m < SL_NR_NUM_PSBCH_DMRS_RE; m++) {
+    idx = (((sl_dmrs_sequence[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 3);
+    modulated_dmrs_sym[m].r = mod_table[idx].r;
+    modulated_dmrs_sym[m].i = mod_table[idx].i;
+
+#ifdef SL_DEBUG_INIT_DATA
+    printf("m:%d gold seq: %d b0-b1: %d-%d DMRS Symbols: %d %d\n",
+           m,
+           sl_dmrs_sequence[(m << 1) >> 5],
+           (((sl_dmrs_sequence[(m << 1) >> 5]) >> ((m << 1) & 0x1f)) & 1),
+           (((sl_dmrs_sequence[((m << 1) + 1) >> 5]) >> (((m << 1) + 1) & 0x1f)) & 1),
+           modulated_dmrs_sym[m].r,
+           modulated_dmrs_sym[m].i);
+    printf("idx:%d, qpsk_table.r:%d, qpsk_table.i:%d\n", idx, mod_table[idx].r, mod_table[idx].i);
+#endif
+  }
+
+#ifdef SL_DUMP_INIT_SAMPLES
+  char filename[40], varname[25];
+  sprintf(filename, "sl_psbch_dmrs_slssid_%d.m", slss_id);
+  sprintf(varname, "sl_dmrs_id_%d.m", slss_id);
+  LOG_M(filename, varname, (void *)modulated_dmrs_sym, SL_NR_NUM_PSBCH_DMRS_RE, 1, 1);
+#endif
+}
+
+void sl_ue_phy_init(PHY_VARS_NR_UE *UE)
+{
+  uint16_t scaling_value = ONE_OVER_SQRT2_Q15;
+
+  NR_DL_FRAME_PARMS *sl_fp = &UE->SL_UE_PHY_PARAMS.sl_frame_params;
+
+  if (!UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation) {
+    UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation = malloc16_clear(SL_NR_NUM_IDs_IN_PSS * sizeof(int32_t *));
+    UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[0] = malloc16_clear(sizeof(int32_t) * sl_fp->ofdm_symbol_size);
+    UE->SL_UE_PHY_PARAMS.init_params.sl_pss_for_correlation[1] = malloc16_clear(sizeof(int32_t) * sl_fp->ofdm_symbol_size);
+  }
+  LOG_I(PHY, "SIDELINK INIT: GENERATE PSS, SSS, GOLD SEQUENCES AND PSBCH DMRS SEQUENCES FOR ALL possible SLSS IDs 0- 671\n");
+
+  // Generate PSS sequences for IDs 0,1 used in PSS
+  sl_generate_pss(&UE->SL_UE_PHY_PARAMS.init_params, 0, scaling_value);
+  sl_generate_pss(&UE->SL_UE_PHY_PARAMS.init_params, 1, scaling_value);
+
+  // Generate psbch dmrs Gold Sequences and modulated dmrs symbols
+  sl_init_psbch_dmrs_gold_sequences(UE);
+  for (int slss_id = 0; slss_id < SL_NR_NUM_SLSS_IDs; slss_id++) {
+    sl_generate_psbch_dmrs_qpsk_sequences(UE, UE->SL_UE_PHY_PARAMS.init_params.psbch_dmrs_modsym[slss_id], slss_id);
+    sl_generate_sss(&UE->SL_UE_PHY_PARAMS.init_params, slss_id, scaling_value);
+  }
+
+  // Generate PSS time domain samples used for correlation during SLSS reception.
+  sl_generate_pss_ifft_samples(&UE->SL_UE_PHY_PARAMS, &UE->SL_UE_PHY_PARAMS.init_params);
+
+  init_symbol_rotation(sl_fp);
+  init_timeshift_rotation(sl_fp);
 }

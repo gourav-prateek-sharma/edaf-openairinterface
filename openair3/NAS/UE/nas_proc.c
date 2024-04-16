@@ -1014,8 +1014,7 @@ int nas_proc_activate_pdn(nas_user_t *user, int cid)
  **      Others:    _nas_proc_data                             **
  **                                                                        **
  ***************************************************************************/
-int nas_proc_cell_info(nas_user_t *user, int found, tac_t tac, ci_t ci, AcT_t AcT,
-                       uint8_t rsrq, uint8_t rsrp)
+int nas_proc_cell_info(nas_user_t *user, int found, tac_t tac, ci_t ci, AcT_t AcT, uint8_t rsrq, uint8_t rsrp)
 {
   LOG_FUNC_IN;
 

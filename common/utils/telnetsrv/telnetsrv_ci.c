@@ -19,6 +19,11 @@
  *      contact@openairinterface.org
  */
 
+/*! \file telnetsrv_ci.c
+ * \brief Implementation of telnet CI functions for gNB
+ * \note  This file contains telnet-related functions specific to 5G gNB.
+ */
+
 #include <sys/types.h>
 #include <stdio.h>
 #include <unistd.h>

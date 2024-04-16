@@ -425,7 +425,7 @@ void nr_dump_frame_parms(NR_DL_FRAME_PARMS *fp)
   LOG_I(PHY,"fp->samples_per_frame=%d\n",fp->samples_per_frame);
   LOG_I(PHY,"fp->dl_CarrierFreq=%lu\n",fp->dl_CarrierFreq);
   LOG_I(PHY,"fp->ul_CarrierFreq=%lu\n",fp->ul_CarrierFreq);
+  LOG_I(PHY, "fp->Nid_cell=%d\n", fp->Nid_cell);
+  LOG_I(PHY, "fp->first_carrier_offset=%d\n", fp->first_carrier_offset);
+  LOG_I(PHY, "fp->ssb_start_subcarrier=%d\n", fp->ssb_start_subcarrier);
 }
-
-
-

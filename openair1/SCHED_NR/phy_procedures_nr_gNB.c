@@ -81,20 +81,18 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
     fp->print_ue_help_cmdline_log = false;
     if (fp->dl_CarrierFreq != fp->ul_CarrierFreq)
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu --CO %lu -r %d --numerology %d --band %d --ssb %d\n",
+            "Command line parameters for the UE: -C %lu --CO %lu -r %d --numerology %d --ssb %d\n",
             fp->dl_CarrierFreq,
             fp->dl_CarrierFreq - fp->ul_CarrierFreq,
             fp->N_RB_DL,
             scs,
-            fp->nr_band,
             fp->ssb_start_subcarrier);
     else
       LOG_A(PHY,
-            "Command line parameters for the UE: -C %lu -r %d --numerology %d --band %d --ssb %d\n",
+            "Command line parameters for the UE: -C %lu -r %d --numerology %d --ssb %d\n",
             fp->dl_CarrierFreq,
             fp->N_RB_DL,
             scs,
-            fp->nr_band,
             fp->ssb_start_subcarrier);
   }
   LOG_D(PHY,
@@ -428,7 +426,12 @@ static int nr_ulsch_procedures(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx, int
   //----------------------------------------------------------
   //--------------------- ULSCH decoding ---------------------
   //----------------------------------------------------------
-
+  /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
+   * (valid for unitary physical simulators). ULSCH processing lopp is then executed
+   * only once, which ensures exactly one start and stop of the ULSCH decoding time
+   * measurement per processed TB.*/
+  if (gNB->max_nb_pusch == 1)
+    start_meas(&gNB->ulsch_decoding_stats);
   int nbDecode =
       nr_ulsch_decoding(gNB, ULSCH_id, gNB->pusch_vars[ULSCH_id].llr, frame_parms, pusch_pdu, frame_rx, slot_rx, harq_pid, G);
 
@@ -544,13 +547,14 @@ void fill_ul_rb_mask(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx) {
   int rb2 = 0;
   int prbpos = 0;
 
-  for (int symbol=0;symbol<14;symbol++) {
-    for (int m=0;m<9;m++) {
+  for (int symbol = 0; symbol < 14; symbol++) {
+    for (int m = 0; m < 9; m++) {
       gNB->rb_mask_ul[symbol][m] = 0;
-      for (int i=0;i<32;i++) {
-        prbpos = (m*32)+i;
-        if (prbpos>gNB->frame_parms.N_RB_UL) break;
-        gNB->rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos]>0 ? 1 : 0)<<i;
+      for (int i = 0; i < 32; i++) {
+        prbpos = (m * 32) + i;
+        if (prbpos>gNB->frame_parms.N_RB_UL)
+          break;
+        gNB->rb_mask_ul[symbol][m] |= (gNB->ulprbbl[prbpos] > 0 ? 1U : 0) << i;
       }
     }
   }
@@ -916,6 +920,12 @@ int phy_procedures_gNB_uespec_RX(PHY_VARS_gNB *gNB, int frame_rx, int slot_rx)
       delNotifiedFIFO_elt(req);
       totalDecode--;
     }
+  /* Do ULSCH decoding time measurement only when number of PUSCH is limited to 1
+   * (valid for unitary physical simulators). ULSCH processing loop is then executed
+   * only once, which ensures exactly one start and stop of the ULSCH decoding time
+   * measurement per processed TB.*/
+  if (gNB->max_nb_pusch == 1)
+    stop_meas(&gNB->ulsch_decoding_stats);
   for (int i = 0; i < gNB->max_nb_srs; i++) {
     NR_gNB_SRS_t *srs = &gNB->srs[i];
     if (srs) {

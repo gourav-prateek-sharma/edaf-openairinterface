@@ -101,7 +101,6 @@ void RCconfig_L1(void) {
 
       if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "local_mac") == 0) {
       } else if (strcmp(*(L1_ParamList.paramarray[j][L1_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        RC.eNB[j][0]->eth_params_n.local_if_name            = strdup(*(L1_ParamList.paramarray[j][L1_LOCAL_N_IF_NAME_IDX].strptr));
         RC.eNB[j][0]->eth_params_n.my_addr                  = strdup(*(L1_ParamList.paramarray[j][L1_LOCAL_N_ADDRESS_IDX].strptr));
         RC.eNB[j][0]->eth_params_n.remote_addr              = strdup(*(L1_ParamList.paramarray[j][L1_REMOTE_N_ADDRESS_IDX].strptr));
         RC.eNB[j][0]->eth_params_n.my_portc                 = *(L1_ParamList.paramarray[j][L1_LOCAL_N_PORTC_IDX].iptr);
@@ -206,7 +205,6 @@ void RCconfig_macrlc(void)
 
       if (strcmp(*(MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_S_PREFERENCE_IDX].strptr), "local_L1") == 0) {
       } else if (strcmp(*(MacRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_S_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        RC.mac[j]->eth_params_s.local_if_name            = strdup(*(MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_IF_NAME_IDX].strptr));
         RC.mac[j]->eth_params_s.my_addr                  = strdup(*(MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_ADDRESS_IDX].strptr));
         RC.mac[j]->eth_params_s.remote_addr              = strdup(*(MacRLC_ParamList.paramarray[j][MACRLC_REMOTE_S_ADDRESS_IDX].strptr));
         RC.mac[j]->eth_params_s.my_portc                 = *(MacRLC_ParamList.paramarray[j][MACRLC_LOCAL_S_PORTC_IDX].iptr);
@@ -1822,7 +1820,6 @@ int RCconfig_RRC(uint32_t i, eNB_RRC_INST *rrc) {
 
 int RCconfig_gtpu(void ) {
   int               num_enbs                      = 0;
-  char             *enb_interface_name_for_S1U    = NULL;
   char             *enb_ipv4_address_for_S1U      = NULL;
   uint16_t enb_port_for_S1U = 0;
   char             *address                       = NULL;
@@ -2049,18 +2046,8 @@ int RCconfig_M2(MessageDef *msg_p, uint32_t i) {
             for (l = 0; l < M2ParamList.numelt; l++) {
               M2AP_REGISTER_ENB_REQ (msg_p).nb_m2 += 1;
               strcpy(M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4_address,*(M2ParamList.paramarray[l][ENB_M2_IPV4_ADDRESS_IDX].strptr));
-              strcpy(M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6_address,*(M2ParamList.paramarray[l][ENB_M2_IPV6_ADDRESS_IDX].strptr));
-
-              if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 0;
-              } else if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 0;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 1;
-              } else if (strcmp(*(M2ParamList.paramarray[l][ENB_M2_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
-                M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 1;
-              }
+              M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv4 = 1;
+              M2AP_REGISTER_ENB_REQ (msg_p).target_mce_m2_ip_address[l].ipv6 = 0;
             }
             // timers
             //{
@@ -2345,18 +2332,8 @@ int RCconfig_S1(
             for (int l = 0; l < S1ParamList.numelt; l++) {
               S1AP_REGISTER_ENB_REQ (msg_p).nb_mme += 1;
               strcpy(S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4_address,*(S1ParamList.paramarray[l][ENB_MME_IPV4_ADDRESS_IDX].strptr));
-              strcpy(S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6_address,*(S1ParamList.paramarray[l][ENB_MME_IPV6_ADDRESS_IDX].strptr));
-
-              if (strcmp(*(S1ParamList.paramarray[l][ENB_MME_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 1;
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 0;
-              } else if (strcmp(*(S1ParamList.paramarray[l][ENB_MME_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 0;
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 1;
-              } else if (strcmp(*(S1ParamList.paramarray[l][ENB_MME_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 1;
-                S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 1;
-              }
+              S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv4 = 1;
+              S1AP_REGISTER_ENB_REQ (msg_p).mme_ip_address[l].ipv6 = 0;
 
               if (S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].iptr) {
                 S1AP_REGISTER_ENB_REQ(msg_p).broadcast_plmn_num[l] = S1ParamList.paramarray[l][ENB_MME_BROADCAST_PLMN_INDEX].numelt;
@@ -2571,19 +2548,9 @@ int RCconfig_X2(MessageDef *msg_p, uint32_t i) {
             for (l = 0; l < X2ParamList.numelt; l++) {
               X2AP_REGISTER_ENB_REQ (msg_p).nb_x2 += 1;
               strcpy(X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4_address,*(X2ParamList.paramarray[l][ENB_X2_IPV4_ADDRESS_IDX].strptr));
-              strcpy(X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6_address,*(X2ParamList.paramarray[l][ENB_X2_IPV6_ADDRESS_IDX].strptr));
-
-              LOG_I(X2AP,"registering with ip : %s\n",*(X2ParamList.paramarray[l][ENB_X2_IPV4_ADDRESS_IDX].strptr));
-              if (strcmp(*(X2ParamList.paramarray[l][ENB_X2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv4") == 0) {
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 1;
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 0;
-              } else if (strcmp(*(X2ParamList.paramarray[l][ENB_X2_IP_ADDRESS_PREFERENCE_IDX].strptr), "ipv6") == 0) {
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 0;
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 1;
-              } else if (strcmp(*(X2ParamList.paramarray[l][ENB_X2_IP_ADDRESS_PREFERENCE_IDX].strptr), "no") == 0) {
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 1;
-                X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 1;
-              }
+              LOG_I(X2AP, "registering with ip : %s\n", *(X2ParamList.paramarray[l][ENB_X2_IPV4_ADDRESS_IDX].strptr));
+              X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv4 = 1;
+              X2AP_REGISTER_ENB_REQ (msg_p).target_enb_x2_ip_address[l].ipv6 = 0;
             }
 
             // timers

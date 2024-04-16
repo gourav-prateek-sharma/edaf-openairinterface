@@ -53,7 +53,7 @@ bool cu_add_f1_ue_data(uint32_t ue_id, const f1_ue_data_t *data)
     return false;
   }
   f1_ue_data_t *idata = malloc(sizeof(*idata));
-  AssertFatal(idata != NULL, "cannot allocate memory\n");
+  AssertFatal(idata, "cannot allocate memory\n");
   *idata = *data;
   hashtable_rc_t ret = hashtable_insert(cu2du_ue_mapping, key, idata);
   pthread_mutex_unlock(&cu2du_mutex);
@@ -116,7 +116,7 @@ bool du_add_f1_ue_data(uint32_t ue_id, const f1_ue_data_t *data)
     return false;
   }
   f1_ue_data_t *idata = malloc(sizeof(*idata));
-  AssertFatal(idata != NULL, "cannot allocate memory\n");
+  AssertFatal(idata, "cannot allocate memory\n");
   *idata = *data;
   hashtable_rc_t ret = hashtable_insert(du2cu_ue_mapping, key, idata);
   pthread_mutex_unlock(&du2cu_mutex);

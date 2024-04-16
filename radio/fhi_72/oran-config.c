@@ -34,7 +34,7 @@
 static void print_fh_eowd_cmn(unsigned index, const struct xran_ecpri_del_meas_cmn *eowd_cmn)
 {
   printf("\
-    eowd_cmn[%d]:\n\
+    eowd_cmn[%u]:\n\
       initiator_en %d\n\
       numberOfSamples %d\n\
       filterType %d\n\
@@ -61,7 +61,7 @@ static void print_fh_eowd_cmn(unsigned index, const struct xran_ecpri_del_meas_c
 static void print_fh_eowd_port(unsigned index, unsigned vf, const struct xran_ecpri_del_meas_port *eowd_port)
 {
   printf("\
-    eowd_port[%d][%d]:\n\
+    eowd_port[%u][%u]:\n\
       t1 %ld\n\
       t2 %ld\n\
       tr %ld\n\

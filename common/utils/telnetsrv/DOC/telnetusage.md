@@ -8,7 +8,17 @@ By default the embedded telnet server, which is implemented in a shared library,
  ./build_oai  --build-lib telnetsrv
 ```
 
-This will create the `libtelnetsrv.so` and `libtelnetsrv_<app>` file in the `cmake_targets/ran_build/build` subdirectory of the oai repository. `<app>` can be "enb", "gnb", "4GUE", "5GUE", or "ci", each library containing functions specific to a given executable.
+This will create the `libtelnetsrv.so` and `libtelnetsrv_<app>` file in the `cmake_targets/ran_build/build` subdirectory of the oai repository. `<app>` can be "enb", "gnb", "4GUE", "5GUE", "ci" or "ciUE" each library containing functions specific to a given executable:
+
+| **Library Name**          | **Description**                     |
+|---------------------------|-------------------------------------|
+| `libtelnetsrv.so`         | General telnet server library       |
+| `libtelnetsrv_enb`        | eNodeB specific functions           |
+| `libtelnetsrv_gnb`        | gNodeB specific functions           |
+| `libtelnetsrv_4GUE`       | 4G NR UE specific functions         |
+| `libtelnetsrv_5GUE`       | 5G NR UE specific functions         |
+| `libtelnetsrv_ci`         | gNB specific CI functions           |
+| `libtelnetsrv_ciUE`       | UE specific CI functions            |
 
 When starting the softmodem, you must specify the **_\-\-telnetsrv_** option to load and start the telnet server. The telnet server is loaded via the [oai shared library loader](loader).
 

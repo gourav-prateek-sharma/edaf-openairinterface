@@ -1351,8 +1351,7 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   bwp->bwp_Common->pdcch_ConfigCommon=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon));
   bwp->bwp_Common->pdcch_ConfigCommon->present = NR_SetupRelease_PDCCH_ConfigCommon_PR_setup;
   bwp->bwp_Common->pdcch_ConfigCommon->choice.setup = calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup));
-  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->controlResourceSetZero=NULL;
-  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet=calloc(1,sizeof(*bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->commonControlResourceSet));
+  bwp->bwp_Common->pdcch_ConfigCommon->choice.setup->controlResourceSetZero = NULL;
 
   int curr_bwp = NRRIV2BW(bwp->bwp_Common->genericParameters.locationAndBandwidth,MAX_BWP_SIZE);
 
@@ -1400,7 +1399,6 @@ static void config_downlinkBWP(NR_BWP_Downlink_t *bwp,
   NR_ControlResourceSet_t *coreset2 = get_coreset_config(bwp->bwp_Id, curr_bwp, ssb_bitmap);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset2);
 
-  bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList = calloc(1,sizeof(*bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 10+bwp->bwp_Id, coreset2->controlResourceSetId);
   asn1cSeqAdd(&bwp->bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
 
@@ -1657,9 +1655,6 @@ static void config_csi_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                    int rep_id,
                                    int uid)
 {
-  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
-  csirep->reportConfigId = rep_id;
-  csirep->carrier = NULL;
   int resource_id = -1;
   int im_id = -1;
   for (int csi_list = 0; csi_list < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_list++) {
@@ -1678,6 +1673,9 @@ static void config_csi_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   // if there are no associated resources, do not configure
   if (resource_id < 0 || im_id < 0)
     return;
+  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
+  csirep->reportConfigId = rep_id;
+  csirep->carrier = NULL;
   csirep->resourcesForChannelMeasurement = resource_id;
   csirep->csi_IM_ResourcesForInterference = calloc(1, sizeof(*csirep->csi_IM_ResourcesForInterference));
   *csirep->csi_IM_ResourcesForInterference = im_id;
@@ -1721,9 +1719,6 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
                                     int uid,
                                     int num_antenna_ports)
 {
-  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
-  csirep->reportConfigId = rep_id;
-  csirep->carrier = NULL;
   int resource_id = -1;
   for (int csi_list = 0; csi_list < csi_MeasConfig->csi_ResourceConfigToAddModList->list.count; csi_list++) {
     NR_CSI_ResourceConfig_t *csires = csi_MeasConfig->csi_ResourceConfigToAddModList->list.array[csi_list];
@@ -1740,6 +1735,9 @@ static void config_rsrp_meas_report(NR_CSI_MeasConfig_t *csi_MeasConfig,
   // if there are no associated resources, do not configure
   if (resource_id < 0)
     return;
+  NR_CSI_ReportConfig_t *csirep = calloc(1, sizeof(*csirep));
+  csirep->reportConfigId = rep_id;
+  csirep->carrier = NULL;
   csirep->resourcesForChannelMeasurement = resource_id;
   csirep->csi_IM_ResourcesForInterference = NULL;
   csirep->nzp_CSI_RS_ResourcesForInterference = NULL;
@@ -1881,7 +1879,7 @@ int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_s
 
 NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, const f1ap_plmn_t *plmn, uint64_t cellID, int tac)
 {
-  AssertFatal(cellID < (1l << 36), "cellID must fit within 36 bits, but is %ld\n", cellID);
+  AssertFatal(cellID < (1l << 36), "cellID must fit within 36 bits, but is %lu\n", cellID);
 
   NR_BCCH_DL_SCH_Message_t *sib1_message = CALLOC(1,sizeof(NR_BCCH_DL_SCH_Message_t));
   AssertFatal(sib1_message != NULL, "out of memory\n");
@@ -2027,7 +2025,7 @@ NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, c
 
   asn1cCalloc(P0->choice.sCS120KHZoneT_SCS60KHZhalfT_SCS30KHZquarterT_SCS15KHZoneEighthT, Z8);
   asn1cSequenceAdd(Z8->list, long, ZoneEight);
-  asn1cCallocOne(ZoneEight, 0);
+  *ZoneEight = 0;
 
   asn1cCalloc(ServCellCom->uplinkConfigCommon, UL);
   asn_set_empty(&UL->frequencyInfoUL.scs_SpecificCarrierList.list);
@@ -2288,9 +2286,6 @@ static NR_SpCellConfig_t *get_initial_SpCellConfig(int uid,
   NR_ControlResourceSet_t *coreset = get_coreset_config(0, curr_bwp, bitmap);
 
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->controlResourceSetToAddModList->list, coreset);
-
-  bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList =
-      calloc(1, sizeof(*bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList));
 
   NR_SearchSpace_t *ss2 = rrc_searchspace_config(false, 5, coreset->controlResourceSetId);
   asn1cSeqAdd(&bwp_Dedicated->pdcch_Config->choice.setup->searchSpacesToAddModList->list, ss2);
@@ -2585,7 +2580,7 @@ void update_cellGroupConfig(NR_CellGroupConfig_t *cellGroupConfig,
 
   struct NR_ServingCellConfig__downlinkBWP_ToAddModList *DL_BWP_list =
       SpCellConfig->spCellConfigDedicated->downlinkBWP_ToAddModList;
-  struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig->uplinkBWP_ToAddModList;
+  struct NR_UplinkConfig__uplinkBWP_ToAddModList *UL_BWP_list = uplinkConfig ? uplinkConfig->uplinkBWP_ToAddModList : NULL;
   if (DL_BWP_list) {
     for (int i = 0; i < DL_BWP_list->list.count; i++) {
       NR_BWP_Downlink_t *bwp = DL_BWP_list->list.array[i];
@@ -2680,7 +2675,8 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
   const int dl_antenna_ports = pdschap->N1 * pdschap->N2 * pdschap->XP;
   const int do_csirs = configuration->do_CSIRS;
 
-  AssertFatal(servingcellconfigcommon != NULL, "servingcellconfigcommon is null\n");
+  AssertFatal(servingcellconfigcommon, "servingcellconfigcommon is null\n");
+  AssertFatal(servingcellconfigdedicated, "servingcellconfigdedicated is null\n");
 
   if (uecap == NULL)
     LOG_E(RRC, "No UE Capabilities available when programming default CellGroup in NSA\n");
@@ -2808,7 +2804,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
 
   // Downlink BWPs
   int n_dl_bwp = 1;
-  if (servingcellconfigdedicated && servingcellconfigdedicated->downlinkBWP_ToAddModList) {
+  if (servingcellconfigdedicated->downlinkBWP_ToAddModList) {
     n_dl_bwp = servingcellconfigdedicated->downlinkBWP_ToAddModList->list.count;
   }
   if (n_dl_bwp > 0) {
@@ -2838,8 +2834,7 @@ NR_CellGroupConfig_t *get_default_secondaryCellGroup(const NR_ServingCellConfigC
 
   // Uplink BWPs
   int n_ul_bwp = 1;
-  if (servingcellconfigdedicated && servingcellconfigdedicated->uplinkConfig
-      && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
+  if (servingcellconfigdedicated->uplinkConfig && servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList) {
     n_ul_bwp = servingcellconfigdedicated->uplinkConfig->uplinkBWP_ToAddModList->list.count;
   }
   if (n_ul_bwp > 0) {

@@ -116,7 +116,7 @@ static int drb_gtpu_create(instance_t instance,
 static instance_t get_n3_gtp_instance(void)
 {
   const e1ap_upcp_inst_t *inst = getCxtE1(0);
-  AssertFatal(inst != NULL, "need to have E1 instance\n");
+  AssertFatal(inst, "need to have E1 instance\n");
   return inst->gtpInstN3;
 }
 

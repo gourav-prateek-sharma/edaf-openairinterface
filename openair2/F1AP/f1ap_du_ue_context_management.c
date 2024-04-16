@@ -1189,7 +1189,7 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_cont
         asn1cCalloc(dLUPTNLInformation_ToBeSetup_Item->dLUPTNLInformation.choice.gTPTunnel, gTPTunnel);
         /* transportLayerAddress */
         struct sockaddr_in addr= {0};
-        inet_pton(AF_INET, getCxt(0)->net_config.DU_f1_ip_address.ipv4_address, &addr.sin_addr.s_addr);
+        inet_pton(AF_INET, getCxt(0)->net_config.DU_f1u_ip_address, &addr.sin_addr.s_addr);
         TRANSPORT_LAYER_ADDRESS_IPv4_TO_BIT_STRING(addr.sin_addr.s_addr, &gTPTunnel->transportLayerAddress);
         /* gTP_TEID */
         INT32_TO_OCTET_STRING(resp->drbs_to_be_modified[i].up_dl_tnl[j].teid, &gTPTunnel->gTP_TEID);
@@ -1309,7 +1309,7 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_cont
     /* procedureCode */
     if (0) {
       ie11->value.choice.CriticalityDiagnostics.procedureCode = (F1AP_ProcedureCode_t *)calloc(1, sizeof(F1AP_ProcedureCode_t));
-      ie11->value.choice.CriticalityDiagnostics.procedureCode = 0L;
+      *ie11->value.choice.CriticalityDiagnostics.procedureCode = 0L;
     }
 
     /* optional */
@@ -1330,7 +1330,7 @@ int DU_send_UE_CONTEXT_MODIFICATION_RESPONSE(sctp_assoc_t assoc_id, f1ap_ue_cont
     /* transactionID */
     if (0) {
       ie11->value.choice.CriticalityDiagnostics.transactionID = (F1AP_TransactionID_t *)calloc(1, sizeof(F1AP_TransactionID_t));
-      ie11->value.choice.CriticalityDiagnostics.transactionID = 0L;
+      *ie11->value.choice.CriticalityDiagnostics.transactionID = 0L;
     }
 
     /* optional */

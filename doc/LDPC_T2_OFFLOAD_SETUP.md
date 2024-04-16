@@ -70,13 +70,10 @@ the host machine*
 
 # Modifications in the OAI code
 ## DPDK lib and PMD path specification
-Path to the DPDK lib and Accelercomm PMD for operating the card is specified in the `CMakeLists.txt` file, in
-*LDPC OFFLOAD library* section. Modify following line based on the location of
-`libdpdk.pc` file associated with the target DPDK library on your system. By default, the path is set to `/usr/local/lib/x86_64-linux-gnu/pkgconfig`.
+If DPDK library was installed into custom path, you have to point to the right directory with `PKG_CONFIG_PATH`, prior to the OAI build. Sample command to set the DPDK path to `/opt/dpdk-t2/lib64/pkgconfig/`:
 ```
-set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib/x86_64-linux-gnu/pkgconfig")
+export PKG_CONFIG_PATH=/opt/dpdk-t2/lib64/pkgconfig/:$PKG_CONFIG_PATH
 ```
-
 ## T2 card DPDK initialization
 Following lines in `openair1/PHY/CODING/nrLDPC_decoder/nrLDPC_decoder_offload.c` file has to be
 modified based on your system requirements. By default, PCI address of the T2 card is set to 41:00.0 and cores 14 and 15 are assigned to the DPDK.
@@ -109,6 +106,7 @@ source oaienv
 cd cmake_targets
 ./build_oai -w USRP --ninja --gNB -P --build-lib "ldpc_t2" -C
 ```
+
 Shared object file *libldpc_t2.so* is created during the compilation. This object is conditionally compiled. Selection of the library to compile is done using *--build-lib ldpc_t2*.
 
 *Required poll mode driver has to be present on the host machine and required DPDK version has to be installed on the host, prior to the build of OAI*

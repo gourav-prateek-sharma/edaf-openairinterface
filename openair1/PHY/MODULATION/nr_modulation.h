@@ -60,7 +60,8 @@ void nr_layer_mapping(int nbCodes,
                       uint8_t n_layers,
                       int layerSz,
                       uint32_t n_symbs,
-                      c16_t tx_layers[n_layers][layerSz]);
+                      c16_t tx_layers[layerSz],
+                      int l);
 
 /*! \brief Perform NR layer mapping. TS 38.211 V15.4.0 subclause 7.3.1.3
   @param[in] ulsch_ue, double Pointer to NR_UE_ULSCH_t struct

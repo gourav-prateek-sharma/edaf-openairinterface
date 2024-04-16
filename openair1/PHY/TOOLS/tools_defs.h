@@ -242,6 +242,11 @@ extern "C" {
     };
   }
 
+  __attribute__((always_inline)) inline c16_t c16xmulConstShift(const c16_t a, const int b, const int Shift)
+  {
+    return (c16_t){.r = (int16_t)((a.r * b) >> Shift), .i = (int16_t)((a.i * b) >> Shift)};
+  }
+
   __attribute__((always_inline)) inline c32_t c32x16maddShift(const c16_t a, const c16_t b, const c32_t c, const int Shift) {
     return (c32_t) {
       .r = ((a.r * b.r - a.i * b.i) >> Shift) + c.r,
@@ -679,14 +684,20 @@ idft_size_idx_t get_idft(int ofdm_symbol_size)
       return IDFT_9216;
     case 12288:
       return IDFT_12288;
+    case 16384:
+      return IDFT_16384;
     case 18432:
       return IDFT_18432;
     case 24576:
       return IDFT_24576;
+    case 32768:
+      return IDFT_32768;
     case 36864:
       return IDFT_36864;
     case 49152:
       return IDFT_49152;
+    case 65536:
+      return IDFT_65536;
     case 73728:
       return IDFT_73728;
     case 98304:
@@ -812,11 +823,6 @@ double interp(double x, double *xs, double *ys, int count);
 
 void simde_mm128_separate_real_imag_parts(simde__m128i *out_re, simde__m128i *out_im, simde__m128i in0, simde__m128i in1);
 void simde_mm256_separate_real_imag_parts(simde__m256i *out_re, simde__m256i *out_im, simde__m256i in0, simde__m256i in1);
-
-static __attribute__((always_inline)) inline int count_bits_set(uint64_t v)
-{
-  return __builtin_popcountll(v);
-}
 
 #ifdef __cplusplus
 }

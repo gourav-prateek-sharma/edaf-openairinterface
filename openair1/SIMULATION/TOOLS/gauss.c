@@ -25,28 +25,24 @@
 #include "defs.h"
 
 
-unsigned int *generate_gauss_LUT(unsigned char Nbits,
-                                 unsigned char L
-                                ) {
-  unsigned int *LUT_ptr,i;
-  LUT_ptr = (unsigned int *)malloc((1<<(Nbits-1))*sizeof(int));
+unsigned int *generate_gauss_LUT(unsigned char Nbits, unsigned char L)
+{
+  unsigned int *LUT_ptr = calloc((1U << (Nbits - 1)), sizeof(int));
   assert(LUT_ptr);
 
-  for (i=0; i<(1<<(Nbits-1)); i++) {
-    LUT_ptr[i] = (unsigned int)((double)((unsigned int)(1<<31))*erf(i*L/(double)(1<<(Nbits-1))));
+  for (int i = 0; i < (1 << (Nbits - 1)); i++) {
+    LUT_ptr[i] = (unsigned int)((double)((unsigned int)(1U << 31)) * erf(i * L / (double)(1 << (Nbits - 1))));
 #ifdef LUTDEBUG
-    printf("pos %u : LUT_ptr[%u]=%x (%f)\n",i,i,LUT_ptr[i],(double)(erf(i*L/(double)(1<<(Nbits-1)))));
+    printf("pos %d : LUT_ptr[%d]=%x (%f)\n", i, i, LUT_ptr[i], (double)(erf(i * L / (double)(1 << (Nbits -1 )))));
 #endif //LUTDEBUG
   }
-
   return(LUT_ptr);
 }
 
 
 
-int gauss(unsigned int *gauss_LUT,
-          unsigned char Nbits
-         ) {
+int gauss(unsigned int *gauss_LUT, unsigned char Nbits)
+{
   unsigned int search_pos,step_size,u,tmp,tmpm1,tmpp1,s;
   // Get a 32-bit uniform random-variable
   u = taus();
@@ -127,8 +123,10 @@ void main(int argc,char **argv) {
     //    printf("%d\n",gauss(gauss_LUT_ptr,Nbits));
   }
 
-  printf("Tail probability = %e(%x)\n",2*erfc((double)L*gauss_LUT_ptr[(1<<(Nbits-1))-1]/(unsigned int)(1<<31)),gauss_LUT_ptr[(1<<(Nbits-1))-1]);
-  printf("max %d, min %d, mean %f, stddev %f, Pr(maxnum)=%e(%d)\n",maxg,ming,meang,sqrt(varg),(double)maxnum/Ntrials,maxnum);
+  printf("Tail probability = %e(%x)\n",
+         2 * erfc((double)L * gauss_LUT_ptr[(1U << (Nbits - 1)) - 1] / (unsigned int)(1U << 31)),
+         gauss_LUT_ptr[(1U << (Nbits - 1)) - 1]);
+  printf("max %d, min %d, mean %f, stddev %f, Pr(maxnum)=%e(%d)\n", maxg, ming, meang, sqrt(varg), (double)maxnum / Ntrials, maxnum);
   //  for (i=0;i<(1<<Nhistbits);i++)
   //    printf("%d : %u\n",i,hist[i]);
   free(gauss_LUT_ptr);

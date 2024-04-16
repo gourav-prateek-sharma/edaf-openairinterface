@@ -146,14 +146,14 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
 
   // we accept the DU
   nr_rrc_du_container_t *du = calloc(1, sizeof(*du));
-  AssertFatal(du != NULL, "out of memory\n");
+  AssertFatal(du, "out of memory\n");
   du->assoc_id = assoc_id;
 
   /* ITTI will free the setup request message via free(). So the memory
    * "inside" of the message will remain, but the "outside" container no, so
    * allocate memory and copy it in */
   du->setup_req = calloc(1,sizeof(*du->setup_req));
-  AssertFatal(du->setup_req != NULL, "out of memory\n");
+  AssertFatal(du->setup_req, "out of memory\n");
   *du->setup_req = *req;
   if (mib != NULL && sib1 != NULL) {
     du->mib = mib->message.choice.mib;

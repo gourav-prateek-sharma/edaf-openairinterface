@@ -309,3 +309,51 @@ void nr_ue_rrc_measurements(PHY_VARS_NR_UE *ue,
         ue->measurements.n0_power_tot_dB + 30 - 10 * log10(pow(2, 30)) - dB_fixed(ue->frame_parms.ofdm_symbol_size)
             - ((int)rx_gain - (int)rx_gain_offset));
 }
+
+// PSBCH RSRP calculations according to 38.215 section 5.1.22
+void nr_sl_psbch_rsrp_measurements(sl_nr_ue_phy_params_t *sl_phy_params,
+                                   NR_DL_FRAME_PARMS *fp,
+                                   c16_t rxdataF[][fp->samples_per_slot_wCP],
+                                   bool use_SSS)
+{
+  SL_NR_UE_PSBCH_t *psbch_rx = &sl_phy_params->psbch;
+  uint8_t numsym = (fp->Ncp) ? SL_NR_NUM_SYMBOLS_SSB_EXT_CP : SL_NR_NUM_SYMBOLS_SSB_NORMAL_CP;
+  uint32_t re_offset = fp->first_carrier_offset + fp->ssb_start_subcarrier;
+  uint32_t rsrp = 0, num_re = 0;
+
+  LOG_D(PHY, "PSBCH RSRP MEAS: numsym:%d, re_offset:%d\n", numsym, re_offset);
+
+  for (int aarx = 0; aarx < fp->nb_antennas_rx; aarx++) {
+    // Calculate PSBCH RSRP based from DMRS REs
+    for (uint8_t symbol = 0; symbol < numsym;) {
+      struct complex16 *rxF = &rxdataF[aarx][symbol * fp->ofdm_symbol_size];
+
+      for (int re = 0; re < SL_NR_NUM_PSBCH_RE_IN_ONE_SYMBOL; re++) {
+        if (re % 4 == 0) { // DMRS RE
+          uint16_t offset = (re_offset + re) % fp->ofdm_symbol_size;
+
+          rsrp += c16amp2(rxF[offset]);
+          num_re++;
+        }
+      }
+      symbol = (symbol == 0) ? 5 : symbol + 1;
+    }
+  }
+
+  if (use_SSS) {
+    // TBD...
+    // UE can decide between using only PSBCH DMRS or PSBCH DMRS and SSS for PSBCH RSRP computation.
+    // If needed this can be implemented. Reference Spec 38.215
+  }
+
+  psbch_rx->rsrp_dB_per_RE = 10 * log10(rsrp / num_re);
+  psbch_rx->rsrp_dBm_per_RE = psbch_rx->rsrp_dB_per_RE + 30 - 10 * log10(pow(2, 30))
+                              - ((int)openair0_cfg[0].rx_gain[0] - (int)openair0_cfg[0].rx_gain_offset[0])
+                              - dB_fixed(fp->ofdm_symbol_size);
+
+  LOG_I(PHY,
+        "PSBCH RSRP (DMRS REs): numREs:%d RSRP :%d dB/RE ,RSRP:%d dBm/RE\n",
+        num_re,
+        psbch_rx->rsrp_dB_per_RE,
+        psbch_rx->rsrp_dBm_per_RE);
+}

@@ -61,4 +61,5 @@ void init_delay_table(uint16_t ofdm_symbol_size,
                       int max_ofdm_symbol_size,
                       c16_t delay_table[][max_ofdm_symbol_size]);
 
+void sl_ue_phy_init(PHY_VARS_NR_UE *UE);
 #endif

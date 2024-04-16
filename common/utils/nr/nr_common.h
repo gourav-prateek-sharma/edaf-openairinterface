@@ -169,10 +169,16 @@ uint32_t nr_timer_elapsed_time(NR_timer_t timer);
 
 extern const nr_bandentry_t nr_bandtable[];
 
-static inline int get_num_dmrs(uint16_t dmrs_mask ) {
+static inline int get_num_dmrs(uint16_t dmrs_mask )
+{
   int num_dmrs=0;
   for (int i=0;i<16;i++) num_dmrs+=((dmrs_mask>>i)&1);
   return(num_dmrs);
+}
+
+static __attribute__((always_inline)) inline int count_bits_set(uint64_t v)
+{
+  return __builtin_popcountll(v);
 }
 
 uint64_t reverse_bits(uint64_t in, int n_bits);

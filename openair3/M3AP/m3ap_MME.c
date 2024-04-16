@@ -227,29 +227,16 @@ int m3ap_MME_init_sctp (m3ap_MME_instance_t *instance_p,
                         net_ip_address_t    *local_ip_addr,
                         uint32_t mme_port_for_M3C) {
   // Create and alloc new message
-  MessageDef                             *message;
-  sctp_init_t                            *sctp_init  = NULL;
   DevAssert(instance_p != NULL);
   DevAssert(local_ip_addr != NULL);
-  message = itti_alloc_new_message (TASK_M3AP_MME, 0, SCTP_INIT_MSG_MULTI_REQ);
-  sctp_init = &message->ittiMsg.sctp_init_multi;
+  size_t addr_len = strlen(local_ip_addr->ipv4_address) + 1;
+  MessageDef *message = itti_alloc_new_message_sized(TASK_M3AP_MME, 0, SCTP_INIT_MSG_MULTI_REQ, sizeof(sctp_init_t) + addr_len);
+  sctp_init_t *sctp_init = &message->ittiMsg.sctp_init_multi;
   sctp_init->port = mme_port_for_M3C;
   sctp_init->ppid = M3AP_SCTP_PPID;
-  sctp_init->ipv4 = 1;
-  sctp_init->ipv6 = 0;
-  sctp_init->nb_ipv4_addr = 1;
-#if 0
-  memcpy(&sctp_init->ipv4_address,
-         local_ip_addr,
-         sizeof(*local_ip_addr));
-#endif
-  sctp_init->ipv4_address[0] = inet_addr(local_ip_addr->ipv4_address);
-  /*
-   * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
-   * * * * Disable it for now.
-   */
-  sctp_init->nb_ipv6_addr = 0;
-  sctp_init->ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  char *addr_buf = (char *) (sctp_init + 1);
+  sctp_init->bind_address = addr_buf;
+  memcpy(addr_buf, local_ip_addr->ipv4_address, addr_len);
   return itti_send_msg_to_task (TASK_SCTP, instance_p->instance, message);
 }
 
@@ -502,37 +489,22 @@ void MME_task_send_sctp_init_req(instance_t enb_id, m3ap_mme_sctp_req_t * m3ap_m
   // 2. use RC.rrc[enb_id] to fill the sctp_init_t with the ip, port
   // 3. creat an itti message to init
 
-  MessageDef  *message_p = NULL;
-
-  message_p = itti_alloc_new_message (TASK_M3AP_MME, 0, SCTP_INIT_MSG);
-if(m3ap_mme_sctp_req==NULL) {
-  LOG_I(M3AP, "M3AP_SCTP_REQ(create socket)\n");
-  message_p->ittiMsg.sctp_init.port = M3AP_PORT_NUMBER;
-  message_p->ittiMsg.sctp_init.ppid = M3AP_SCTP_PPID;
-  message_p->ittiMsg.sctp_init.ipv4 = 1;
-  message_p->ittiMsg.sctp_init.ipv6 = 0;
-  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-  //message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(RC.rrc[enb_id]->eth_params_s.my_addr);
-  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr("127.0.0.8");
-
-}else{
-
-  LOG_I(M3AP, "M3AP_SCTP_REQ(create socket) %s\n",m3ap_mme_sctp_req->mme_m3_ip_address.ipv4_address);
- message_p->ittiMsg.sctp_init.port = m3ap_mme_sctp_req->mme_port_for_M3C;
-  message_p->ittiMsg.sctp_init.ppid = M3AP_SCTP_PPID;
-  message_p->ittiMsg.sctp_init.ipv4 = 1;
-  message_p->ittiMsg.sctp_init.ipv6 = 0;
-  message_p->ittiMsg.sctp_init.nb_ipv4_addr = 1;
-  //message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(RC.rrc[enb_id]->eth_params_s.my_addr);
-  message_p->ittiMsg.sctp_init.ipv4_address[0] = inet_addr(m3ap_mme_sctp_req->mme_m3_ip_address.ipv4_address);
- } 
-
-  /*
-   * SR WARNING: ipv6 multi-homing fails sometimes for localhost.
-   * * * * Disable it for now.
-   */
-  message_p->ittiMsg.sctp_init.nb_ipv6_addr = 0;
-  message_p->ittiMsg.sctp_init.ipv6_address[0] = "0:0:0:0:0:0:0:1";
+  size_t addr_len = m3ap_mme_sctp_req != NULL ? strlen(m3ap_mme_sctp_req->mme_m3_ip_address.ipv4_address) + 1 : strlen("127.0.0.8") + 1; // the previous code might hardcode, support this
+  MessageDef *message_p = itti_alloc_new_message_sized(TASK_M3AP_MME, 0, SCTP_INIT_MSG, sizeof(sctp_init_t) + addr_len);
+  sctp_init_t *init = &SCTP_INIT_MSG(message_p);
+  char *addr_buf = (char *) (init + 1); // address after ITTI message end, allocated above
+  init->bind_address = addr_buf;
+  if (m3ap_mme_sctp_req == NULL) {
+    LOG_I(M3AP, "M3AP_SCTP_REQ(create socket)\n");
+    init->port = M3AP_PORT_NUMBER;
+    init->ppid = M3AP_SCTP_PPID;
+    memcpy(addr_buf, "127.0.0.8", addr_len);
+  } else {
+    LOG_I(M3AP, "M3AP_SCTP_REQ(create socket) for %s %ld\n", m3ap_mme_sctp_req->mme_m3_ip_address.ipv4_address, addr_len);
+    init->port = m3ap_mme_sctp_req->mme_port_for_M3C;
+    init->ppid = M3AP_SCTP_PPID;
+    memcpy(addr_buf, m3ap_mme_sctp_req->mme_m3_ip_address.ipv4_address, addr_len);
+  }
 
   itti_send_msg_to_task(TASK_SCTP, enb_id, message_p);
 }

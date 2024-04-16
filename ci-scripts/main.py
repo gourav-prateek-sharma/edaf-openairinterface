@@ -376,8 +376,10 @@ def GetParametersFromXML(action):
 		if (string_field is not None):
 			CONTAINERS.ran_checkers['u_retx_th'] = [float(x) for x in string_field.split(',')]
 
-	elif action == 'Run_LDPCTest' or action == 'Run_NRulsimTest' or action == 'Run_LDPCt1Test':
+	elif action == 'Run_CUDATest' or action == 'Run_NRulsimTest' or action == 'Run_T2Test':
 		ldpc.runargs = test.findtext('physim_run_args')
+		ldpc.runsim = test.findtext('physim_run')
+		ldpc.timethrs = test.findtext('physim_time_threshold')
 
 	elif action == 'LicenceAndFormattingCheck':
 		pass
@@ -579,8 +581,8 @@ elif re.match('^InitiateHtml$', mode, re.IGNORECASE):
 		if (os.path.isfile(xml_test_file)):
 			try:
 				xmlTree = ET.parse(xml_test_file)
-			except:
-				print("Error while parsing file: " + xml_test_file)
+			except Exception as e:
+				print(f"Error: {e} while parsing file: {xml_test_file}.")
 			xmlRoot = xmlTree.getroot()
 			HTML.htmlTabRefs.append(xmlRoot.findtext('htmlTabRef',default='test-tab-' + str(count)))
 			HTML.htmlTabNames.append(xmlRoot.findtext('htmlTabName',default='test-tab-' + str(count)))
@@ -796,12 +798,12 @@ elif re.match('^TesteNB$', mode, re.IGNORECASE) or re.match('^TestUE$', mode, re
 						HTML=ldpc.Build_PhySim(HTML,CONST)
 						if ldpc.exitStatus==1:
 							RAN.prematureExit = True
-					elif action == 'Run_LDPCTest':
-						HTML=ldpc.Run_LDPCTest(HTML,CONST,id)
+					elif action == 'Run_CUDATest':
+						HTML=ldpc.Run_CUDATest(HTML,CONST,id)
 						if ldpc.exitStatus==1:
 							RAN.prematureExit = True
-					elif action == 'Run_LDPCt1Test':
-						HTML=ldpc.Run_LDPCt1Test(HTML,CONST,id)
+					elif action == 'Run_T2Test':
+						HTML=ldpc.Run_T2Test(HTML,CONST,id)
 						if ldpc.exitStatus==1:
 							RAN.prematureExit = True
 					elif action == 'Run_NRulsimTest':

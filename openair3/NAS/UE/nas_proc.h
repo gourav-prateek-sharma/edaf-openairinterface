@@ -111,9 +111,7 @@ int nas_proc_activate_pdn(nas_user_t *user, int cid);
  *      NAS procedures triggered by the network
  * --------------------------------------------------------------------------
  */
-
-int nas_proc_cell_info(nas_user_t *user, int found, tac_t tac, ci_t ci, AcT_t rat, uint8_t rsrp,
-                       uint8_t rsrq);
+int nas_proc_cell_info(nas_user_t *user, int found, tac_t tac, ci_t ci, AcT_t AcT, uint8_t rsrq, uint8_t rsrp);
 
 int nas_proc_establish_cnf(nas_user_t *user, const Byte_t *data, uint32_t len);
 int nas_proc_establish_rej(nas_user_t *user);

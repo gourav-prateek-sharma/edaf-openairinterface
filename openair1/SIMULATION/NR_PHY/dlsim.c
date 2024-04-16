@@ -917,6 +917,11 @@ int main(int argc, char **argv)
     csv_file = fopen(filename_csv, "a");
     if (csv_file == NULL) {
       printf("Can't open file \"%s\", errno %d\n", filename_csv, errno);
+      free(s_re);
+      free(s_im);
+      free(r_re);
+      free(r_im);
+      free(txdata);
       return 1;
     }
     // adding name of parameters into file
@@ -1218,8 +1223,7 @@ int main(int argc, char **argv)
       printStatIndent3(&gNB->dlsch_rate_matching_stats,"DLSCH Rate Mataching time");
       printStatIndent3(&gNB->dlsch_interleaving_stats,  "DLSCH Interleaving time");
       printStatIndent2(&gNB->dlsch_modulation_stats,"DLSCH modulation time");
-      printStatIndent2(&gNB->dlsch_scrambling_stats,  "DLSCH scrambling time");
-      printStatIndent2(&gNB->dlsch_layer_mapping_stats, "DLSCH Layer Mapping time");
+      printStatIndent2(&gNB->dlsch_scrambling_stats, "DLSCH scrambling time");
       printStatIndent2(&gNB->dlsch_resource_mapping_stats, "DLSCH Resource Mapping time");
       printStatIndent2(&gNB->dlsch_precoding_stats,"DLSCH Layer Precoding time");
 

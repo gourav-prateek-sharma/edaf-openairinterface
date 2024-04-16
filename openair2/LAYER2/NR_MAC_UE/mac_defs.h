@@ -77,6 +77,7 @@
 
 #define MAX_NUM_BWP_UE 5
 #define NUM_SLOT_FRAME 10
+#define NR_MAX_SR_ID 8  // SchedulingRequestId ::= INTEGER (0..7)
 
 /*!\brief value for indicating BSR Timer is not running */
 #define NR_MAC_UE_BSR_TIMER_NOT_RUNNING   (0xFFFF)
@@ -163,12 +164,19 @@
 #define PRACH_MASK_INDEX                54
 #define RESERVED_NR_DCI                 55
 
+// Define the UE L2 states with X-Macro
+#define NR_UE_L2_STATES \
+  UE_STATE(UE_NOT_SYNC) \
+  UE_STATE(UE_SYNC) \
+  UE_STATE(UE_PERFORMING_RA) \
+  UE_STATE(UE_CONNECTED) \
+  UE_STATE(UE_DETACHING)
+
 /*!\brief UE layer 2 status */
 typedef enum {
-  UE_NOT_SYNC = 0,
-  UE_SYNC,
-  UE_PERFORMING_RA,
-  UE_CONNECTED
+#define UE_STATE(state) state,
+  NR_UE_L2_STATES
+#undef UE_STATE
 } NR_UE_L2_STATE_t;
 
 typedef enum {
@@ -202,33 +210,36 @@ typedef struct {
   int32_t BSR_bytes;
 } NR_LCG_SCHEDULING_INFO;
 
+typedef struct {
+  bool active_SR_ID;
+  /// SR pending as defined in 38.321
+  bool pending;
+  /// SR_COUNTER as defined in 38.321
+  uint32_t counter;
+  /// sr ProhibitTimer
+  NR_timer_t prohibitTimer;
+  // Maximum number of SR transmissions
+  uint32_t maxTransmissions;
+} nr_sr_info_t;
+
 // LTE structure, might need to be adapted for NR
 typedef struct {
   // lcs scheduling info
   NR_LC_SCHEDULING_INFO lc_sched_info[NR_MAX_NUM_LCID];
   // lcg scheduling info
   NR_LCG_SCHEDULING_INFO lcg_sched_info[NR_MAX_NUM_LCGID];
+  // SR INFO
+  nr_sr_info_t sr_info[NR_MAX_SR_ID];
   /// BSR report flag management
   uint8_t BSR_reporting_active;
   // LCID triggering BSR
   NR_LogicalChannelIdentity_t regularBSR_trigger_lcid;
-  /// SR pending as defined in 38.321
-  uint8_t  SR_pending;
-  /// SR_COUNTER as defined in 38.321
-  uint16_t SR_COUNTER;
   // logicalChannelSR-DelayTimer
   NR_timer_t sr_DelayTimer;
   /// retxBSR-Timer
   NR_timer_t retxBSR_Timer;
   /// periodicBSR-Timer
   NR_timer_t periodicBSR_Timer;
-  /// default value is 0: not configured
-  uint16_t sr_ProhibitTimer;
-  /// sr ProhibitTime running
-  uint8_t sr_ProhibitTimer_Running;
-  // Maximum number of SR transmissions
-  uint32_t sr_TransMax;
-  int sr_id;
   ///timer before triggering a periodic PHR
   uint16_t periodicPHR_Timer;
   ///timer before triggering a prohibit PHR
@@ -446,6 +457,7 @@ typedef struct ssb_list_info {
 typedef struct nr_lcordered_info_s {
   // logical channels ids ordered as per priority
   NR_LogicalChannelIdentity_t lcid;
+  int sr_id;
   long priority;
   uint32_t pbr; // in B/s (UINT_MAX = infinite)
   // Bucket size per lcid

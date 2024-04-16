@@ -962,7 +962,7 @@ void nr_rlc_activate_srb0(int ue_id,
                           void (*send_initial_ul_rrc_message)(int ue_id, const uint8_t *sdu, sdu_size_t sdu_len, void *data))
 {
   struct srb0_data *srb0_data = calloc(1, sizeof(struct srb0_data));
-  AssertFatal(srb0_data != NULL, "out of memory\n");
+  AssertFatal(srb0_data, "out of memory\n");
 
   srb0_data->ue_id = ue_id;
   srb0_data->data = data;

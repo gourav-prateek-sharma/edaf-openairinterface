@@ -365,15 +365,6 @@ static int create_gNB_tasks(ngran_node_t node_type, configmodule_interface_t *cf
     sprintf(aprefix,"%s.[%i].%s",GNB_CONFIG_STRING_GNB_LIST,0,GNB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG);
     config_get(cfg, NETParams, sizeofArray(NETParams), aprefix);
 
-    for(int i = GNB_INTERFACE_NAME_FOR_NG_AMF_IDX; i <= GNB_IPV4_ADDRESS_FOR_NG_AMF_IDX; i++) {
-      if( NETParams[i].strptr == NULL) {
-        LOG_E(NGAP, "No AMF configuration in the file.\n");
-        exit(1);
-      } else {
-        LOG_D(NGAP, "Configuration in the file: %s.\n",*NETParams[i].strptr);
-      }
-    }
-    
     if (gnb_nb > 0) {
       if (itti_create_task (TASK_NGAP, ngap_gNB_task, NULL) < 0) {
         LOG_E(NGAP, "Create task for NGAP failed\n");
@@ -592,7 +583,7 @@ static void initialize_agent(ngran_node_t node_type, e2_agent_args_t oai_args)
     nb_id = rrc->node_id;
   } else if (node_type == ngran_gNB_DU) {
     const gNB_MAC_INST* mac = RC.nrmac[0];
-    AssertFatal(mac != NULL, "MAC not initialized\n");
+    AssertFatal(mac, "MAC not initialized\n");
     cu_du_id = mac->f1_config.gnb_id;
     nb_id = mac->f1_config.setup_req->gNB_DU_id;
   } else if (node_type == ngran_gNB_CU || node_type == ngran_gNB_CUCP) {

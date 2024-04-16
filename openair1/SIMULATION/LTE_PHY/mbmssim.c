@@ -688,9 +688,8 @@ int main(int argc, char **argv) {
   else {
     while(fgets(buf, 63, proc_fd))
       printf("%s", buf);
+    fclose(proc_fd);
   }
-
-  fclose(proc_fd);
   cpu_freq_GHz = ((double)atof(buf))/1e6;
 #else
   cpu_freq_GHz = get_cpu_freq_GHz();

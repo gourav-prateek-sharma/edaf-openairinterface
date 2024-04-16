@@ -954,10 +954,10 @@ static uint8_t get_max_tpmi(const NR_PUSCH_Config_t *pusch_Config,
 {
   uint8_t max_tpmi = 0;
 
-  if ((pusch_Config && pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook) ||
-      num_ue_srs_ports == 1) {
+  if (!pusch_Config
+      || (pusch_Config->txConfig != NULL && *pusch_Config->txConfig == NR_PUSCH_Config__txConfig_nonCodebook)
+      || num_ue_srs_ports == 1)
     return max_tpmi;
-  }
 
   long max_rank = *pusch_Config->maxRank;
   long *ul_FullPowerTransmission = pusch_Config->ext1 ? pusch_Config->ext1->ul_FullPowerTransmission_r16 : NULL;
@@ -1963,7 +1963,7 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
   const NR_SIB1_t *sib1 = nr_mac->common_channels[0].sib1 ? nr_mac->common_channels[0].sib1->message.choice.c1->choice.systemInformationBlockType1 : NULL;
   NR_ServingCellConfigCommonSIB_t *scc_sib1 = sib1 ? sib1->servingCellConfigCommon : NULL;
 
-  AssertFatal(scc!=NULL || scc_sib1!=NULL,"We need one serving cell config common\n");
+  AssertFatal(scc || scc_sib1, "We need one serving cell config common\n");
 
   // no UEs
   if (nr_mac->UE_info.list[0] == NULL)

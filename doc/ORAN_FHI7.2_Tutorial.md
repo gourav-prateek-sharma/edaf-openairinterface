@@ -20,11 +20,11 @@
 
 The hardware on which we have tried this tutorial:
 
-|Hardware (CPU,RAM)                          |Operating System (kernel)                  |NIC (Vendor,Driver,Firmware)                     |
-|--------------------------------------------|----------------------------------|-------------------------------------------------|
-|Intel(R) Xeon(R) Gold 6354 36-Core, 128GB   |RHEL 9.2 (5.14.0-284.18.1.rt14.303.el9_2.x86_64)|Intel X710, i40e, 9.20 0x8000d95e 22.0.9|
-|Intel(R) Xeon(R) Gold 6354 36-Core, 128GB   |Ubuntu 22.04.3 LTS (5.15.0-1033-realtime)|Intel X710, i40e, 9.00 0x8000cfeb 21.5.9|
-|AMD EPYC 9374F 32-Core Processor, 128GB      |Ubuntu 22.04.2 LTS (5.15.0-1038-realtime)       |Intel E810 ,ice, 4.00 0x8001184e 1.3236.0   |
+|Hardware (CPU,RAM)                       |Operating System (kernel)                       |NIC (Vendor,Driver,Firmware)             |
+|-----------------------------------------|------------------------------------------------|-----------------------------------------|
+|Intel(R) Xeon(R) Gold 6354 36-Core, 128GB|RHEL 9.2 (5.14.0-284.18.1.rt14.303.el9_2.x86_64)|Intel X710, i40e, 9.20 0x8000d95e 22.0.9 |
+|Intel(R) Xeon(R) Gold 6354 36-Core, 128GB|Ubuntu 22.04.3 LTS (5.15.0-1033-realtime)       |Intel X710, i40e, 9.00 0x8000cfeb 21.5.9 |
+|AMD EPYC 9374F 32-Core Processor, 128GB  |Ubuntu 22.04.2 LTS (5.15.0-1038-realtime)       |Intel E810 ,ice, 4.00 0x8001184e 1.3236.0|
 
 **NOTE**: These are not minimum hardware requirements. This is the configuration of our servers. The NIC card should support hardware PTP time stamping.
 
@@ -37,6 +37,8 @@ NICs we have tested so far:
 |E810-C         |4.20 0x8001784e 22.0.9  |
 |Intel XXV710   |6.02 0x80003888         |
 
+**Note**: With AMD servers/desktop machines with PCIe 5.0 we have only used E810 cards. 
+
 PTP enabled switches and grandmaster clock we have in are lab:
 
 |Vendor                  |Software Version|
@@ -45,8 +47,7 @@ PTP enabled switches and grandmaster clock we have in are lab:
 |Fibrolan Falcon-RX/812/G|8.0.25.4        |
 |Qulsar Qg2 (Grandmaster)|12.1.27         |
 
-**S-Plane synchronization is mandatory.** S-plane support is done via `ptp4l`
-and `phc2sys`.
+**S-Plane synchronization is mandatory.** S-plane support is done via `ptp4l` and `phc2sys`. Make sure your version matches. 
 
 | Software  | Software Version |
 |-----------|------------------|
@@ -57,12 +58,12 @@ We have only verified LLS-C3 configuration in our lab, i.e.  using an external
 grandmaster, a switch as a boundary clock, and the gNB/DU and RU.  We haven't
 tested any RU without S-plane. Radio units we are testing/integrating:
 
-|Vendor           |Software Version |
-|-----------------|-----------------|
-|VVDN LPRU        |03-v3.0.4        |
-|LiteON RU        |01.00.08/02.00.03|
-|Benetel 650      |v0.8.1           |
-|Benetel 550 CAT-A|v0.8.1           |
+|Vendor           |Software Version      |
+|-----------------|----------------------|
+|VVDN LPRU        |03-v3.0.5             |
+|LiteON RU        |01.00.08/02.00.03     |
+|Benetel 650      |RAN650-1v1.0.4-dda1bf5|
+|Benetel 550 CAT-A|RAN550-1v1.0.4-605a25a|
 
 Tested libxran releases:
 
@@ -70,7 +71,7 @@ Tested libxran releases:
 |-----------------------------------------|
 | `oran_e_maintenance_release_v1.0`       |
 
-**Note**: the libxran driver of OAI identifies the above version as "5.1.0" (E is fifth letter, then 1.0).
+**Note**: The libxran driver of OAI identifies the above version as "5.1.0" (E is fifth letter, then 1.0).
 
 ## Configure your server
 
@@ -114,7 +115,7 @@ Modifying the `linux` command line usually requires to edit string `GRUB_CMDLINE
 * Set parameters `isolcpus`, `nohz_full` and `rcu_nocbs` with the list of CPUs to isolate for XRAN.
 * Set parameter `kthread_cpus` with the list of CPUs to isolate for kernel.
 
-Set the `tuned` profile to `realtime`. If the `tuned-adm` command is not installed then you have to install it. When choosing this profile you have to mention the isolated cpus in `/etc/tuned/realtime-variables.conf`. By default this profile adds `skew_tick=1 isolcpus=managed_irq,domain,<cpu-you-choose> intel_pstate=disable nosoftlockup tsc=nowatchdog` in the boot command. **Make sure you don't add them while changing `/etc/default/grub`**.
+Set the `tuned` profile to `realtime`. If the `tuned-adm` command is not installed then you have to install it. When choosing this profile you have to mention the isolated cpus in `/etc/tuned/realtime-variables.conf`. By default this profile adds `skew_tick=1 isolcpus=managed_irq,domain,<cpu-you-choose> intel_pstate=disable nosoftlockup` in the boot command. **Make sure you don't add them while changing `/etc/default/grub`**.
 
 ```bash
 tuned-adm profile realtime
@@ -133,7 +134,7 @@ NUMA:
 ```
 
 ```bash
-isolcpus=0-15 nohz_full=0-15 rcu_nocbs=0-15 kthread_cpus=16-31 rcu_nocb_poll nosoftlockup default_hugepagesz=1GB hugepagesz=1G hugepages=20 amd_iommu=on iommu=pt mitigations=off skew_tick=1 selinux=0 enforcing=0 tsc=nowatchdog nmi_watchdog=0 softlockup_panic=0 audit=0 vt.handoff=7
+isolcpus=0-15 nohz_full=0-15 rcu_nocbs=0-15 kthread_cpus=16-31 rcu_nocb_poll nosoftlockup default_hugepagesz=1GB hugepagesz=1G hugepages=20 amd_iommu=on iommu=pt mitigations=off skew_tick=1 selinux=0 enforcing=0 tsc=reliable nmi_watchdog=0 softlockup_panic=0 audit=0 vt.handoff=7
 ```
 
 Example taken for AMD EPYC 9374F 32-Core Processor
@@ -150,7 +151,7 @@ NUMA:
 ```
 
 ```bash
-mitigations=off usbcore.autosuspend=-1 intel_iommu=on intel_iommu=pt selinux=0 enforcing=0 nmi_watchdog=0 softlockup_panic=0 audit=0 skew_tick=1 isolcpus=managed_irq,domain,0,2,4,6,8,10,12,14,16 nohz_full=0,2,4,6,8,10,12,14,16 rcu_nocbs=0,2,4,6,8,10,12,14,16 rcu_nocb_poll intel_pstate=disable nosoftlockup tsc=nowatchdog cgroup_disable=memory mce=off hugepagesz=1G hugepages=40 hugepagesz=2M hugepages=0 default_hugepagesz=1G isolcpus=managed_irq,domain,0,2,4,6,8,10,12,14 kthread_cpus=18-35 intel_pstate=disable nosoftlockup tsc=reliable
+mitigations=off usbcore.autosuspend=-1 intel_iommu=on intel_iommu=pt selinux=0 enforcing=0 nmi_watchdog=0 softlockup_panic=0 audit=0 skew_tick=1 isolcpus=managed_irq,domain,0,2,4,6,8,10,12,14,16 nohz_full=0,2,4,6,8,10,12,14,16 rcu_nocbs=0,2,4,6,8,10,12,14,16 rcu_nocb_poll intel_pstate=disable nosoftlockup cgroup_disable=memory mce=off hugepagesz=1G hugepages=40 hugepagesz=2M hugepages=0 default_hugepagesz=1G isolcpus=managed_irq,domain,0,2,4,6,8,10,12,14 kthread_cpus=18-35 intel_pstate=disable nosoftlockup tsc=reliable
 ```
 
 Example taken for Intel(R) Xeon(R) Gold 6354 CPU @ 3.00GHz
@@ -202,7 +203,8 @@ summary_interval        0
 network_transport       L2
 hybrid_e2e              0
 ```
-Probably you need to increase `tx_timestamp_timeout` to 50 or 100 for Intel E-810. You will see that in the logs of ptp.
+
+You need to increase `tx_timestamp_timeout` to 50 or 100 for Intel E-810. You will see that in the logs of ptp.
 
 Create the configuration file for ptp4l (`/etc/sysconfig/ptp4l`)
 
@@ -269,15 +271,15 @@ timedatectl set-ntp false
 
 ## DPDK (Data Plane Development Kit)
 
-Download DPDK version 20.11.7.
+Download DPDK version 20.11.9.
 
 ```bash
 # on debian
-sudo apt install wget xz-utils
+sudo apt install wget xz-utils libnuma-dev
 # on Fedora/RHEL
-sudo dnf install wget xz
+sudo dnf install wget xz numactl-devel
 cd
-wget http://fast.dpdk.org/rel/dpdk-20.11.7.tar.xz
+wget http://fast.dpdk.org/rel/dpdk-20.11.9.tar.xz
 ```
 
 ### DPDK Compilation and Installation
@@ -288,7 +290,7 @@ wget http://fast.dpdk.org/rel/dpdk-20.11.7.tar.xz
 sudo apt install meson
 # on Fedora/RHEL
 sudo dnf install meson
-tar xvf dpdk-20.11.7.tar.xz && cd dpdk-stable-20.11.7
+tar xvf dpdk-20.11.9.tar.xz && cd dpdk-stable-20.11.9
 
 meson build
 ninja -C build
@@ -354,7 +356,7 @@ pkg-config --libs libdpdk --static
 Go back to the version folder you used to build and install
 
 ```
-cd ~/dpdk-stable-20.11.7
+cd ~/dpdk-stable-20.11.9
 sudo ninja deinstall -C build
 ```
 
@@ -392,7 +394,7 @@ environment variables `RTE_SDK` for the path to the source tree of DPDK, and
 ```bash
 cd ~/phy/fhi_lib/lib
 make clean
-RTE_SDK=~/dpdk-stable-20.11.7/ XRAN_DIR=~/phy/fhi_lib make XRAN_LIB_SO=1
+RTE_SDK=~/dpdk-stable-20.11.9/ XRAN_DIR=~/phy/fhi_lib make XRAN_LIB_SO=1
 ...
 [AR] build/libxran.so
 ./build/libxran.so
@@ -413,11 +415,8 @@ so now, too.
 ```bash
 # You should have already cloned above
 cd ~/openairinterface5g/cmake_targets
-# on debian
-sudo apt install -y libnuma-dev
-# on RHEL
-sudo dnf install -y numactl-devel
-export PKG_CONFIG_PATH=/opt/dpdk/lib64/pkgconfig/
+# if you installed DPDK in a custom path as described above
+export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/usr/local/lib64/pkgconfig/
 ./build_oai -I  # if you never installed OAI, use this command once before the next line
 ./build_oai --gNB --ninja -t oran_fhlib_5g --cmake-opt -Dxran_LOCATION=$HOME/phy/fhi_lib/lib
 ```
@@ -462,16 +461,148 @@ ninja nr-softmodem oran_fhlib_5g params_libconfig
 
 # Configuration
 
+RU and DU configurations have a circular dependency: you have to configure DU MAC address in the RU configuration and the RU MAC address, VLAN and Timing advance parameters in the DU configuration.
+
 **Note**: You may run OAI with O-RAN 7.2 Fronthaul without a RU attached (e.g. for benchmarking).
-In such case, skip RU configuration and go through Network Interfaces, DPDK VFs and OAI configuration by using arbitrary values for RU MAC addresses and VLAN tags.
+In such case, skip RU configuration and only configure Network Interfaces, DPDK VFs and OAI configuration by using arbitrary values for RU MAC addresses and VLAN tags.
 
 ## Configure the RU
 
-Contact the RU vendor to get the configuration manual, and configure the RU
-appropriately. You can orient on the OAI configuration files mentioned further
-below.
+Contact the RU vendor and get the configuration manual to understand the below commands. The below configuration only corresponds to the RU firmware version indicated at the start of this document. If your firmware version does not correspond to the indicated version, then please don't try these commands.
 
-We are evaluating if we can share RU configuration steps.
+**NOTE**: Please understand all the changes you are doing at the RU, especially if you are manipulating anything related to output power. 
+
+### Benetel 650
+
+- **Valid only for version RAN650-1v1.0.4-dda1bf5**
+- TDD pattern `DDDDDDDSUU`, 5ms
+- Bandwidth 100MHz
+- MTU 9216 (this is the maximum we can configure on our switch)
+- 4TX4R
+- The OAI configuration file [`gnb.sa.band78.273prb.fhi72.4x4-benetel650.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-benetel650.conf) corresponds to below RU configuration. 
+
+After switching on the radio or rebooting, wait for the radio bring up to complete, which you can follow using `tail -f  /tmp/logs/radio_status`. Once you will see `[INFO] Radio bringup complete`, you can configure the RU via editing `/etc/ru_config.cfg`
+
+```bash
+cat /etc/ru_config.cfg
+
+mimo_mode=1_2_3_4_4x4
+downlink_scaling=0
+prach_format=short
+compression=static_compressed
+lf_prach_compression_enable=true
+cplane_per_symbol_workaround=disabled
+cuplane_dl_coupling_sectionID=disabled
+flexran_prach_workaround=disabled
+dl_ul_tuning_special_slot=0xfd00000
+```
+
+### Benetel 550
+
+
+- **Valid only for version RAN550-1v1.0.4-605a25a**
+- TDD pattern `DDDDDDDSUU`, 5ms
+- Bandwidth 100MHz
+- 4TX4R
+- The OAI configuration file [`gnb.sa.band78.273prb.fhi72.4x4-benetel550.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-benetel550.conf) corresponds to below RU configuration.
+
+After switching on the radio or rebooting, wait for the radio bring up to complete, which you can follow using `tail -f  /tmp/logs/radio_status`. Once you will see `[INFO] Radio bringup complete`, you can configure the RU via editing `/etc/ru_config.cfg`
+
+```bash
+cat /etc/ru_config.cfg
+
+mimo_mode=1_2_3_4_4x4
+downlink_scaling=0
+prach_format=short
+compression=static_compressed
+lf_prach_compression_enable=true
+cplane_per_symbol_workaround=disabled
+cuplane_dl_coupling_sectionID=disabled
+flexran_prach_workaround=disabled
+dl_tuning_special_slot=0x13b6
+```
+
+### LiteON
+
+- TDD pattern `DDDSU`, 2.5ms
+- Bandwidth 100MHz
+- Default MTU is 1500
+
+SSH to the unit as user `user`. Write `enable` in the terminal to enter the configuration console; the password should be in the user guide. Use the command `show oru-status` to check the RU status. The output should be similar to:
+
+```bash
+# show oru-status 
+Sync State  : SYNCHRONIZED
+RF State    : Ready
+DPD         : Ready
+```
+
+Once the RU is PTP synced, and RF state and DPD are `Ready`, write `configure` in the terminal to set:
+
+- Center frequency 
+- Bandwidth
+- Compression Bitwidth
+- TX/RX attenuation
+
+To configure 4TX and 4RX antennas, you have to repeat the below steps after every reboot, so don't restart the RU after entering below commands:
+
+```bash
+devmem 0x80001014 32 0x00050004
+devmem 0x80001018 32 0x00070006
+devmem 0x8000201C 32 0x00000001
+```
+
+If you want to set MTU size to 9000 then use the below command: 
+
+```bash
+devmem 0x8000200C 32 0x00000001
+```
+
+### VVDN LPRU
+
+- TDD pattern `DDDSU`, 2.5ms
+- Bandwidth 100MHz
+- MTU 9216 (this is the maximum we can configure on our switch)
+- The OAI configuration file [`gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf) corresponds to below RU configuration. 
+
+Check in the RU user manual how to configure the center frequency. There are multiple ways to do it. We set the center frequency by editing `sysrepocfg` database. You can use `sysrepocfg --edit=vi -d running` to do the same. You can edit the `startup` database to make the center frequency change persistent. 
+
+To make any change in the RU, always wait for it to be PTP synced. You can check the sync status via `tail -f /var/log/synctimingptp2.log`.
+
+To set the RU for 4TX and 4RX antennas with 9 bit compression, you need to create this XML file and apply it. 
+
+Login to the ru and create this file as `4x4-config.xml`.
+
+```xml
+<vvdn_config>
+    <du_mac_address>YOUR-DU-MAC-ADDR</du_mac_address>
+    <cu_plane_vlan>YOUR-RU-VLAN</cu_plane_vlan>  
+    <dl_compression_method>1</dl_compression_method>  
+    <dl_compression_value>9</dl_compression_value>  
+    <ul_compression_method>1</ul_compression_method> 
+    <ul_compression_value>9</ul_compression_value>
+    <num_prb>273</num_prb>
+    <prach_layer0_PCID>4</prach_layer0_PCID>
+    <prach_layer1_PCID>5</prach_layer1_PCID>
+    <prach_layer2_PCID>6</prach_layer2_PCID>
+    <prach_layer3_PCID>7</prach_layer3_PCID>
+    <pxsch_layer0_PCID>0</pxsch_layer0_PCID>
+    <pxsch_layer1_PCID>1</pxsch_layer1_PCID>
+    <pxsch_layer2_PCID>2</pxsch_layer2_PCID>
+    <pxsch_layer3_PCID>3</pxsch_layer3_PCID>
+</vvdn_config>
+```
+Execute the below commands on every restart
+
+```bash
+xml_parser 4x4-config.xml
+## To enable prach compression
+mw.l a0010024 1919
+## This will show the current configuration
+/etc/scripts/lpru_configuration.sh
+## Edit the sysrepo to ACTIVATE the carrier when you want to use the RU
+sysrepocfg --edit=vi -d running
+```
 
 ## Configure Network Interfaces and DPDK VFs
 
@@ -489,9 +620,11 @@ In the following, we will use these short hands:
 - `vlan`: VLAN tags as defined in the RU configuration
 - `mtu`: the MTU as specified by the RU vendor, and supported by the NIC
 - `du-c-plane-mac-addr`: DU C plane MAC address
-- `lspci-address-c-plane-vf`: PCI bus address of the VF for C plane
+- `pci-address-c-plane-vf`: PCI bus address of the VF for C plane
 - `du-u-plane-mac-addr`: DU U plane MAC address
-- `lspci-address-u-plane-vf`: PCI bus address of the VF for U plane
+- `pci-address-u-plane-vf`: PCI bus address of the VF for U plane
+
+In the configuration file, in option `fhi_72.dpdk_devices`, the first PCI address is for C-plane and the second for U-plane. 
 
 For both the MAC addresses, you might use the MAC addresses which are
 pre-configured in the RUs (typically `00:11:22:33:44:66`, but that is not
@@ -570,17 +703,17 @@ Now, unbind any pre-existing DPDK devices, load the "Virtual Function I/O"
 driver `vfio_pci`, and bind DPDK to these devices:
 
 ```
-sudo /usr/local/bin/dpdk-devbind.py --unbind <lspci-address-c-plane-vf>
-sudo /usr/local/bin/dpdk-devbind.py --unbind <lspci-address-u-plane-vf>
+sudo /usr/local/bin/dpdk-devbind.py --unbind <pci-address-c-plane-vf>
+sudo /usr/local/bin/dpdk-devbind.py --unbind <pci-address-u-plane-vf>
 sudo modprobe vfio_pci
-sudo /usr/local/bin/dpdk-devbind.py --bind vfio-pci <lspci-address-c-plane-vf>
-sudo /usr/local/bin/dpdk-devbind.py --bind vfio-pci <lspci-address-u-plane-vf>
+sudo /usr/local/bin/dpdk-devbind.py --bind vfio-pci <pci-address-c-plane-vf>
+sudo /usr/local/bin/dpdk-devbind.py --bind vfio-pci <pci-address-u-plane-vf>
 ```
 
 We recommand to put the above commands into a script file to quickly repeat them.
 
 <details>
-<summary>Example script for Benetel 650 with Intel X710 on host</summary>
+<summary>Example script for Benetel 550-A/650 with Intel X710 on host</summary>
 
 ```console
 set -x
@@ -589,11 +722,12 @@ sudo ethtool -G eno12409 rx 4096
 sudo ethtool -G eno12409 tx 4096
 sudo ifconfig eno12409 mtu 9216
 
+sudo modprobe -r iavf
 sudo modprobe iavf
 sudo sh -c 'echo 0 > /sys/class/net/eno12409/device/sriov_numvfs'
 sudo sh -c 'echo 2 > /sys/class/net/eno12409/device/sriov_numvfs'
-sudo ip link set eno12409 vf 0 mac 00:11:22:33:44:67 vlan 3 qos 0 spoofchk off mtu 9216
-sudo ip link set eno12409 vf 1 mac 00:11:22:33:44:66 vlan 3 qos 0 spoofchk off mtu 9216
+sudo ip link set eno12409 vf 0 mac 00:11:22:33:44:66 vlan 3 qos 0 spoofchk off mtu 9216
+sudo ip link set eno12409 vf 1 mac 00:11:22:33:44:67 vlan 3 qos 0 spoofchk off mtu 9216
 
 sudo /usr/local/bin/dpdk-devbind.py --unbind 31:06.0
 sudo /usr/local/bin/dpdk-devbind.py --unbind 31:06.1
@@ -604,13 +738,14 @@ sudo /usr/local/bin/dpdk-devbind.py --bind vfio-pci 31:06.1
 </details>
 
 
+
 ## Configure OAI gNB
 
 **Beware in the following section to let in the range of isolated cores the parameters that should be (i.e. `L1s.L1_rx_thread_core`, `L1s.L1_tx_thread_core`, `RUs.ru_thread_core`, `fhi_72.io_core` and `fhi_72.worker_cores`)**
 
 Sample configuration files for OAI gNB, specific to the manufacturer of the radio unit, are available at:
 1. LITE-ON RU: [`gnb.sa.band78.273prb.fhi72.4x4-liteon.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x4-liteon.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x4 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
-2. Benetel 650 RU: [`gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x2 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
+2. Benetel 650 RU: [`gnb.sa.band78.273prb.fhi72.4x4-benetel650.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band78.273prb.fhi72.4x2-benetel650.conf) (band n78, 273 PRBs, 3.5GHz center freq, 4x2 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
 3. VVDN RU: [`gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf`](../targets/PROJECTS/GENERIC-NR-5GC/CONF/gnb.sa.band77.273prb.fhi72.4x4-vvdn.conf) (band n77, 273 PRBs, 4.0GHz center freq, 4x4 antenna configuration with 9 bit I/Q samples (compressed) for PUSCH/PDSCH/PRACH, 2-layer DL MIMO, UL SISO)
 
 Edit the sample OAI gNB configuration file and check following parameters:
@@ -618,8 +753,8 @@ Edit the sample OAI gNB configuration file and check following parameters:
 * `gNBs` section
   * The PLMN section shall match the one defined in the AMF
   * `amf_ip_address` shall be the correct AMF IP address in your system
-  * `GNB_INTERFACE_NAME_FOR_NG_AMF` and `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your DU N2 interface name and IP address
-  * `GNB_INTERFACE_NAME_FOR_NGU` and `GNB_IPV4_ADDRESS_FOR_NGU` shall match your DU N3 interface name and IP address
+  * `GNB_IPV4_ADDRESS_FOR_NG_AMF` shall match your gNB N2 interface IP address
+  * `GNB_IPV4_ADDRESS_FOR_NGU` shall match your gNB N3 interface IP address
   * `prach_ConfigurationIndex`
   * `prach_msg1_FrequencyStart`
   * Adjust the frequency, bandwidth and SSB position
@@ -753,3 +888,21 @@ In this case, you should reverify that `ptp4l` and `phc2sys` are working, e.g.,
 do not do any jumps (during the last hour). While an occasional jump is not
 necessarily problematic for the gNB, many such messages mean that the system is
 not working, and UEs might not be able to attach or reach good performance.
+
+
+# Contact in case of questions
+
+You can ask your question on the [mailing lists](https://gitlab.eurecom.fr/oai/openairinterface5g/-/wikis/MailingList).
+
+Your email should contain below information:
+
+- A clear subject in your email.
+- For all the queries there should be [Query\] in the subject of the email and for problems there should be [Problem\].
+- In case of a problem, add a small description.
+- Do not share any photos unless you want to share a diagram. 
+- OAI gNB/DU/CU/CU-CP/CU-UP configuration file in `.conf` format only.
+- Logs of OAI gNB/DU/CU/CU-CP/CU-UP in `.log` or `.txt` format only.
+- RU Vendor and Version.
+- In case your question is related to performance, include a small description of the machine (CPU, RAM and networking card) and diagram of your testing environment. 
+- If you have any issues related to PTP or synchronization, then first check the section "Debugging PTP issues". Then share your problem with PTP version you are using, switch details and master clock.
+- Known/open issues are present on [GitLab](https://gitlab.eurecom.fr/oai/openairinterface5g/-/issues), so keep checking.

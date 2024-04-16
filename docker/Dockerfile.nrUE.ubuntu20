@@ -90,6 +90,7 @@ COPY --from=nr-ue-build \
     /oai-ran/cmake_targets/ran_build/build/libdfts.so \
     /oai-ran/cmake_targets/ran_build/build/libldpc*.so \
     /oai-ran/cmake_targets/ran_build/build/libtelnetsrv.so \
+    /oai-ran/cmake_targets/ran_build/build/libtelnetsrv_ciUE.so \
     /oai-ran/cmake_targets/ran_build/build/libtelnetsrv_5Gue.so \
     /usr/local/lib/
 

@@ -138,7 +138,7 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
     FILE *f = NULL;
     if (uecap_file)
       f = fopen(uecap_file, "r");
-    if(f){
+    if (f) {
       size_t size = fread(UE_NR_Capability_xer, 1, sizeof UE_NR_Capability_xer, f);
       if (size == 0 || size == sizeof UE_NR_Capability_xer)
         LOG_E(NR_RRC,"UE Capabilities XER file %s is too large (%ld)\n", uecap_file, size);
@@ -148,6 +148,7 @@ void rrc_add_nsa_user(gNB_RRC_INST *rrc, rrc_gNB_ue_context_t *ue_context_p, x2a
         assert(dec_rval.code == RC_OK);
         xer_fprint(stdout,&asn_DEF_NR_UE_NR_Capability,(void *)UE_Capability_nr);
       }
+      fclose(f);
     }
     else
       LOG_E(NR_RRC,"Could not open UE Capabilities input file. Not handling OAI UE Capabilities.\n");

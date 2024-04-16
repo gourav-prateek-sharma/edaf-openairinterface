@@ -594,6 +594,8 @@ class EPCManagement():
 				message = 'UE requested ' + str(mySSH.getBefore().count('Tracking area update request')) + 'Tracking area update request(s)'
 			else:
 				message = 'No Tracking area update request'
+			mySSH.run(f'cd {self.SourceCodePath}/logs && zip -r -qq test_logs_CN.zip *.log')
+			mySSH.copyin(f'{self.SourceCodePath}/logs/test_logs_CN.zip','test_logs_CN.zip')
 			logging.debug(message)
 		elif re.match('OC-OAI-CN5G', self.Type, re.IGNORECASE):
 			logging.debug('Terminating OAI CN5G on Openshift Cluster')

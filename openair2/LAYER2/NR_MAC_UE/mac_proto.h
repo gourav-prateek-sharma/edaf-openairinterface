@@ -100,7 +100,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst);
 NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id);
 
 void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac);
-void reset_ra(RA_config_t *ra);
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, NR_UE_MAC_reset_cause_t cause);
 void release_mac_configuration(NR_UE_MAC_INST_t *mac,
                                NR_UE_MAC_reset_cause_t cause);
 
@@ -111,14 +111,11 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac,
 void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info);
 void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info);
 
-/*! \fn int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP);
-   \brief Called by PHY to get sdu for PUSCH transmission.  It performs the following operations: Checks BSR for DCCH, DCCH1 and
-DTCH corresponding to previous values computed either in SR or BSR procedures.  It gets rlc status indications on DCCH,DCCH1 and
-DTCH and forms BSR elements and PHR in MAC header.  CRNTI element is not supported yet.  It computes transport block for up to 3
-SDUs and generates header and forms the complete MAC SDU. \param[in]  mac pointer to MAC instance \param[in] frameP
-subframe number \param[in] slotP slot number
-*/
-int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP);
+/*! \fn int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_SchedulingRequestId_t sr_id);
+   \brief This function schedules a positive or negative SR for schedulingRequestID sr_id
+          depending on the presence of any active SR and the prohibit timer.
+          If the max number of retransmissions is reached, it triggers a new RA  */
+int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_SchedulingRequestId_t sr_id);
 
 nr_dci_format_t nr_ue_process_dci_indication_pdu(NR_UE_MAC_INST_t *mac, frame_t frame, int slot, fapi_nr_dci_indication_pdu_t *dci);
 
@@ -300,6 +297,13 @@ void configure_initial_pucch(PUCCH_sched_t *pucch, int res_ind);
 void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac);
 void nr_ue_send_synch_request(NR_UE_MAC_INST_t *mac, module_id_t module_id, int cc_id, int cell_id);
 
+/**
+ * @brief   Get UE sync state
+ * @param   mod_id      UE ID
+ * @return      UE sync state
+ */
+NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id);
+
 void init_RA(NR_UE_MAC_INST_t *mac,
              NR_PRACH_RESOURCES_t *prach_resources,
              NR_RACH_ConfigCommon_t *nr_rach_ConfigCommon,
@@ -307,7 +311,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
              NR_RACH_ConfigDedicated_t *rach_ConfigDedicated);
 
 int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac);
-
+void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id);
 void nr_Msg1_transmitted(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, slot_t slotP, uint8_t gNB_id);
 void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);

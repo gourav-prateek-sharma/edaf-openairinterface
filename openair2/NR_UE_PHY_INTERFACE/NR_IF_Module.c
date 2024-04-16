@@ -1148,10 +1148,11 @@ int nr_ue_ul_indication(nr_uplink_indication_t *ul_info)
 static uint32_t nr_ue_dl_processing(nr_downlink_indication_t *dl_info)
 {
   uint32_t ret_mask = 0x0;
+  DevAssert(dl_info != NULL);
   NR_UE_MAC_INST_t *mac = get_mac_inst(dl_info->module_id);
 
   // DL indication after reception of DCI or DL PDU
-  if (dl_info && dl_info->dci_ind && dl_info->dci_ind->number_of_dcis) {
+  if (dl_info->dci_ind && dl_info->dci_ind->number_of_dcis) {
     LOG_T(MAC, "[L2][IF MODULE][DL INDICATION][DCI_IND]\n");
     for (int i = 0; i < dl_info->dci_ind->number_of_dcis; i++) {
       LOG_T(MAC, ">>>NR_IF_Module i=%d, dl_info->dci_ind->number_of_dcis=%d\n", i, dl_info->dci_ind->number_of_dcis);
@@ -1302,8 +1303,6 @@ void RCconfig_nr_ue_macrlc(void) {
   if (MACRLC_ParamList.numelt > 0) {
     for (j = 0; j < MACRLC_ParamList.numelt; j++) {
       if (strcmp(*(MACRLC_ParamList.paramarray[j][MACRLC_TRANSPORT_N_PREFERENCE_IDX].strptr), "nfapi") == 0) {
-        stub_eth_params.local_if_name = strdup(
-            *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_IF_NAME_IDX].strptr));
         stub_eth_params.my_addr = strdup(
             *(MACRLC_ParamList.paramarray[j][MACRLC_LOCAL_N_ADDRESS_IDX].strptr));
         stub_eth_params.remote_addr = strdup(

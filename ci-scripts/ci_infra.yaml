@@ -61,6 +61,12 @@ oc-cn5g:
   NetworkScript: echo "inet 172.21.6.102"
   RunIperf3Server: False
 
+matix-cn5g:
+  Host: matix
+  NetworkScript: docker exec prod-trf-gen ip a show dev eth0
+  CmdPrefix: docker exec prod-trf-gen
+  RunIperf3Server: False
+
 porcepix-cn4g:
   Host: porcepix
   NetworkScript: docker exec prod-trf-gen ip a show dev eth0
@@ -327,6 +333,9 @@ rfsim4g_ue:
   NetworkScript: docker exec rfsim4g-oai-lte-ue0 ip a show dev oaitun_ue1
   CmdPrefix: docker exec rfsim4g-oai-lte-ue0
   IF: oaitun_ue1
+  AttachScript: docker start rfsim4g-oai-lte-ue0
+  DetachScript: docker stop rfsim4g-oai-lte-ue0
+  MTU: 1500
 
 rfsim4g_ext_dn:
   Host: localhost

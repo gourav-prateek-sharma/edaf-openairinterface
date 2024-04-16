@@ -115,7 +115,7 @@ void display_data(int pss_sequence_number, int16_t *rxdata, int position) {
   int16_t *pss_sequence[pss_sequence] = {primary_synch0_time, primary_synch1_time, primary_synch2_time};
   int16_t *pss_sequence_sl[pss_sequence] = {primary_synch0_time, primary_synch1_time};
   int16_t *pss_sequence_time = pss_sequence[pss_sequence_number];;
-  if (get_softmodem_params()->sl_mode != 0) {
+  if (get_softmodem_params()->sl_mode != 0)
     pss_sequence_time = pss_sequence_sl[pss_sequence_number];
   printf("   pss %6d             data \n", pss_sequence_number);
   for (int i = 0; i < 4; i++) {

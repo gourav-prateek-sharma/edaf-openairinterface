@@ -39,6 +39,7 @@
 
 #include "defs_nr_common.h"
 #include "CODING/nrPolar_tools/nr_polar_pbch_defs.h"
+#include "PHY/defs_nr_sl_UE.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -591,6 +592,10 @@ typedef struct PHY_VARS_NR_UE_s {
   uint8_t *phy_sim_dlsch_b;
 
   notifiedFIFO_t tx_resume_ind_fifo[NR_MAX_SLOTS_PER_FRAME];
+
+  // Sidelink parameters
+  sl_nr_sidelink_mode_t sl_mode;
+  sl_nr_ue_phy_params_t SL_UE_PHY_PARAMS;
 } PHY_VARS_NR_UE;
 
 typedef struct {
@@ -612,11 +617,20 @@ typedef struct {
 typedef struct nr_phy_data_tx_s {
   NR_UE_ULSCH_t ulsch;
   NR_UE_PUCCH pucch_vars;
+
+  // Sidelink Rx action decided by MAC
+  sl_nr_tx_config_type_enum_t sl_tx_action;
+  sl_nr_tx_config_psbch_pdu_t psbch_vars;
+
 } nr_phy_data_tx_t;
 
 typedef struct nr_phy_data_s {
   NR_UE_PDCCH_CONFIG phy_pdcch_config;
   NR_UE_DLSCH_t dlsch[2];
+
+  // Sidelink Rx action decided by MAC
+  sl_nr_rx_config_type_enum_t sl_rx_action;
+
 } nr_phy_data_t;
 /* this structure is used to pass both UE phy vars and
  * proc to the function UE_thread_rxn_txnp4

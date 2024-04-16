@@ -249,67 +249,65 @@ void nr_layer_mapping(int nbCodes,
                       uint8_t n_layers,
                       int layerSz,
                       uint32_t n_symbs,
-                      c16_t tx_layers[n_layers][layerSz])
+                      c16_t tx_layer[layerSz],
+                      int layer)
 {
   LOG_D(PHY,"Doing layer mapping for %d layers, %d symbols\n",n_layers,n_symbs);
 
   switch (n_layers) {
 
     case 1:
-    memcpy(tx_layers[0], mod_symbs[0], n_symbs * sizeof(**mod_symbs));
-    break;
+      memcpy(tx_layer, mod_symbs[0], n_symbs * sizeof(**mod_symbs));
+      break;
 
     case 2:
     case 3:
     case 4:
     for (int i = 0; i < n_symbs / n_layers; i++) {
       const c16_t *base = mod_symbs[0] + n_layers * i;
-      for (int l = 0; l < n_layers; l++)
-        tx_layers[l][i] = base[l];
+      tx_layer[i] = base[layer];
     }
       break;
 
     case 5:
-      for (int i = 0; i < n_symbs; i += 2) {
-      const int txIdx = i / 2;
-      for (int l = 0; l < 2; l++)
-        tx_layers[l][txIdx] = mod_symbs[0][i + l];
-      }
-      for (int i = 0; i < n_symbs; i += 3) {
-      const int txIdx = i / 3;
-      for (int l = 2; l < 5; l++)
-        tx_layers[l][txIdx] = mod_symbs[1][i + l];
-      }
+      if (layer < 2)
+        for (int i = 0; i < n_symbs; i += 2) {
+          const int txIdx = i / 2;
+          tx_layer[txIdx] = mod_symbs[0][i + layer];
+        }
+      else
+        for (int i = 0; i < n_symbs; i += 3) {
+          const int txIdx = i / 3;
+          tx_layer[txIdx] = mod_symbs[1][i + layer];
+        }
       break;
 
     case 6:
       for (int q=0; q<2; q++)
-      for (int i = 0; i < n_symbs; i += 3) {
-        const int txIdx = i / 3;
-        for (int l = 0; l < 3; l++)
-          tx_layers[l][txIdx] = mod_symbs[q][i + l];
-      }
+        for (int i = 0; i < n_symbs; i += 3) {
+          const int txIdx = i / 3;
+          tx_layer[txIdx] = mod_symbs[q][i + layer];
+        }
       break;
 
     case 7:
-      for (int i = 0; i < n_symbs; i += 3) {
-      const int txIdx = i / 3;
-      for (int l = 0; l < 3; l++)
-        tx_layers[l][txIdx] = mod_symbs[1][i + l];
-      }
-      for (int i = 0; i < n_symbs; i += 4) {
-      const int txIdx = i / 4;
-      for (int l = 3; l < 7; l++)
-        tx_layers[l][txIdx] = mod_symbs[0][i + l];
-      }
+      if (layer < 3)
+        for (int i = 0; i < n_symbs; i += 3) {
+          const int txIdx = i / 3;
+          tx_layer[txIdx] = mod_symbs[1][i + layer];
+        }
+      else
+        for (int i = 0; i < n_symbs; i += 4) {
+          const int txIdx = i / 4;
+          tx_layer[txIdx] = mod_symbs[0][i + layer];
+        }
       break;
 
     case 8:
       for (int q=0; q<2; q++)
       for (int i = 0; i < n_symbs; i += 4) {
         const int txIdx = i / 4;
-        for (int l = 0; l < 3; l++)
-          tx_layers[l][txIdx] = mod_symbs[q][i + l];
+        tx_layer[txIdx] = mod_symbs[q][i + layer];
       }
       break;
 
@@ -805,8 +803,28 @@ void nr_layer_precoder_simd(const int n_layers,
 
     #ifdef DEBUG_DLSCH_PRECODING_PRINT_WITH_TRIVIAL // Print simd and trivial result, TODO: To be removed
       c16_t *y_simd = (c16_t*) &y;
-      printf("debug_to_be_removed re_cnt=%d, sc=%d, y_simd=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n", re_cnt, sc, y_simd[0].r, y_simd[0].i, y_simd[1].r, y_simd[1].i, y_simd[2].r, y_simd[2].i, y_simd[3].r, y_simd[3].i);
-      printf("debug_to_be_removed re_cnt=%d, sc=%d, y_triv=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n", re_cnt, sc, y_triv[0].r, y_triv[0].i, y_triv[1].r, y_triv[1].i, y_triv[2].r, y_triv[2].i, y_triv[3].r, y_triv[3].i);
+      printf("debug_to_be_removed re_cnt=%d, sc=%u, y_simd=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n",
+             re_cnt,
+             sc,
+             y_simd[0].r,
+             y_simd[0].i,
+             y_simd[1].r,
+             y_simd[1].i,
+             y_simd[2].r,
+             y_simd[2].i,
+             y_simd[3].r,
+             y_simd[3].i);
+      printf("debug_to_be_removed re_cnt=%d, sc=%u, y_triv=(%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d), (%+4d,%+4d)\n",
+             re_cnt,
+             sc,
+             y_triv[0].r,
+             y_triv[0].i,
+             y_triv[1].r,
+             y_triv[1].i,
+             y_triv[2].r,
+             y_triv[2].i,
+             y_triv[3].r,
+             y_triv[3].i);
     #endif
   }
 }

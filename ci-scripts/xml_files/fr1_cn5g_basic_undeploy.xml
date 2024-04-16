@@ -21,8 +21,8 @@
 
 -->
 <testCaseList>
-        <htmlTabRef>cn5g-start-tab</htmlTabRef>
-        <htmlTabName>CN5G-Start</htmlTabName>
+        <htmlTabRef>cn5g-stop-tab</htmlTabRef>
+        <htmlTabName>CN5G-Stop</htmlTabName>
         <htmlTabIcon>log-in</htmlTabIcon>
         <TestCaseRequestedList>
                 000300

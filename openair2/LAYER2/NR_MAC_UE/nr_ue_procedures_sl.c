@@ -510,13 +510,15 @@ uint8_t sl_determine_sci_1a_len(uint16_t *num_subchannels,
                           ? *pscch_config->sl_NumReservedBits_r16 : 0;
   }
 
-  AssertFatal((num_reservedbits>=2) || (num_reservedbits<=4) ,
-                      "Num Reserved bits can only be 2or3or4. Resource Pool Configuration Error.\n");
+  AssertFatal((num_reservedbits >= 2) && (num_reservedbits <= 4),
+              "Num Reserved bits can only be 2 or 3 or 4. Resource Pool Configuration Error.\n");
   sci_1a_len += num_reservedbits;
   sci_1a->reserved_bits.nbits = num_reservedbits;
-  LOG_D(NR_MAC,"sci 1A - reserved_bits:%d, sci 1a len:%d, sci_1a->reserved_bits.nbits:%d\n",
-                                                        num_reservedbits, sci_1a_len, sci_1a->reserved_bits.nbits);
-
+  LOG_D(NR_MAC,
+        "sci 1A - reserved_bits:%d, sci 1a len:%d, sci_1a->reserved_bits.nbits:%d\n",
+        num_reservedbits,
+        sci_1a_len,
+        sci_1a->reserved_bits.nbits);
 
   LOG_D(NR_MAC,"sci 1A Length in bits: %d \n",sci_1a_len);
 

@@ -34,7 +34,8 @@
   #include "RRC/LTE/rrc_defs.h"
 # include "enb_app.h"
 
-int create_tasks_ue(uint32_t ue_nb) {
+int create_tasks_ue(uint32_t ue_nb)
+{
   LOG_D(ENB_APP, "%s(ue_nb:%d)\n", __FUNCTION__, ue_nb);
   itti_wait_ready(1);
 
@@ -50,6 +51,7 @@ int create_tasks_ue(uint32_t ue_nb) {
       ittiTask_parms_t parms = {users, NULL};
       if (itti_create_task(TASK_NAS_UE, nas_ue_task, &parms) < 0) {
         LOG_E(NAS, "Create task for NAS UE failed\n");
+        free(users);
         return -1;
       }
     }

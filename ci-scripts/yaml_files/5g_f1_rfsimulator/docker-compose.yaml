@@ -108,7 +108,10 @@ services:
         privileged: true
         container_name: rfsim5g-oai-du
         environment:
-            USE_ADDITIONAL_OPTIONS: --sa --rfsim --log_config.global_log_options level,nocolor,time
+            USE_ADDITIONAL_OPTIONS: --sa --rfsim
+                                    --log_config.global_log_options level,nocolor,time
+                                    --rfsimulator.options chanmod
+                                    --telnetsrv --telnetsrv.listenaddr 192.168.71.171
             ASAN_OPTIONS: detect_leaks=0
         depends_on:
             - oai-cu
@@ -117,6 +120,7 @@ services:
                 ipv4_address: 192.168.71.171
         volumes:
             - ../../conf_files/gnb-du.sa.band78.106prb.rfsim.conf:/opt/oai-gnb/etc/gnb.conf
+            - ../../conf_files/rfsim_channel_ci.conf:/opt/oai-gnb/etc/rfsim_channel_ci.conf
         healthcheck:
             test: /bin/bash -c "pgrep nr-softmodem"
             interval: 10s
@@ -132,6 +136,8 @@ services:
                                     -r 106 --numerology 1 -C 3619200000
                                     --uicc0.imsi 208990100001100
                                     --rfsimulator.serveraddr 192.168.71.171
+                                    --rfsimulator.options chanmod
+                                    --telnetsrv --telnetsrv.shrmod ciUE --telnetsrv.listenaddr 192.168.71.181 --telnetsrv.listenport 8091
         depends_on:
             - oai-du
         networks:
@@ -139,6 +145,7 @@ services:
                 ipv4_address: 192.168.71.181
         volumes:
             - ../../conf_files/nrue.uicc.conf:/opt/oai-nr-ue/etc/nr-ue.conf
+            - ../../conf_files/rfsim_channel_ci.conf:/opt/oai-nr-ue/etc/rfsim_channel_ci.conf
         healthcheck:
             test: /bin/bash -c "pgrep nr-uesoftmodem"
             interval: 10s

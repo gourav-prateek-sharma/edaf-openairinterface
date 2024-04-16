@@ -344,7 +344,7 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
   for (queue_id = 0; queue_id < nb_queues; ++queue_id) {
     ret = rte_bbdev_queue_configure(dev_id, queue_id, &qconf);
     if (ret == 0) {
-      printf("Found LDCP encoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      printf("Found LDCP encoding queue (id=%d) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
       //ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
       ad->enc_queue = queue_id;
@@ -359,7 +359,7 @@ static int add_dev(uint8_t dev_id, struct rte_bbdev_info *info)
   for (queue_id++; queue_id < nb_queues; ++queue_id) {
     ret = rte_bbdev_queue_configure(dev_id, queue_id, &qconf);
     if (ret == 0) {
-      printf("Found LDCP decoding queue (id=%u) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
+      printf("Found LDCP decoding queue (id=%d) at prio%u on dev%u\n", queue_id, qconf.priority, dev_id);
       qconf.priority++;
       //ret = rte_bbdev_queue_configure(ad->dev_id, queue_id, &qconf);
       ad->dec_queue = queue_id;
@@ -941,7 +941,7 @@ int32_t LDPCinit()
   int dev_id = 0;
   struct rte_bbdev_info info;
   struct active_device *ad = active_devs;
-  char *dpdk_dev = "41:00.0"; //PCI address of the card
+  char *dpdk_dev = "d8:00.0"; //PCI address of the card
   char *argv_re[] = {"bbdev", "-a", dpdk_dev, "-l", "14-15", "--file-prefix=b6", "--"};
   // EAL initialization, if already initialized (init in xran lib) try to probe DPDK device
   ret = rte_eal_init(5, argv_re);
@@ -957,8 +957,8 @@ int32_t LDPCinit()
   // Set number of queues based on number of initialized cores (-l option) and driver
   // capabilities
   TEST_ASSERT_SUCCESS(add_dev(dev_id, &info), "Failed to setup bbdev");
-  TEST_ASSERT_SUCCESS(rte_bbdev_stats_reset(dev_id), "Failed to reset stats of bbdev %u", dev_id);
-  TEST_ASSERT_SUCCESS(rte_bbdev_start(dev_id), "Failed to start bbdev %u", dev_id);
+  TEST_ASSERT_SUCCESS(rte_bbdev_stats_reset(dev_id), "Failed to reset stats of bbdev %d", dev_id);
+  TEST_ASSERT_SUCCESS(rte_bbdev_start(dev_id), "Failed to start bbdev %d", dev_id);
 
   //the previous calls have populated this global variable (beurk)
   // One more global to remove, not thread safe global op_params

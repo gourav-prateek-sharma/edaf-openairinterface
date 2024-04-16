@@ -262,7 +262,6 @@ typedef enum {
 #define ENB_CONFIG_STRING_MOBILE_COUNTRY_CODE_OLD       "mobile_country_code"
 #define ENB_CONFIG_STRING_MOBILE_NETWORK_CODE_OLD       "mobile_network_code"
 #define ENB_CONFIG_STRING_TRANSPORT_S_PREFERENCE        "tr_s_preference"
-#define ENB_CONFIG_STRING_LOCAL_S_IF_NAME               "local_s_if_name"
 #define ENB_CONFIG_STRING_LOCAL_S_ADDRESS               "local_s_address"
 #define ENB_CONFIG_STRING_REMOTE_S_ADDRESS              "remote_s_address"
 #define ENB_CONFIG_STRING_LOCAL_S_PORTC                 "local_s_portc"
@@ -293,7 +292,6 @@ typedef enum {
   {ENB_CONFIG_STRING_MOBILE_COUNTRY_CODE_OLD,      NULL,   0,            .strptr=NULL, .defstrval=NULL,              TYPE_STRING,    0},  \
   {ENB_CONFIG_STRING_MOBILE_NETWORK_CODE_OLD,      NULL,   0,            .strptr=NULL, .defstrval=NULL,              TYPE_STRING,    0},  \
   {ENB_CONFIG_STRING_TRANSPORT_S_PREFERENCE,       NULL,   0,            .strptr=NULL, .defstrval="local_mac",       TYPE_STRING,    0},  \
-  {ENB_CONFIG_STRING_LOCAL_S_IF_NAME,              NULL,   0,            .strptr=NULL, .defstrval="lo",              TYPE_STRING,    0},  \
   {ENB_CONFIG_STRING_LOCAL_S_ADDRESS,              NULL,   0,            .strptr=NULL, .defstrval="127.0.0.1",       TYPE_STRING,    0},  \
   {ENB_CONFIG_STRING_REMOTE_S_ADDRESS,             NULL,   0,            .strptr=NULL, .defstrval="127.0.0.2",       TYPE_STRING,    0},  \
   {ENB_CONFIG_STRING_LOCAL_S_PORTC,                NULL,   0,            .uptr=NULL,   .defuintval=50000,            TYPE_UINT,      0},  \
@@ -321,24 +319,23 @@ typedef enum {
 #define ENB_MOBILE_COUNTRY_CODE_IDX_OLD 4
 #define ENB_MOBILE_NETWORK_CODE_IDX_OLD 5
 #define ENB_TRANSPORT_S_PREFERENCE_IDX  6
-#define ENB_LOCAL_S_IF_NAME_IDX         7
-#define ENB_LOCAL_S_ADDRESS_IDX         8
-#define ENB_REMOTE_S_ADDRESS_IDX        9
-#define ENB_LOCAL_S_PORTC_IDX           10
-#define ENB_REMOTE_S_PORTC_IDX          11
-#define ENB_LOCAL_S_PORTD_IDX           12
-#define ENB_REMOTE_S_PORTD_IDX          13
-#define ENB_NRCELLID_IDX                14
-#define ENB_RRC_INACTIVITY_THRES_IDX    15
-#define ENB_ENABLE_MEASUREMENT_REPORTS  16
-#define ENB_ENABLE_X2                   17
-#define ENB_ENABLE_ENB_M2               18
-#define ENB_ENABLE_MCE_M2               19
-#define ENB_S1SETUP_RSP_TIMER_IDX       20
-#define ENB_S1SETUP_REQ_TIMER_IDX       21
-#define ENB_S1SETUP_REQ_COUNT_IDX       22
-#define ENB_SCTP_REQ_TIMER_IDX          23
-#define ENB_SCTP_REQ_COUNT_IDX          24
+#define ENB_LOCAL_S_ADDRESS_IDX         7
+#define ENB_REMOTE_S_ADDRESS_IDX        8
+#define ENB_LOCAL_S_PORTC_IDX           9
+#define ENB_REMOTE_S_PORTC_IDX          10
+#define ENB_LOCAL_S_PORTD_IDX           11
+#define ENB_REMOTE_S_PORTD_IDX          12
+#define ENB_NRCELLID_IDX                13
+#define ENB_RRC_INACTIVITY_THRES_IDX    14
+#define ENB_ENABLE_MEASUREMENT_REPORTS  15
+#define ENB_ENABLE_X2                   16
+#define ENB_ENABLE_ENB_M2               17
+#define ENB_ENABLE_MCE_M2               18
+#define ENB_S1SETUP_RSP_TIMER_IDX       19
+#define ENB_S1SETUP_REQ_TIMER_IDX       20
+#define ENB_S1SETUP_REQ_COUNT_IDX       21
+#define ENB_SCTP_REQ_TIMER_IDX          22
+#define ENB_SCTP_REQ_COUNT_IDX          23
 
 #define TRACKING_AREA_CODE_OKRANGE {0x0001,0xFFFD}
 // clang-format off
@@ -999,10 +996,7 @@ typedef struct srb1_params_s {
 
 
 #define ENB_CONFIG_STRING_MME_IPV4_ADDRESS              "ipv4"
-#define ENB_CONFIG_STRING_MME_IPV6_ADDRESS              "ipv6"
 #define ENB_CONFIG_STRING_MME_PORT                      "port"
-#define ENB_CONFIG_STRING_MME_IP_ADDRESS_ACTIVE         "active"
-#define ENB_CONFIG_STRING_MME_IP_ADDRESS_PREFERENCE     "preference"
 #define ENB_CONFIG_STRING_MME_BROADCAST_PLMN_INDEX      "broadcast_plmn_index"
 
 
@@ -1013,9 +1007,6 @@ typedef struct srb1_params_s {
 // clang-format off
 #define S1PARAMS_DESC {  \
   {ENB_CONFIG_STRING_MME_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,              TYPE_STRING,    0},    \
-  {ENB_CONFIG_STRING_MME_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,              TYPE_STRING,    0},    \
-  {ENB_CONFIG_STRING_MME_IP_ADDRESS_ACTIVE,              NULL,      0,         .uptr=NULL,   .defstrval=NULL,              TYPE_STRING,    0},    \
-  {ENB_CONFIG_STRING_MME_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,              TYPE_STRING,    0},    \
   {ENB_CONFIG_STRING_MME_BROADCAST_PLMN_INDEX,           NULL,      0,         .uptr=NULL,   .defintarrayval=NULL,         TYPE_UINTARRAY, 6},    \
   {ENB_CONFIG_STRING_MME_PORT,                           NULL,      0,         .u16ptr=NULL, .defuintval=S1AP_PORT_NUMBER, TYPE_UINT16,    0},    \
 }
@@ -1025,11 +1016,8 @@ typedef struct srb1_params_s {
 
 
 #define ENB_MME_IPV4_ADDRESS_IDX          0
-#define ENB_MME_IPV6_ADDRESS_IDX          1
-#define ENB_MME_IP_ADDRESS_ACTIVE_IDX     2
-#define ENB_MME_IP_ADDRESS_PREFERENCE_IDX 3
-#define ENB_MME_BROADCAST_PLMN_INDEX      4
-#define ENB_MME_PORT_IDX                  5
+#define ENB_MME_BROADCAST_PLMN_INDEX      1
+#define ENB_MME_PORT_IDX                  2
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
 /* X2 configuration parameters section name */
@@ -1039,9 +1027,6 @@ typedef struct srb1_params_s {
 
 
 #define ENB_CONFIG_STRING_TARGET_ENB_X2_IPV4_ADDRESS              "ipv4"
-#define ENB_CONFIG_STRING_TARGET_ENB_X2_IPV6_ADDRESS              "ipv6"
-#define ENB_CONFIG_STRING_TARGET_ENB_X2_IP_ADDRESS_PREFERENCE     "preference"
-
 
 /*-------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            X2 configuration parameters                                                              */
@@ -1050,14 +1035,10 @@ typedef struct srb1_params_s {
 // clang-format off
 #define X2PARAMS_DESC {  \
   {ENB_CONFIG_STRING_TARGET_ENB_X2_IPV4_ADDRESS,             NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},   \
-  {ENB_CONFIG_STRING_TARGET_ENB_X2_IPV6_ADDRESS,             NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},   \
-  {ENB_CONFIG_STRING_TARGET_ENB_X2_IP_ADDRESS_PREFERENCE,    NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},   \
 }
 // clang-format on
 
 #define ENB_X2_IPV4_ADDRESS_IDX          0
-#define ENB_X2_IPV6_ADDRESS_IDX          1
-#define ENB_X2_IP_ADDRESS_PREFERENCE_IDX 2
 
 
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
@@ -1069,8 +1050,6 @@ typedef struct srb1_params_s {
 
 
 #define ENB_CONFIG_STRING_TARGET_MCE_M2_IPV4_ADDRESS              "ipv4"
-#define ENB_CONFIG_STRING_TARGET_MCE_M2_IPV6_ADDRESS              "ipv6"
-#define ENB_CONFIG_STRING_TARGET_MCE_M2_IP_ADDRESS_PREFERENCE     "preference"
 
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -1083,14 +1062,10 @@ typedef struct srb1_params_s {
 // clang-format off
 #define M2PARAMS_DESC {  \
   {ENB_CONFIG_STRING_TARGET_MCE_M2_IPV4_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-  {ENB_CONFIG_STRING_TARGET_MCE_M2_IPV6_ADDRESS,                   NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
-  {ENB_CONFIG_STRING_TARGET_MCE_M2_IP_ADDRESS_PREFERENCE,          NULL,      0,         .uptr=NULL,   .defstrval=NULL,   TYPE_STRING,   0},          \
 }
 // clang-format on
 
 #define ENB_M2_IPV4_ADDRESS_IDX          0
-#define ENB_M2_IPV6_ADDRESS_IDX          1
-#define ENB_M2_IP_ADDRESS_PREFERENCE_IDX 2
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------------------------------------------------------------------*/
@@ -1121,22 +1096,18 @@ typedef struct srb1_params_s {
 /* S1 interface configuration parameters section name */
 #define ENB_CONFIG_STRING_NETWORK_INTERFACES_CONFIG     "NETWORK_INTERFACES"
 
-#define ENB_INTERFACE_NAME_FOR_S1_MME_IDX          0
-#define ENB_IPV4_ADDRESS_FOR_S1_MME_IDX            1
-#define ENB_INTERFACE_NAME_FOR_S1U_IDX             2
-#define ENB_IPV4_ADDR_FOR_S1U_IDX                  3
-#define ENB_PORT_FOR_S1U_IDX                       4
-#define ENB_IPV4_ADDR_FOR_X2C_IDX                  5
-#define ENB_PORT_FOR_X2C_IDX                       6
-#define ENB_IPV4_ADDR_FOR_M2C_IDX                  7
-#define ENB_PORT_FOR_M2C_IDX                       8
-#define MCE_IPV4_ADDR_FOR_M2C_IDX                  9
-#define MCE_PORT_FOR_M2C_IDX                       10
+#define ENB_IPV4_ADDRESS_FOR_S1_MME_IDX            0
+#define ENB_IPV4_ADDR_FOR_S1U_IDX                  1
+#define ENB_PORT_FOR_S1U_IDX                       2
+#define ENB_IPV4_ADDR_FOR_X2C_IDX                  3
+#define ENB_PORT_FOR_X2C_IDX                       4
+#define ENB_IPV4_ADDR_FOR_M2C_IDX                  5
+#define ENB_PORT_FOR_M2C_IDX                       6
+#define MCE_IPV4_ADDR_FOR_M2C_IDX                  7
+#define MCE_PORT_FOR_M2C_IDX                       8
 
 /* S1 interface configuration parameters names   */
-#define ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1_MME "ENB_INTERFACE_NAME_FOR_S1_MME"
 #define ENB_CONFIG_STRING_ENB_IPV4_ADDRESS_FOR_S1_MME   "ENB_IPV4_ADDRESS_FOR_S1_MME"
-#define ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1U    "ENB_INTERFACE_NAME_FOR_S1U"
 #define ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_S1U         "ENB_IPV4_ADDRESS_FOR_S1U"
 #define ENB_CONFIG_STRING_ENB_PORT_FOR_S1U              "ENB_PORT_FOR_S1U"
 
@@ -1157,9 +1128,7 @@ typedef struct srb1_params_s {
 /*--------------------------------------------------------------------------------------------------------------------------------------------------*/
 // clang-format off
 #define NETPARAMS_DESC {  \
-  {ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1_MME,        NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDRESS_FOR_S1_MME,          NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
-  {ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1U,           NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_S1U,                NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
   {ENB_CONFIG_STRING_ENB_PORT_FOR_S1U,                     NULL,      0,         .u16ptr=NULL,         .defuintval=GTPV1_U_PORT_NUMBER, TYPE_UINT16,      0},      \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_X2C,                NULL,      0,         .strptr=NULL,         .defstrval=NULL,                 TYPE_STRING,      0},      \
@@ -1177,7 +1146,6 @@ typedef struct srb1_params_s {
 /*--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 // clang-format off
 #define GTPUPARAMS_DESC { \
-  {ENB_CONFIG_STRING_ENB_INTERFACE_NAME_FOR_S1U,           NULL,    0,            .strptr=&enb_interface_name_for_S1U,      .defstrval="lo",                  TYPE_STRING,   0},        \
   {ENB_CONFIG_STRING_ENB_IPV4_ADDR_FOR_S1U,                NULL,    0,            .strptr=&enb_ipv4_address_for_S1U,        .defstrval="127.0.0.1",           TYPE_STRING,   0},        \
   {ENB_CONFIG_STRING_ENB_PORT_FOR_S1U,                     NULL,    0,            .u16ptr=&enb_port_for_S1U,               .defuintval=GTPV1_U_PORT_NUMBER,   TYPE_UINT16,   0},        \
 }
@@ -1191,64 +1159,6 @@ typedef struct srb1_params_s {
 #define CONFIG_STRING_L1_CONFIG                            "l1_config"
 
 /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------------------------------------------------------------------------------*/
-/* CU/DU configuration section names*/
-#define CONFIG_STRING_DU_LIST			            "DU"
-#define CONFIG_STRING_CU_LIST			            "CU"
-#define DU_TYPE_LTE                                 0
-#define DU_TYPE_WIFI                                1
-#define ENB_CONFIG_STRING_CU_INTERFACES_CONFIG		"CU_INTERFACES"
-#define ENB_CONFIG_STRING_CU_INTERFACE_NAME_FOR_F1U "CU_INTERFACE_NAME_FOR_F1U"
-#define ENB_CONFIG_STRING_CU_IPV4_ADDRESS_FOR_F1U   "CU_IPV4_ADDRESS_FOR_F1U"
-#define ENB_CONFIG_STRING_CU_PORT_FOR_F1U           "CU_PORT_FOR_F1U"
-#define ENB_CONFIG_STRING_DU_TYPE	                "DU_TYPE"
-#define ENB_CONFIG_STRING_F1_U_CU_TRANSPORT_TYPE    "F1_U_CU_TRANSPORT_TYPE"
-#define ENB_CONFIG_STRING_DU_INTERFACES_CONFIG		"DU_INTERFACES"
-#define ENB_CONFIG_STRING_DU_INTERFACE_NAME_FOR_F1U "DU_INTERFACE_NAME_FOR_F1U"
-#define ENB_CONFIG_STRING_DU_IPV4_ADDRESS_FOR_F1U   "DU_IPV4_ADDRESS_FOR_F1U"
-#define ENB_CONFIG_STRING_DU_PORT_FOR_F1U           "DU_PORT_FOR_F1U"
-#define ENB_CONFIG_STRING_F1_U_DU_TRANSPORT_TYPE    "F1_U_DU_TRANSPORT_TYPE"
-
-#define CONFIG_STRING_CU_BALANCING      "CU_BALANCING"
-
-// clang-format off
-#define CUPARAMS_DESC { \
-  {ENB_CONFIG_STRING_CU_INTERFACE_NAME_FOR_F1U, NULL,   0,   .strptr=NULL,   .defstrval="eth0",         TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_CU_IPV4_ADDRESS_FOR_F1U,   NULL,   0,   .strptr=NULL,   .defstrval="127.0.0.1",    TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_CU_PORT_FOR_F1U,           NULL,   0,   .uptr=NULL,     .defintval=2210,           TYPE_UINT,     0}, \
-  {ENB_CONFIG_STRING_F1_U_CU_TRANSPORT_TYPE,    NULL,   0,   .strptr=NULL,   .defstrval="TCP",          TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_DU_TYPE,                   NULL,   0,   .strptr=NULL,   .defstrval="LTE",          TYPE_STRING,   0}, \
-}
-// clang-format on
-
-// clang-format off
-#define DUPARAMS_DESC { \
-  {ENB_CONFIG_STRING_DU_INTERFACE_NAME_FOR_F1U, NULL,   0,   .strptr=NULL,   .defstrval="eth0",       TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_DU_IPV4_ADDRESS_FOR_F1U,   NULL,   0,   .strptr=NULL,   .defstrval="127.0.0.1",  TYPE_STRING,   0}, \
-  {ENB_CONFIG_STRING_DU_PORT_FOR_F1U,           NULL,   0,   .uptr=NULL,     .defintval=2210,         TYPE_UINT,     0}, \
-  {ENB_CONFIG_STRING_F1_U_DU_TRANSPORT_TYPE,    NULL,   0,   .strptr=NULL,   .defstrval="TCP",        TYPE_STRING,   0}, \
-}
-// clang-format on
-
-// clang-format off
-#define CU_BAL_DESC { \
-  {CONFIG_STRING_CU_BALANCING,                  NULL,   0,   .strptr=NULL,   .defstrval="ALL",        TYPE_STRING,   0}, \
-}
-// clang-format on
-
-#define CU_INTERFACE_F1U 	                     0
-#define CU_ADDRESS_F1U                           1
-#define CU_PORT_F1U 	              		     2
-#define CU_TYPE_F1U 	              		     3
-
-#define DU_INTERFACE_F1U                         0
-#define DU_ADDRESS_F1U                           1
-#define DU_PORT_F1U                              2
-#define DU_TYPE_F1U                              3
-#define DU_TECH                                  4
-
-/*----------------------------------------------------------------------------------------------------------------------------------------------------*/
-/*----------------------------------------------------------------------------------------------------------------------------------------------------*/
 /* MACRLC configuration section names   */
 #define CONFIG_STRING_MACRLC_LIST                          "MACRLCs"
 #define CONFIG_STRING_MACRLC_CONFIG                        "macrlc_config"
@@ -1257,7 +1167,6 @@ typedef struct srb1_params_s {
 /* MACRLC configuration parameters names   */
 #define CONFIG_STRING_MACRLC_CC                            "num_cc"
 #define CONFIG_STRING_MACRLC_TRANSPORT_N_PREFERENCE        "tr_n_preference"
-#define CONFIG_STRING_MACRLC_LOCAL_N_IF_NAME               "local_n_if_name"
 #define CONFIG_STRING_MACRLC_LOCAL_N_ADDRESS               "local_n_address"
 #define CONFIG_STRING_MACRLC_REMOTE_N_ADDRESS              "remote_n_address"
 #define CONFIG_STRING_MACRLC_LOCAL_N_PORTC                 "local_n_portc"
@@ -1265,7 +1174,6 @@ typedef struct srb1_params_s {
 #define CONFIG_STRING_MACRLC_LOCAL_N_PORTD                 "local_n_portd"
 #define CONFIG_STRING_MACRLC_REMOTE_N_PORTD                "remote_n_portd"
 #define CONFIG_STRING_MACRLC_TRANSPORT_S_PREFERENCE        "tr_s_preference"
-#define CONFIG_STRING_MACRLC_LOCAL_S_IF_NAME               "local_s_if_name"
 #define CONFIG_STRING_MACRLC_LOCAL_S_ADDRESS               "local_s_address"
 #define CONFIG_STRING_MACRLC_REMOTE_S_ADDRESS              "remote_s_address"
 #define CONFIG_STRING_MACRLC_LOCAL_S_PORTC                 "local_s_portc"
@@ -1276,22 +1184,20 @@ typedef struct srb1_params_s {
 
 #define MACRLC_CC_IDX                                          0
 #define MACRLC_TRANSPORT_N_PREFERENCE_IDX                      1
-#define MACRLC_LOCAL_N_IF_NAME_IDX                             2
-#define MACRLC_LOCAL_N_ADDRESS_IDX                             3
-#define MACRLC_REMOTE_N_ADDRESS_IDX                            4
-#define MACRLC_LOCAL_N_PORTC_IDX                               5
-#define MACRLC_REMOTE_N_PORTC_IDX                              6
-#define MACRLC_LOCAL_N_PORTD_IDX                               7
-#define MACRLC_REMOTE_N_PORTD_IDX                              8
-#define MACRLC_TRANSPORT_S_PREFERENCE_IDX                      9
-#define MACRLC_LOCAL_S_IF_NAME_IDX                             10
-#define MACRLC_LOCAL_S_ADDRESS_IDX                             11
-#define MACRLC_REMOTE_S_ADDRESS_IDX                            12
-#define MACRLC_LOCAL_S_PORTC_IDX                               13
-#define MACRLC_REMOTE_S_PORTC_IDX                              14
-#define MACRLC_LOCAL_S_PORTD_IDX                               15
-#define MACRLC_REMOTE_S_PORTD_IDX                              16
-#define MACRLC_SCHED_MODE_IDX                                  17
+#define MACRLC_LOCAL_N_ADDRESS_IDX                             2
+#define MACRLC_REMOTE_N_ADDRESS_IDX                            3
+#define MACRLC_LOCAL_N_PORTC_IDX                               4
+#define MACRLC_REMOTE_N_PORTC_IDX                              5
+#define MACRLC_LOCAL_N_PORTD_IDX                               6
+#define MACRLC_REMOTE_N_PORTD_IDX                              7
+#define MACRLC_TRANSPORT_S_PREFERENCE_IDX                      8
+#define MACRLC_LOCAL_S_ADDRESS_IDX                             9
+#define MACRLC_REMOTE_S_ADDRESS_IDX                            10
+#define MACRLC_LOCAL_S_PORTC_IDX                               11
+#define MACRLC_REMOTE_S_PORTC_IDX                              12
+#define MACRLC_LOCAL_S_PORTD_IDX                               13
+#define MACRLC_REMOTE_S_PORTD_IDX                              14
+#define MACRLC_SCHED_MODE_IDX                                  15
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
 /* thread configuration parameters section name */

@@ -33,9 +33,11 @@ import logging
 import sshconnection
 #to update the HTML object
 import cls_oai_html
+import cls_cmd
 from multiprocessing import SimpleQueue
 #for log folder maintenance
 import os
+import re
 
 class PhySim:
 	def __init__(self):
@@ -63,7 +65,7 @@ class PhySim:
 #PRIVATE Methods
 #-----------------
 
-	def __CheckResults_LDPCTest(self,HTML,CONST,testcase_id):
+	def __CheckResults_LDPCcudaTest(self,HTML,CONST,testcase_id):
 		mySSH = sshconnection.SSHConnection()
 		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
 		#retrieve run log file and store it locally$
@@ -84,42 +86,44 @@ class PhySim:
 		HTML.CreateHtmlTestRowQueue(self.runargs, 'OK', [info])
 		return HTML
 
-	def __CheckResults_LDPCt1Test(self,HTML,CONST,testcase_id):
-		thrs_NOK = 500
-		thrs_KO = 1000
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
+	def __CheckResults_LDPCt2Test(self,HTML,CONST,testcase_id):
+		thrs_KO = int(self.timethrs)
+		mySSH = cls_cmd.getConnection(self.eNBIpAddr)
 		#retrieve run log file and store it locally$
-		mySSH.copyin(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord, self.__workSpacePath+self.__runLogFile, '.')
+		mySSH.copyin(f'{self.__workSpacePath}{self.__runLogFile}', f'{self.__runLogFile}')
 		mySSH.close()
-		#parse results looking for Decoding values
-		runResultsT1=[]
+		#parse results looking for encoder/decoder processing time values
+
 		with open(self.__runLogFile) as g:
 			for line in g:
-				if 'decoding time' in line:
-					runResultsT1.append(line)
+				res_enc = re.search(r"DLSCH encoding time\s+(\d+\.\d+)\s+us",line)
+				res_dec = re.search(r'ULSCH total decoding time\s+(\d+\.\d+)\s+us',line)
+				if res_dec is not None:
+					time = res_dec.group(1)
+					info = res_dec.group(0)
+					break
+				if res_enc is not None:
+					time = res_enc.group(1)
+					info = res_enc.group(0)
+					break
 
-		# In case the T1 board does work properly, there is no statistics
-		if len(runResultsT1) == 0:
-			logging.error('no statistics')
+		# In case the T2 board does work properly, there is no statistics
+		if res_enc is None and res_dec is None:
+			logging.error(f'no statistics: res_enc {res_enc} res_dec {res_dec}')
 			HTML.CreateHtmlTestRowQueue(self.runargs, 'KO', ['no statistics'])
 			self.exitStatus = 1
-			os.system('mv '+self.__runLogFile+' '+ self.__runLogPath+'/.')
+			os.system(f'mv {self.__runLogFile} {self.__runLogPath}/.')
 			return HTML
 
-		info = runResultsT1[0][15:-13]
-		result = int(''.join(filter(str.isdigit, info)))/100
-		#once parsed move the local logfile to its folder for tidiness
-		os.system('mv '+self.__runLogFile+' '+ self.__runLogPath+'/.')
-		if result < thrs_NOK:
+		#once parsed move the local logfile to its folder
+		os.system(f'mv {self.__runLogFile} {self.__runLogPath}/.')
+		if float(time) < thrs_KO:
 			HTML.CreateHtmlTestRowQueue(self.runargs, 'OK', [info])
-		elif result > thrs_KO:
-			error_msg = f'Decoding time exceeds a limit of {thrs_KO} us'
+		else:
+			error_msg = f'Processing time exceeds a limit of {thrs_KO} us'
 			logging.error(error_msg)
 			HTML.CreateHtmlTestRowQueue(self.runargs, 'KO', [info + '\n' + error_msg])
 			self.exitStatus = 1
-		else:
-			HTML.CreateHtmlTestRowQueue(self.runargs, 'NOK', [info])
 		return HTML
 
 	def __CheckResults_NRulsimTest(self, HTML, CONST, testcase_id):
@@ -228,7 +232,7 @@ class PhySim:
 		return lHTML
 
 
-	def Run_LDPCTest(self,htmlObj,constObj,testcase_id):
+	def Run_CUDATest(self,htmlObj,constObj,testcase_id):
 		self.__workSpacePath = self.eNBSourceCodePath+'/cmake_targets/'
 		#create run logs folder locally
 		os.system('mkdir -p ./'+self.__runLogPath)
@@ -243,25 +247,24 @@ class PhySim:
 		mySSH.close()
 		#return updated HTML to main
 		lHTML = cls_oai_html.HTMLManagement()
-		lHTML=self.__CheckResults_LDPCTest(htmlObj,constObj,testcase_id)
+		lHTML=self.__CheckResults_LDPCcudaTest(htmlObj,constObj,testcase_id)
 		return lHTML
 
-	def Run_LDPCt1Test(self,htmlObj,constObj,testcase_id):
-		self.__workSpacePath = self.eNBSourceCodePath+'/cmake_targets/'
+	def Run_T2Test(self,htmlObj,constObj,testcase_id):
+		self.__workSpacePath = f'{self.eNBSourceCodePath}/cmake_targets/'
 		#create run logs folder locally
-		os.system('mkdir -p ./'+self.__runLogPath)
+		os.system(f'mkdir -p ./{self.__runLogPath}')
 		#log file is tc_<testcase_id>.log remotely
-		self.__runLogFile='physim_'+str(testcase_id)+'.log'
+		self.__runLogFile=f'physim_{str(testcase_id)}.log'
 		#open a session for test run
-		mySSH = sshconnection.SSHConnection()
-		mySSH.open(self.eNBIpAddr, self.eNBUserName, self.eNBPassWord)
-		mySSH.command('cd '+self.__workSpacePath,'\$',5)
+		mySSH = cls_cmd.getConnection(self.eNBIpAddr)
+		mySSH.run(f'cd {self.__workSpacePath}')
 		#run and redirect the results to a log file
-		mySSH.command(f'sudo {self.__workSpacePath}ran_build/build/nr_ulsim {self.runargs} > {self.__runLogFile} 2>&1', '\$', 30)
+		mySSH.run(f'sudo {self.__workSpacePath}ran_build/build/{self.runsim} {self.runargs} > {self.__workSpacePath}{self.__runLogFile} 2>&1')
 		mySSH.close()
 		#return updated HTML to main
 		lHTML = cls_oai_html.HTMLManagement()
-		lHTML=self.__CheckResults_LDPCt1Test(htmlObj,constObj,testcase_id)
+		lHTML=self.__CheckResults_LDPCt2Test(htmlObj,constObj,testcase_id)
 		return lHTML
 
 	def Run_NRulsimTest(self, htmlObj, constObj, testcase_id):

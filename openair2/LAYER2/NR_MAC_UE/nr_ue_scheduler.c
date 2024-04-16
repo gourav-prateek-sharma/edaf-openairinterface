@@ -133,6 +133,8 @@ static void trigger_regular_bsr(NR_UE_MAC_INST_t *mac, NR_LogicalChannelIdentity
 void update_mac_timers(NR_UE_MAC_INST_t *mac)
 {
   nr_timer_tick(&mac->ra.contention_resolution_timer);
+  for (int j = 0; j < NR_MAX_SR_ID; j++)
+    nr_timer_tick(&mac->scheduling_info.sr_info[j].prohibitTimer);
   nr_timer_tick(&mac->scheduling_info.sr_DelayTimer);
   bool retxBSR_expired = nr_timer_tick(&mac->scheduling_info.retxBSR_Timer);
   if (retxBSR_expired) {
@@ -624,11 +626,11 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
     /* Transform precoding */
     pusch_config_pdu->transform_precoding = get_transformPrecoding(current_UL_BWP, dci_format, 0);
+    bool tp_enabled = pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled;
 
     /*DCI format-related configuration*/
     if (dci_format == NR_UL_DCI_FORMAT_0_0) {
-      if ((pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_disabled) &&
-          pusch_config_pdu->nr_of_symbols < 3)
+      if (!tp_enabled && pusch_config_pdu->nr_of_symbols < 3)
         pusch_config_pdu->num_dmrs_cdm_grps_no_data = 1;
       else
         pusch_config_pdu->num_dmrs_cdm_grps_no_data = 2;
@@ -651,7 +653,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
 
     pusch_config_pdu->scid = 0;
     pusch_config_pdu->data_scrambling_id = mac->physCellId;
-    if (pusch_Config->dataScramblingIdentityPUSCH
+    if (pusch_Config
+        && pusch_Config->dataScramblingIdentityPUSCH
         && rnti_type == TYPE_C_RNTI_
         && !(dci_format == NR_UL_DCI_FORMAT_0_0 && ss_type == NR_SearchSpace__searchSpaceType_PR_common))
       pusch_config_pdu->data_scrambling_id = *pusch_Config->dataScramblingIdentityPUSCH;
@@ -661,7 +664,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
       pusch_config_pdu->scid = dci->dmrs_sequence_initialization.val;
 
     /* TRANSFORM PRECODING ------------------------------------------------------------------------------------------*/
-    if (pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_enabled) {
+    if (tp_enabled) {
 
       uint32_t n_RS_Id = 0;
       if (NR_DMRS_ulconfig->transformPrecodingEnabled &&
@@ -710,8 +713,8 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     }
 
     /* FREQ_HOPPING_FLAG */
-    if ((pusch_Config != NULL)
-        && (pusch_Config->frequencyHopping != NULL)
+    if (pusch_Config
+        && pusch_Config->frequencyHopping
         && (pusch_Config->resourceAllocation != NR_PUSCH_Config__resourceAllocation_resourceAllocationType0)) {
       pusch_config_pdu->frequency_hopping = dci->frequency_hopping_flag.val;
     }
@@ -720,8 +723,9 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     pusch_config_pdu->mcs_index = dci->mcs;
 
     /* MCS TABLE */
-    pusch_config_pdu->mcs_table = get_pusch_mcs_table(pusch_Config ? pusch_Config->mcs_TableTransformPrecoder : NULL,
-                                                      pusch_config_pdu->transform_precoding != NR_PUSCH_Config__transformPrecoder_disabled,
+    long *mcs_table_config = pusch_Config ? (tp_enabled ? pusch_Config->mcs_TableTransformPrecoder : pusch_Config->mcs_Table) : NULL;
+    pusch_config_pdu->mcs_table = get_pusch_mcs_table(mcs_table_config,
+                                                      tp_enabled,
                                                       dci_format,
                                                       rnti_type,
                                                       ss_type,
@@ -792,7 +796,7 @@ int nr_config_pusch_pdu(NR_UE_MAC_INST_t *mac,
     /* PTRS */
     if (pusch_Config && pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB &&
         pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS) {
-      if (pusch_config_pdu->transform_precoding == NR_PUSCH_Config__transformPrecoder_disabled) {
+      if (!tp_enabled) {
         nfapi_nr_ue_ptrs_ports_t ptrs_ports_list;
         pusch_config_pdu->pusch_ptrs.ptrs_ports_list = &ptrs_ports_list;
         bool valid_ptrs_setup = set_ul_ptrs_values(pusch_Config->dmrs_UplinkForPUSCH_MappingTypeB->choice.setup->phaseTrackingRS->choice.setup,
@@ -1084,7 +1088,7 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
   dl_config->slot = rx_slot;
   dl_config->number_pdus = 0;
 
-  if (mac->state == UE_NOT_SYNC)
+  if (mac->state == UE_NOT_SYNC || mac->state == UE_DETACHING)
     return;
 
   ue_dci_configuration(mac, dl_config, rx_frame, rx_slot);
@@ -1107,9 +1111,31 @@ void nr_ue_dl_scheduler(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_info
     LOG_E(NR_MAC, "Internal error, no scheduled_response function\n");
 }
 
-static void nr_trigger_sr(NR_UE_MAC_INST_t *mac)
+static void nr_update_sr(NR_UE_MAC_INST_t *mac)
 {
   NR_UE_SCHEDULING_INFO *sched_info = &mac->scheduling_info;
+
+  // if no pending data available for transmission
+  // All pending SR(s) shall be cancelled and each respective sr-ProhibitTimer shall be stopped
+  bool data_avail = false;
+  for (int i = 0; i < NR_MAX_NUM_LCID; i++) {
+    if (sched_info->lc_sched_info[i].LCID_buffer_remain > 0) {
+      data_avail = true;
+      break;
+    }
+  }
+  if (!data_avail) {
+    for (int i = 0; i < NR_MAX_SR_ID; i++) {
+      nr_sr_info_t *sr = &sched_info->sr_info[i];
+      if (sr->active_SR_ID) {
+        LOG_D(NR_MAC, "No pending data available -> Canceling pending SRs\n");
+        sr->pending = false;
+        sr->counter = 0;
+        nr_timer_stop(&sr->prohibitTimer);
+      }
+    }
+  }
+
   // if a Regular BSR has been triggered and logicalChannelSR-DelayTimer is not running
   if (((sched_info->BSR_reporting_active & NR_BSR_TRIGGER_REGULAR) == 0)
       || is_nr_timer_active(sched_info->sr_DelayTimer))
@@ -1128,7 +1154,18 @@ static void nr_trigger_sr(NR_UE_MAC_INST_t *mac)
   // TODO not implemented
 
   // trigger SR
-  sched_info->SR_pending = 1;
+  if (lc_info->sr_id < 0 || lc_info->sr_id >= NR_MAX_SR_ID)
+    LOG_E(NR_MAC, "No SR corresponding to this LCID\n"); // TODO not sure what to do here
+  else {
+    nr_sr_info_t *sr = &sched_info->sr_info[lc_info->sr_id];
+    if (!sr->pending) {
+      LOG_D(NR_MAC, "Triggering SR for ID %d\n", lc_info->sr_id);
+      sr->pending = true;
+      sr->counter = 0;
+      // TODO initiate a Random Access procedure on the SpCell and cancel the pending SR
+      // if the MAC entity has no valid PUCCH resource configured for the pending SR
+    }
+  }
 }
 
 static void nr_update_bsr(NR_UE_MAC_INST_t *mac, frame_t frameP, slot_t slotP, uint8_t gNB_index)
@@ -1206,7 +1243,7 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   uint32_t gNB_index = ul_info->gNB_index;
 
   RA_config_t *ra = &mac->ra;
-  if(mac->state < UE_CONNECTED) {
+  if(mac->state > UE_NOT_SYNC && mac->state < UE_CONNECTED) {
     nr_ue_get_rach(mac, cc_id, frame_tx, gNB_index, slot_tx);
     nr_ue_prach_scheduler(mac, frame_tx, slot_tx);
   }
@@ -1287,38 +1324,35 @@ void nr_ue_ul_scheduler(NR_UE_MAC_INST_t *mac, nr_uplink_indication_t *ul_info)
   }
 
   if(mac->state == UE_CONNECTED)
-    nr_trigger_sr(mac);
+    nr_update_sr(mac);
 
   // update Bj for all active lcids before LCP procedure
-  LOG_D(NR_MAC, "====================[Frame %d][Slot %d]Logical Channel Prioritization===========\n", frame_tx, slot_tx);
-  for (int i = 0; i < mac->lc_ordered_list.count; i++) {
-    nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
-    int lcid = lc_info->lcid;
-    // max amount of data that can be buffered/accumulated in a logical channel buffer
-    uint32_t bucketSize_max = lc_info->bucket_size;
-
-    /*
-      measure Bj
-      increment the value of Bj by product PBR  * T
-    */
-    NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
-    int32_t bj = sched_info->Bj;
-    if (lc_info->pbr < UINT_MAX) {
-      uint32_t slots_elapsed = nr_timer_elapsed_time(sched_info->Bj_timer); // slots elapsed since Bj was last incremented
-      // it is safe to divide by 1k since pbr in lc_info is computed multiplying by 1000 the RRC value to convert kB/s to B/s
-      uint32_t pbr_ms = lc_info->pbr / 1000;
-      bj += ((pbr_ms * slots_elapsed) >> mac->current_UL_BWP->scs); // each slot length is 1/scs ms
+  if (mac->current_UL_BWP) {
+    LOG_D(NR_MAC, "%4d.%2d Logical Channel Prioritization\n", frame_tx, slot_tx);
+    for (int i = 0; i < mac->lc_ordered_list.count; i++) {
+      nr_lcordered_info_t *lc_info = mac->lc_ordered_list.array[i];
+      int lcid = lc_info->lcid;
+      // max amount of data that can be buffered/accumulated in a logical channel buffer
+      uint32_t bucketSize_max = lc_info->bucket_size;
+      //  measure Bj increment the value of Bj by product PBR  * T
+      NR_LC_SCHEDULING_INFO *sched_info = get_scheduling_info_from_lcid(mac, lcid);
+      int32_t bj = sched_info->Bj;
+      if (lc_info->pbr < UINT_MAX) {
+        uint32_t slots_elapsed = nr_timer_elapsed_time(sched_info->Bj_timer); // slots elapsed since Bj was last incremented
+        // it is safe to divide by 1k since pbr in lc_info is computed multiplying by 1000 the RRC value to convert kB/s to B/s
+        uint32_t pbr_ms = lc_info->pbr / 1000;
+        bj += ((pbr_ms * slots_elapsed) >> mac->current_UL_BWP->scs); // each slot length is 1/scs ms
+      }
+      else
+        bj = INT_MAX;
+      // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
+      sched_info->Bj = min(bj, bucketSize_max);
+      // reset bj timer
+      nr_timer_start(&sched_info->Bj_timer);
     }
-    else
-      bj = INT_MAX;
-
-    // bj > max bucket size, set bj to max bucket size, as in ts38.321 5.4.3.1 Logical Channel Prioritization
-    sched_info->Bj = min(bj, bucketSize_max);
-    // reset bj timer
-    nr_timer_start(&sched_info->Bj_timer);
   }
 
-  if(mac->state >= UE_PERFORMING_RA)
+  if(mac->state >= UE_PERFORMING_RA && mac->state < UE_DETACHING)
     nr_ue_pucch_scheduler(mac, frame_tx, slot_tx, ul_info->phy_data);
 }
 
@@ -1917,6 +1951,7 @@ void build_ssb_to_ro_map(NR_UE_MAC_INST_t *mac)
 {
   // Clear all the lists and maps
   const int bwp_id = mac->current_UL_BWP->bwp_id;
+  free_rach_structures(mac, bwp_id);
   memset(&mac->ssb_list[bwp_id], 0, sizeof(ssb_list_info_t));
   memset(&mac->prach_assoc_pattern[bwp_id], 0, sizeof(prach_association_pattern_t));
 
@@ -1946,8 +1981,7 @@ void nr_ue_pucch_scheduler(NR_UE_MAC_INST_t *mac, frame_t frameP, int slotP, voi
   // SR
   if (mac->state == UE_CONNECTED && trigger_periodic_scheduling_request(mac, &pucch[0], frameP, slotP)) {
     num_res++;
-    /* sr_payload = 1 means that this is a positive SR, sr_payload = 0 means that it is a negative SR */
-    pucch[0].sr_payload = nr_ue_get_SR(mac, frameP, slotP);
+    // TODO check if the PUCCH resource for the SR transmission occasion overlap with a UL-SCH resource
   }
 
   // CSI
@@ -2533,10 +2567,8 @@ static int nr_ue_get_sdu_mac_ce_pre(NR_UE_MAC_INST_t *mac,
   bsr_t
 */
 static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
-                                      int CC_id,
                                       frame_t frame,
                                       slot_t slot,
-                                      uint8_t gNB_index,
                                       uint8_t *ulsch_buffer,
                                       uint16_t buflen,
                                       NR_UE_MAC_CE_INFO *mac_ce_p)
@@ -2675,18 +2707,15 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
     }
   }
 
-  LOG_D(NR_MAC, "[UE %d][SR] Gave SDU to PHY, clearing any scheduling request\n", mac->ue_id);
-  sched_info->SR_pending = 0;
-  sched_info->SR_COUNTER = 0;
-
   /* Actions when a BSR is sent */
   if (mac_ce_p->bsr_ce_len) {
     LOG_D(NR_MAC,
-          "[UE %d] MAC BSR Sent !! bsr (ce%d,hdr%d) buff_len %d\n",
+          "[UE %d] MAC BSR Sent! ce %d, hdr %d buff_len %d triggering LCID %ld\n",
           mac->ue_id,
           mac_ce_p->bsr_ce_len,
           mac_ce_p->bsr_header_len,
-          buflen);
+          buflen,
+          sched_info->regularBSR_trigger_lcid);
     // Reset ReTx BSR Timer
     nr_timer_start(&sched_info->retxBSR_Timer);
     // Reset Periodic Timer except when BSR is truncated
@@ -2695,8 +2724,20 @@ static void nr_ue_get_sdu_mac_ce_post(NR_UE_MAC_INST_t *mac,
       LOG_D(NR_MAC, "[UE %d] MAC Periodic BSR Timer Reset\n", mac->ue_id);
     }
 
+    if (sched_info->regularBSR_trigger_lcid > 0) {
+      nr_lcordered_info_t *lc_info = get_lc_info_from_lcid(mac, sched_info->regularBSR_trigger_lcid);
+      AssertFatal(lc_info, "Couldn't find logical channel with LCID %ld\n", sched_info->regularBSR_trigger_lcid);
+      if (lc_info->sr_id >= 0 && lc_info->sr_id < NR_MAX_SR_ID) {
+        LOG_D(NR_MAC, "[UE %d][SR] Gave SDU to PHY, clearing scheduling request with ID %d\n", mac->ue_id, lc_info->sr_id);
+        nr_sr_info_t *sr = &sched_info->sr_info[lc_info->sr_id];
+        sr->pending = false;
+        sr->counter = 0;
+        nr_timer_stop(&sr->prohibitTimer);
+      }
+    }
     // Reset BSR Trigger flags
     sched_info->BSR_reporting_active = NR_BSR_TRIGGER_NONE;
+    sched_info->regularBSR_trigger_lcid = 0;
   }
 }
 
@@ -3079,12 +3120,14 @@ uint8_t nr_ue_get_sdu(NR_UE_MAC_INST_t *mac,
 
   //nr_ue_get_sdu_mac_ce_post recalculates all mac_ce related header fields since buffer has been changed after mac_rlc_data_req.
   //Also, BSR padding is handled here after knowing mac_ce_p->sdu_length_total.
-  nr_ue_get_sdu_mac_ce_post(mac, CC_id, frame, slot, gNB_index, ulsch_buffer, buflen, mac_ce_p);
+  nr_ue_get_sdu_mac_ce_post(mac, frame, slot, ulsch_buffer, buflen, mac_ce_p);
 
   if (mac_ce_p->tot_mac_ce_len > 0) {
 
     LOG_D(NR_MAC, "In %s copying %d bytes of MAC CEs to the UL PDU \n", __FUNCTION__, mac_ce_p->tot_mac_ce_len);
-    nr_write_ce_ulsch_pdu(pdu, mac, 0, NULL, mac_ce_p->bsr_t, mac_ce_p->bsr_s, mac_ce_p->bsr_l);
+    int size = nr_write_ce_ulsch_pdu(pdu, mac, 0, NULL, mac_ce_p->bsr_t, mac_ce_p->bsr_s, mac_ce_p->bsr_l);
+    if (size != mac_ce_p->tot_mac_ce_len)
+      LOG_E(NR_MAC, "MAC CE size computed by nr_write_ce_ulsch_pdu is %d while the one assumed before is %d\n", size, mac_ce_p->tot_mac_ce_len);
     pdu += (unsigned char) mac_ce_p->tot_mac_ce_len;
 
 #ifdef ENABLE_MAC_PAYLOAD_DEBUG

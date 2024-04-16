@@ -41,8 +41,8 @@ double get_pa_dB(uint8_t pa)
 
 }
 
-double computeRhoA_eNB(uint8_t pa,
-                       LTE_eNB_DLSCH_t *dlsch_eNB, int dl_power_off, uint8_t n_antenna_port){
+double computeRhoA_eNB(uint8_t pa, LTE_eNB_DLSCH_t *dlsch_eNB, int dl_power_off, uint8_t n_antenna_port)
+{
   double rho_a_dB;
   double sqrt_rho_a_lin;
 
@@ -59,10 +59,10 @@ double computeRhoA_eNB(uint8_t pa,
   if (dlsch_eNB) {
      dlsch_eNB->sqrt_rho_a= (short) (sqrt_rho_a_lin*pow(2,13));
      dlsch_eNB->pa = pa;
-  }
 #if DEBUG_PC
-  printf("eNB: p_a=%d, value=%f, sqrt_rho_a=%d\n",p_a,pa_values[ pdsch_config_dedicated->p_a],dlsch_eNB->sqrt_rho_a);
+    printf("eNB: p_a=%d, value=%f, sqrt_rho_a=%d\n", p_a, pa_values[pdsch_config_dedicated->p_a], dlsch_eNB->sqrt_rho_a);
 #endif
+  }
 
   return(rho_a_dB);
 }
@@ -89,12 +89,12 @@ double computeRhoB_eNB(uint8_t pa,
   sqrt_rho_b_lin= pow(10,(0.05*rho_b_dB));
 
   if (dlsch_eNB) {
-    dlsch_eNB->sqrt_rho_b= (short) (sqrt_rho_b_lin*pow(2,13));
+    dlsch_eNB->sqrt_rho_b = (short) (sqrt_rho_b_lin * pow(2, 13));
     dlsch_eNB->pb = pb;
-  }
 #ifdef DEBUG_PC
-  printf("eNB: n_ant=%d, p_b=%d -> rho_b/rho_a=%f -> sqrt_rho_b=%d\n",n_antenna_port,pb,ratioPB[1][pb],dlsch_eNB->sqrt_rho_b);
+    printf("eNB: n_ant=%d, p_b=%d -> rho_b/rho_a=%f -> sqrt_rho_b=%d\n", n_antenna_port, pb, ratioPB[1][pb], dlsch_eNB->sqrt_rho_b);
 #endif
+  }
   return(rho_b_dB);
 }
 

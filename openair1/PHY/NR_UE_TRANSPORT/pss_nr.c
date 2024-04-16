@@ -704,3 +704,93 @@ static int pss_search_time_nr(c16_t **rxdata, PHY_VARS_NR_UE *ue, int fo_flag, i
   return peak_position;
 }
 
+void sl_generate_pss(SL_NR_UE_INIT_PARAMS_t *sl_init_params, uint8_t n_sl_id2, uint16_t scaling)
+{
+  int i = 0, m = 0;
+  int16_t x[SL_NR_PSS_SEQUENCE_LENGTH];
+  const int x_initial[7] = {0, 1, 1, 0, 1, 1, 1};
+  int16_t *sl_pss = sl_init_params->sl_pss[n_sl_id2];
+  int16_t *sl_pss_for_sync = sl_init_params->sl_pss_for_sync[n_sl_id2];
+
+  LOG_D(PHY, "SIDELINK PSBCH INIT: PSS Generation with N_SL_id2:%d\n", n_sl_id2);
+
+#ifdef SL_DEBUG_INIT
+  printf("SIDELINK: PSS Generation with N_SL_id2:%d\n", n_sl_id2);
+#endif
+
+  /// Sequence generation
+  for (i = 0; i < 7; i++)
+    x[i] = x_initial[i];
+
+  for (i = 0; i < (SL_NR_PSS_SEQUENCE_LENGTH - 7); i++) {
+    x[i + 7] = (x[i + 4] + x[i]) % 2;
+  }
+
+  for (i = 0; i < SL_NR_PSS_SEQUENCE_LENGTH; i++) {
+    m = (i + 22 + 43 * n_sl_id2) % SL_NR_PSS_SEQUENCE_LENGTH;
+    sl_pss_for_sync[i] = (1 - 2 * x[m]);
+    sl_pss[i] = sl_pss_for_sync[i] * scaling;
+
+#ifdef SL_DEBUG_INIT_DATA
+    printf("m:%d, sl_pss[%d]:%d\n", m, i, sl_pss[i]);
+#endif
+  }
+
+#ifdef SL_DUMP_INIT_SAMPLES
+  LOG_M("sl_pss_seq.m", "sl_pss", (void *)sl_pss, SL_NR_PSS_SEQUENCE_LENGTH, 1, 0);
+#endif
+}
+
+// This cannot be done at init time as ofdm symbol size, ssb start subcarrier depends on configuration
+// done at SLSS read time.
+void sl_generate_pss_ifft_samples(sl_nr_ue_phy_params_t *sl_ue_params, SL_NR_UE_INIT_PARAMS_t *sl_init_params)
+{
+  uint8_t id2 = 0;
+  int16_t *sl_pss = NULL;
+  NR_DL_FRAME_PARMS *sl_fp = &sl_ue_params->sl_frame_params;
+  int16_t scaling_factor = AMP;
+
+  int32_t *pss_T = NULL;
+
+  uint16_t k = 0;
+
+  c16_t pss_F[sl_fp->ofdm_symbol_size]; // IQ samples in freq domain
+
+  LOG_I(PHY, "SIDELINK INIT: Generation of PSS time domain samples. scaling_factor:%d\n", scaling_factor);
+
+  for (id2 = 0; id2 < SL_NR_NUM_IDs_IN_PSS; id2++) {
+    k = sl_fp->first_carrier_offset + sl_fp->ssb_start_subcarrier + 2; // PSS in from REs 2-129
+    if (k >= sl_fp->ofdm_symbol_size)
+      k -= sl_fp->ofdm_symbol_size;
+
+    pss_T = &sl_init_params->sl_pss_for_correlation[id2][0];
+    sl_pss = sl_init_params->sl_pss[id2];
+
+    memset(pss_T, 0, sl_fp->ofdm_symbol_size * sizeof(pss_T[0]));
+    memset(pss_F, 0, sl_fp->ofdm_symbol_size * sizeof(c16_t));
+
+    for (int i = 0; i < SL_NR_PSS_SEQUENCE_LENGTH; i++) {
+      pss_F[k].r = (sl_pss[i] * scaling_factor) >> 15;
+      // pss_F[2*k] = (sl_pss[i]/23170) * 4192;
+      // pss_F[2*k+1] = 0;
+
+#ifdef SL_DEBUG_INIT_DATA
+      printf("id:%d, k:%d, pss_F[%d]:%d, sl_pss[%d]:%d\n", id2, k, 2 * k, pss_F[2 * k], i, sl_pss[i]);
+#endif
+
+      k++;
+      if (k == sl_fp->ofdm_symbol_size)
+        k = 0;
+    }
+
+    idft((int16_t)get_idft(sl_fp->ofdm_symbol_size),
+         (int16_t *)&pss_F[0], /* complex input */
+         (int16_t *)&pss_T[0], /* complex output */
+         1); /* scaling factor */
+  }
+
+#ifdef SL_DUMP_PSBCH_TX_SAMPLES
+  LOG_M("sl_pss_TD_id0.m", "pss_TD_0", (void *)sl_init_params->sl_pss_for_correlation[0], sl_fp->ofdm_symbol_size, 1, 1);
+  LOG_M("sl_pss_TD_id1.m", "pss_TD_1", (void *)sl_init_params->sl_pss_for_correlation[1], sl_fp->ofdm_symbol_size, 1, 1);
+#endif
+}

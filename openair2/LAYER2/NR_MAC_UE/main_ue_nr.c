@@ -79,6 +79,9 @@ void nr_ue_init_mac(NR_UE_MAC_INST_t *mac)
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
   memset(mac->ssb_list, 0, sizeof(mac->ssb_list));
   memset(mac->prach_assoc_pattern, 0, sizeof(mac->prach_assoc_pattern));
+
+  for (int i = 0; i < NR_MAX_SR_ID; i++)
+    memset(&mac->scheduling_info.sr_info[i], 0, sizeof(mac->scheduling_info.sr_info[i]));
 }
 
 void nr_ue_mac_default_configs(NR_UE_MAC_INST_t *mac)
@@ -110,6 +113,12 @@ void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac)
   mac->first_sync_frame = -1;
   mac->state = UE_NOT_SYNC;
   mac->ra.ra_state = nrRA_UE_IDLE;
+}
+
+NR_UE_L2_STATE_t nr_ue_get_sync_state(module_id_t mod_id)
+{
+  NR_UE_MAC_INST_t *mac = get_mac_inst(mod_id);
+  return mac->state;
 }
 
 NR_UE_MAC_INST_t *nr_l2_init_ue(int nb_inst)
@@ -166,6 +175,8 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   nr_timer_stop(&nr_mac->ra.contention_resolution_timer);
   nr_timer_stop(&nr_mac->scheduling_info.sr_DelayTimer);
   nr_timer_stop(&nr_mac->scheduling_info.retxBSR_Timer);
+  for (int i = 0; i < NR_MAX_SR_ID; i++)
+    nr_timer_stop(&nr_mac->scheduling_info.sr_info[i].prohibitTimer);
 
   // consider all timeAlignmentTimers as expired and perform the corresponding actions in clause 5.2
   // TODO
@@ -185,11 +196,10 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
   free_and_zero(nr_mac->ra.Msg3_buffer);
 
   // cancel any triggered Scheduling Request procedure
-  nr_mac->scheduling_info.SR_COUNTER = 0;
-  nr_mac->scheduling_info.SR_pending = 0;
-  nr_mac->scheduling_info.sr_ProhibitTimer = 0;
-  nr_mac->scheduling_info.sr_ProhibitTimer_Running = 0;
-  nr_mac->scheduling_info.sr_id = -1; // invalid init value
+  for (int i = 0; i < NR_MAX_SR_ID; i++) {
+    nr_mac->scheduling_info.sr_info[i].pending = false;
+    nr_mac->scheduling_info.sr_info[i].counter = 0;
+  }
 
   // cancel any triggered Buffer Status Reporting procedure
   nr_mac->scheduling_info.BSR_reporting_active = NR_BSR_TRIGGER_NONE;
@@ -207,14 +217,6 @@ void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac)
 
   // release, if any, Temporary C-RNTI
   nr_mac->ra.t_crnti = 0;
-  // free RACH structs
-  for (int i = 0; i < MAX_NUM_BWP_UE; i++) {
-    free(nr_mac->ssb_list[i].tx_ssb);
-    for (int j = 0; j < MAX_NB_PRACH_CONF_PERIOD_IN_ASSOCIATION_PATTERN_PERIOD; j++)
-      for (int k = 0; k < MAX_NB_FRAME_IN_PRACH_CONF_PERIOD; k++)
-        for (int l = 0; l < MAX_NB_SLOT_IN_FRAME; l++)
-          free(nr_mac->prach_assoc_pattern[i].prach_conf_period_list[j].prach_occasion_slot_map[k][l].prach_occasion);
-  }
 
   // reset BFI_COUNTER
   // TODO beam failure procedure not implemented
@@ -287,9 +289,26 @@ void release_mac_configuration(NR_UE_MAC_INST_t *mac,
   memset(&mac->ul_time_alignment, 0, sizeof(mac->ul_time_alignment));
 }
 
-void reset_ra(RA_config_t *ra)
+void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id)
 {
+  for (int j = 0; j < MAX_NB_PRACH_CONF_PERIOD_IN_ASSOCIATION_PATTERN_PERIOD; j++)
+    for (int k = 0; k < MAX_NB_FRAME_IN_PRACH_CONF_PERIOD; k++)
+      for (int l = 0; l < MAX_NB_SLOT_IN_FRAME; l++)
+        free(nr_mac->prach_assoc_pattern[bwp_id].prach_conf_period_list[j].prach_occasion_slot_map[k][l].prach_occasion);
+
+  free(nr_mac->ssb_list[bwp_id].tx_ssb);
+}
+
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, NR_UE_MAC_reset_cause_t cause)
+{
+  RA_config_t *ra = &nr_mac->ra;
   if(ra->rach_ConfigDedicated)
     asn1cFreeStruc(asn_DEF_NR_RACH_ConfigDedicated, ra->rach_ConfigDedicated);
   memset(ra, 0, sizeof(RA_config_t));
+
+  if (cause == T300_EXPIRY)
+    return;
+
+  for (int i = 0; i < MAX_NUM_BWP_UE; i++)
+    free_rach_structures(nr_mac, i);
 }

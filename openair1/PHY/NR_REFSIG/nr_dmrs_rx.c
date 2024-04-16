@@ -202,22 +202,27 @@ int nr_pdcch_dmrs_rx(PHY_VARS_NR_UE *ue,
   return(0);
 }
 
-void nr_pbch_dmrs_rx(const int symbol, const unsigned int *nr_gold_pbch, c16_t *output)
+void nr_pbch_dmrs_rx(int symbol, unsigned int *nr_gold_pbch, c16_t *output, bool sidelink)
 {
   int m,m0,m1;
   uint8_t idx=0;
-  AssertFatal(symbol>=0 && symbol <3,"illegal symbol %d\n",symbol);
-  if (symbol == 0) {
-    m0=0;
-    m1=60;
-  }
-  else if (symbol == 1) {
-    m0=60;
-    m1=84;
-  }
-  else {
-    m0=84;
-    m1=144;
+  if (sidelink) {
+    AssertFatal(symbol == 0 || (symbol >= 5 && symbol <= 12), "illegal symbol %d\n", symbol);
+    m0 = (symbol) ? (symbol - 4) * 33 : 0;
+    m1 = (symbol) ? (symbol - 3) * 33 : 33;
+
+  } else {
+    AssertFatal(symbol >= 0 && symbol < 3, "illegal symbol %d\n", symbol);
+    if (symbol == 0) {
+      m0 = 0;
+      m1 = 60;
+    } else if (symbol == 1) {
+      m0 = 60;
+      m1 = 84;
+    } else {
+      m0 = 84;
+      m1 = 144;
+    }
   }
   //    printf("Generating pilots symbol %d, m0 %d, m1 %d\n",symbol,m0,m1);
   /// QPSK modulation
@@ -292,8 +297,14 @@ int nr_pusch_lowpaprtype1_dmrs_rx(PHY_VARS_gNB *gNB,
                  nb_pusch_rb,
                  nb_dmrs);
           printf("NR_DMRS_RX: wf[%d] = %d wt[%d]= %d\n", i & 1, wf1[p - 1000][i & 1], lp, wt1[p - 1000][lp]);
-    printf("NR_DMRS_RX: i %d dmrs_offset %d k %d pusch dmrsseq[i<<1] %d, dmrsseq[(i<<1)+1] %d  pilots[k<<1] %d pilots[(k<<1)+1] %d\n", i, dmrs_offset, k, 
-		 dmrs_seq[i].r, dmrs_seq[i].i, output[k].r, output[(k].i);
+          printf("NR_DMRS_RX: i %d dmrs_offset %d k %d pusch dmrsseq.r %d, dmrsseq.i %d  pilots.r %d pilots.i %d\n",
+                 i,
+                 dmrs_offset,
+                 k, 
+                 dmrs_seq[i].r,
+                 dmrs_seq[i].i,
+                 output[k].r,
+                 output[k].i);
 #endif
         }
       } else {

@@ -1647,7 +1647,7 @@ void dft64(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D64STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n",ts_t.diff, ts_d.diff, ts_b.diff);
 #endif
 
 
@@ -1746,7 +1746,7 @@ void idft64(int16_t *x,int16_t *y,unsigned char scale)
 
 #ifdef D64STATS
   stop_meas(&ts_b);
-  printf("t: %llu cycles, d: %llu cycles, b: %llu cycles\n",ts_t.diff,ts_d.diff,ts_b.diff);
+  printf("t: %lld cycles, d: %lld cycles, b: %lld cycles\n", ts_t.diff, ts_d.diff, ts_b.diff);
 #endif
 
 

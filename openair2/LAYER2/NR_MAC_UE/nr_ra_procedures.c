@@ -74,6 +74,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
   fapi_nr_config_request_t *cfg = &mac->phy_config.config_req;
 
   prach_resources->RA_PREAMBLE_BACKOFF = 0;
+  AssertFatal(nr_rach_ConfigCommon, "Cannot handle scenario without nr_rach_ConfigCommon\n");
   NR_SubcarrierSpacing_t prach_scs = *nr_rach_ConfigCommon->msg1_SubcarrierSpacing;
   int n_prbs = get_N_RA_RB(prach_scs, mac->current_UL_BWP->scs);
   int start_prb = rach_ConfigGeneric->msg1_FrequencyStart + mac->current_UL_BWP->BWPStart;
@@ -100,12 +101,10 @@ void init_RA(NR_UE_MAC_INST_t *mac,
     } else {
       LOG_E(NR_MAC, "Config not handled\n");
     }
-  } else if (nr_rach_ConfigCommon){
+  } else {
     LOG_I(NR_MAC, "Initialization of 4-step contention-based random access procedure\n");
     prach_resources->RA_TYPE = RA_4STEP;
     ra->cfra = 0;
-  } else {
-    LOG_E(NR_MAC, "Config not handled\n");
   }
 
   switch (rach_ConfigGeneric->powerRampingStep){ // in dB
