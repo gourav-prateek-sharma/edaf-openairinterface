@@ -55,9 +55,7 @@ typedef struct {
   /// Index of current HARQ round for this ULSCH
   uint8_t round;
   /// pointer to pdu from MAC interface (TS 36.212 V15.4.0, Sec 5.1 p. 8)
-  unsigned char *a;
-  /// Pointer to the payload + CRC 
-  uint8_t *b;
+  unsigned char *payload_AB;
   /// Pointers to transport block segments
   uint8_t **c;
   /// LDPC-code outputs

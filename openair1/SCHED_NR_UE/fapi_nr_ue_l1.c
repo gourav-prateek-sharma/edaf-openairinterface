@@ -468,7 +468,7 @@ static void nr_ue_scheduled_response_ul(PHY_VARS_NR_UE *phy, fapi_nr_ul_config_r
                 ul_config->slot,
                 pdu->pusch_config_pdu.tx_request_body.pdu_length,
                 current_harq_pid);
-          memcpy(harq_process_ul_ue->a,
+          memcpy(harq_process_ul_ue->payload_AB,
                  pdu->pusch_config_pdu.tx_request_body.pdu,
                  pdu->pusch_config_pdu.tx_request_body.pdu_length);
         }
