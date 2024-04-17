@@ -642,8 +642,6 @@ static void decodeRegistrationAccept(const uint8_t *buf, int len, nr_ue_nas_t *n
 
 static void generateRegistrationComplete(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg, SORTransparentContainer *sortransparentcontainer)
 {
-  //wait send RRCReconfigurationComplete and InitialContextSetupResponse
-  sleep(1);
   int length = 0;
   int size = 0;
   fgs_nas_message_t nas_msg;
@@ -781,8 +779,6 @@ static void generateDeregistrationRequest(nr_ue_nas_t *nas, as_nas_info_t *initi
 
 static void generatePduSessionEstablishRequest(nr_ue_nas_t *nas, as_nas_info_t *initialNasMsg, nas_pdu_session_req_t *pdu_req)
 {
-  //wait send RegistrationComplete
-  usleep(100*150);
   int size = 0;
   fgs_nas_message_t nas_msg={0};
 
