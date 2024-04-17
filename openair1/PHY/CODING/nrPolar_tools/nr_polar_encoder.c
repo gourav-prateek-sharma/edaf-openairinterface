@@ -391,8 +391,8 @@ void build_polar_tables(t_nrPolar_params *polarParams) {
   // this code packs the one bit per byte of G_N into a packed bits G_N_tab
   for (int i = 0; i < polarParams->N; i++) {
     for (int j = 0; j < polarParams->N; j += 64) {
-      const simde__m256i tmp1 = simde_mm256_cmpgt_epi8(*(simde__m256i *)&polarParams->G_N[i][j], zeros);
-      const simde__m256i tmp2 = simde_mm256_cmpgt_epi8(*(simde__m256i *)&polarParams->G_N[i][j + 32], zeros);
+      const simde__m256i tmp1 = simde_mm256_cmpgt_epi8(simde_mm256_loadu_si256((simde__m256i *)&polarParams->G_N[i][j]), zeros);
+      const simde__m256i tmp2 = simde_mm256_cmpgt_epi8(simde_mm256_loadu_si256((simde__m256i *)&polarParams->G_N[i][j + 32]), zeros);
       // cast directly to uint64_t from int32_t propagates the sign bit (in gcc)
       const uint32_t part1 = simde_mm256_movemask_epi8(tmp1);
       const uint32_t part2 = simde_mm256_movemask_epi8(tmp2);
