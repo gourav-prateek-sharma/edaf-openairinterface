@@ -49,7 +49,7 @@ again:
 #endif
 
 read_error:
-  return (event){type: -1};
+  return (event){.type = -1};
 }
 
 #ifdef T_SEND_TIME
