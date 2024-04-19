@@ -322,19 +322,16 @@ int config_libconfig_set(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
 int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, int numoptions, char *prefix)
 {
   config_setting_t *setting;
-  char *str;
-  int i,u;
-  long long int llu;
-  double dbl;
-  int rst;
-  int status=0;
-  int notfound;
-  int defval;
-  int fatalerror=0;
-  int numdefvals=0;
+  char *str = NULL;
+  int u = 0;
+  long long int llu = 0;
+  double dbl = 0.0f;
+  int status = 0;
+  int fatalerror = 0;
+  int numdefvals = 0;
   char cfgpath[512];  /* 512 should be enough for the sprintf below */
 
-  for(i=0; i<numoptions; i++) {
+  for(int i=0; i<numoptions; i++) {
     if (prefix != NULL) {
       sprintf(cfgpath,"%s.%s",prefix,cfgoptions[i].optname);
     } else {
@@ -346,8 +343,8 @@ int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
       continue;
     }
 
-    notfound=0;
-    defval=0;
+    int notfound = 0;
+    int defval = 0;
 
     switch(cfgoptions[i].type) {
       case TYPE_STRING:
@@ -436,7 +433,7 @@ int config_libconfig_get(configmodule_interface_t *cfg, paramdef_t *cfgoptions, 
         if ( !config_lookup_string(&(libconfig_privdata.cfg),cfgpath, (const char **)&str)) {
           defval = config_setdefault_ipv4addr(cfg, &(cfgoptions[i]), prefix);
         } else {
-          rst = config_assign_ipv4addr(cfg, cfgoptions, str);
+          int rst = config_assign_ipv4addr(cfg, cfgoptions, str);
 
           if (rst < 0) {
             fprintf(stderr,"[LIBCONFIG] %s not valid for %s \n", str, cfgpath);
