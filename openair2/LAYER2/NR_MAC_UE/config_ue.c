@@ -1426,7 +1426,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   switch (cause) {
     case GO_TO_IDLE:
-      reset_ra(mac, cause);
+      reset_ra(mac, true);
       release_mac_configuration(mac, cause);
       nr_ue_init_mac(mac);
       nr_ue_mac_default_configs(mac);
@@ -1435,14 +1435,14 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
       break;
     case DETACH:
       LOG_A(NR_MAC, "Received detach indication\n");
-      reset_ra(mac, cause);
+      reset_ra(mac, true);
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
       mac->state = UE_DETACHING;
       break;
     case T300_EXPIRY:
-      reset_ra(mac, cause);
+      reset_ra(mac, false);
       reset_mac_inst(mac);
       mac->state = UE_SYNC; // still in sync but need to restart RA
       break;

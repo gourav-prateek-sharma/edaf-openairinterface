@@ -100,7 +100,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst);
 NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id);
 
 void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac);
-void reset_ra(NR_UE_MAC_INST_t *nr_mac, NR_UE_MAC_reset_cause_t cause);
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, bool free_prach);
 void release_mac_configuration(NR_UE_MAC_INST_t *mac,
                                NR_UE_MAC_reset_cause_t cause);
 

@@ -299,14 +299,14 @@ void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id)
   free(nr_mac->ssb_list[bwp_id].tx_ssb);
 }
 
-void reset_ra(NR_UE_MAC_INST_t *nr_mac, NR_UE_MAC_reset_cause_t cause)
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, bool free_prach)
 {
   RA_config_t *ra = &nr_mac->ra;
   if(ra->rach_ConfigDedicated)
     asn1cFreeStruc(asn_DEF_NR_RACH_ConfigDedicated, ra->rach_ConfigDedicated);
   memset(ra, 0, sizeof(RA_config_t));
 
-  if (cause == T300_EXPIRY)
+  if (!free_prach)
     return;
 
   for (int i = 0; i < MAX_NUM_BWP_UE; i++)
