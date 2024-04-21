@@ -1192,7 +1192,7 @@ static int fill_BEARER_CONTEXT_MODIFICATION_REQUEST(e1ap_bearer_setup_req_t *con
   ieC2->value.present              = E1AP_BearerContextModificationRequestIEs__value_PR_GNB_CU_UP_UE_E1AP_ID;
   ieC2->value.choice.GNB_CU_UP_UE_E1AP_ID = bearerCxt->gNB_cu_up_ue_id;
   /* optional */
-  /*  */
+  /* c3. E1AP_ProtocolIE_ID_id_System_BearerContextModificationRequest */
   asn1cSequenceAdd(out->protocolIEs.list, E1AP_BearerContextModificationRequestIEs_t, ieC3);
   ieC3->id            = E1AP_ProtocolIE_ID_id_System_BearerContextModificationRequest;
   ieC3->criticality   = E1AP_Criticality_reject;
@@ -1229,6 +1229,15 @@ static int fill_BEARER_CONTEXT_MODIFICATION_REQUEST(e1ap_bearer_setup_req_t *con
         }
       }
     }
+  }
+  /* c4. E1AP_ProtocolIE_ID_id_BearerContextStatusChange */
+  if (bearerCxt->bearerContextStatus == BEARER_SUSPEND) {
+    asn1cSequenceAdd(out->protocolIEs.list, E1AP_BearerContextModificationRequestIEs_t, ieC4);
+    ieC4->id            = E1AP_ProtocolIE_ID_id_BearerContextStatusChange;
+    ieC4->criticality   = E1AP_Criticality_reject;
+    ieC4->value.present = E1AP_BearerContextModificationRequestIEs__value_PR_BearerContextStatusChange;
+    /* Bearer Context Status Change */
+    ieC4->value.choice.BearerContextStatusChange = E1AP_BearerContextStatusChange_suspend;
   }
   return 0;
 }
@@ -1388,6 +1397,13 @@ static void extract_BEARER_CONTEXT_MODIFICATION_REQUEST(const E1AP_E1AP_PDU_t *p
             }
           }
         }
+        break;
+
+      case E1AP_ProtocolIE_ID_id_BearerContextStatusChange:
+        /* Bearer Context Status Change */
+        DevAssert(ie->criticality == E1AP_Criticality_reject);
+        DevAssert(ie->value.present == E1AP_BearerContextModificationRequestIEs__value_PR_BearerContextStatusChange);
+        bearerCxt->bearerContextStatus = (ie->value.choice.BearerContextStatusChange == E1AP_BearerContextStatusChange_suspend) ? BEARER_SUSPEND : BEARER_ACTIVE;
         break;
 
       default:
