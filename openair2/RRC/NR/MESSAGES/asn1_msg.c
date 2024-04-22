@@ -893,19 +893,7 @@ uint8_t do_RRCSetupComplete(uint8_t *buffer,
   NR_RRCSetupComplete_IEs_t *ies = RrcSetupComplete->criticalExtensions.choice.rrcSetupComplete;
   ies->selectedPLMN_Identity = sel_plmn_id;
   ies->registeredAMF = NULL;
-
-  ies->ng_5G_S_TMSI_Value = CALLOC(1, sizeof(struct NR_RRCSetupComplete_IEs__ng_5G_S_TMSI_Value));
-  ies->ng_5G_S_TMSI_Value->present = NR_RRCSetupComplete_IEs__ng_5G_S_TMSI_Value_PR_ng_5G_S_TMSI;
-  NR_NG_5G_S_TMSI_t *stmsi = &ies->ng_5G_S_TMSI_Value->choice.ng_5G_S_TMSI;
-  stmsi->size = 6;
-  stmsi->buf = calloc(stmsi->size, sizeof(*stmsi->buf));
-  AssertFatal(stmsi->buf != NULL, "out of memory\n");
-  stmsi->buf[0] = 0x12;
-  stmsi->buf[1] = 0x34;
-  stmsi->buf[2] = 0x56;
-  stmsi->buf[3] = 0x78;
-  stmsi->buf[4] = 0x9A;
-  stmsi->buf[5] = 0xBC;
+  ies->ng_5G_S_TMSI_Value = NULL;
 
   memset(&ies->dedicatedNAS_Message,0,sizeof(OCTET_STRING_t));
   OCTET_STRING_fromBuf(&ies->dedicatedNAS_Message, dedicatedInfoNAS, dedicatedInfoNASLength);

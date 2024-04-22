@@ -1021,18 +1021,18 @@ class Containerize():
 		for s in allServices:
 			# outputs the hash if the container is running
 			ret = mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml ps --all --quiet -- {s}')
-			running = ret.stdout.splitlines()
-			logging.debug(f'running services: {running}')
+			c = ret.stdout
+			logging.debug(f'running service {s} with container id {c}')
 			if ret.stdout != "" and ret.returncode == 0: # something is running for that service
-				services.append(s)
-		logging.info(f'stopping services {services}')
+				services.append((s, c))
+		logging.info(f'stopping services {[s for s, _ in services]}')
 
 		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml stop -t3')
 		copyin_res = True
-		for svcName in services:
+		for service_name, container_id in services:
 			# head -n -1 suppresses the final "X exited with status code Y"
-			filename = f'{svcName}-{HTML.testCase_id}.log'
-			mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml logs --no-log-prefix -- {svcName} &> {lSourcePath}/cmake_targets/log/{filename}')
+			filename = f'{service_name}-{HTML.testCase_id}.log'
+			mySSH.run(f'docker logs {container_id} &> {lSourcePath}/cmake_targets/log/{filename}')
 			copyin_res = mySSH.copyin(f'{lSourcePath}/cmake_targets/log/{filename}', f'{filename}') and copyin_res
 
 		mySSH.run(f'docker compose -f {yamlDir}/ci-docker-compose.yml down -v')
@@ -1043,7 +1043,7 @@ class Containerize():
 			HTML.CreateHtmlTestRow('N/A', 'KO', CONST.ENB_PROCESS_NOLOGFILE_TO_ANALYZE)
 			self.exitStatus = 1
 		# use function for UE log analysis, when oai-nr-ue container is used
-		elif 'oai-nr-ue' in services or 'lte_ue0' in services:
+		elif any(service_name == 'oai-nr-ue' or service_name == 'lte_ue0' for service_name, _ in services):
 			self.exitStatus == 0
 			logging.debug(f'Analyzing UE logfile {filename}')
 			logStatus = cls_oaicitest.OaiCiTest().AnalyzeLogFile_UE(f'{filename}', HTML, RAN)
@@ -1053,12 +1053,12 @@ class Containerize():
 			else:
 				HTML.CreateHtmlTestRow('UE log Analysis', 'OK', CONST.ALL_PROCESSES_OK)
 		else:
-			for svcName in services:
-				if svcName == 'nv-cubb':
+			for service_name, _ in services:
+				if service_name == 'nv-cubb':
 					msg = 'Undeploy PNF/Nvidia CUBB'
 					HTML.CreateHtmlTestRow(msg, 'OK', CONST.ALL_PROCESSES_OK)
 				else:
-					filename = f'{svcName}-{HTML.testCase_id}.log'
+					filename = f'{service_name}-{HTML.testCase_id}.log'
 					logging.debug(f'\u001B[1m Analyzing logfile {filename}\u001B[0m')
 					logStatus = RAN.AnalyzeLogFile_eNB(filename, HTML, self.ran_checkers)
 					if (logStatus < 0):

@@ -158,11 +158,16 @@ endif()
 # add autotools definitions that were maybe used!
 add_definitions("-DSTDC_HEADERS=1 -DHAVE_SYS_TYPES_H=1 -DHAVE_SYS_STAT_H=1 -DHAVE_STDLIB_H=1 -DHAVE_STRING_H=1 -DHAVE_MEMORY_H=1 -DHAVE_STRINGS_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_STDINT_H=1 -DHAVE_UNISTD_H=1 -DHAVE_FCNTL_H=1 -DHAVE_ARPA_INET_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_SOCKET_H=1 -DHAVE_STRERROR=1 -DHAVE_SOCKET=1 -DHAVE_MEMSET=1 -DHAVE_GETTIMEOFDAY=1 -DHAVE_STDLIB_H=1 -DHAVE_MALLOC=1 -DHAVE_LIBSCTP")
 
-set(commonOpts "-pipe -fPIC -Wall -fno-strict-aliasing")
+# we need -rdynamic to incorporate all symbols in shared objects, see man page
+set(commonOpts "-pipe -fPIC -Wall -fno-strict-aliasing -rdynamic")
 # GNU C/C++ Compiler might throw many warnings without packed-bitfield-compat, see man page
-# also, we need -rdynamic to incorporate all symbols in shared objects, again, see man page
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  set(commonOpts "${commonOpts} -Wno-packed-bitfield-compat -rdynamic")
+  set(commonOpts "${commonOpts} -Wno-packed-bitfield-compat")
+endif()
+# clang: suppress complaints about unused command line argument (-rdynamic only
+# used during linking)
+if(CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set(commonOpts "${commonOpts} -Wno-unused-command-line-argument")
 endif()
 
 set(CMAKE_C_FLAGS

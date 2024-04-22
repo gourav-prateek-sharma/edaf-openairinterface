@@ -179,7 +179,7 @@ typedef struct {
 static int allocCirBuf(rfsimulator_state_t *bridge, int sock)
 {
   buffer_t *ptr=&bridge->buf[sock];
-  ptr->circularBuf = malloc(sampleToByte(CirSize, 1));
+  ptr->circularBuf = calloc(1, sampleToByte(CirSize, 1));
   if (ptr->circularBuf == NULL) {
     LOG_E(HW, "malloc(%lu) failed\n", sampleToByte(CirSize, 1));
     return -1;

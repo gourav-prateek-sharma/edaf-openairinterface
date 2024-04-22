@@ -184,8 +184,9 @@ int phy_init_nr_gNB(PHY_VARS_gNB *gNB)
       AssertFatal(pdsch_dmrs[slot][symb]!=NULL, "NR init: pdsch_dmrs for slot %d symbol %d - malloc failed\n", slot, symb);
 
       for (int q=0; q<NR_NB_NSCID; q++) {
-        pdsch_dmrs[slot][symb][q] = (uint32_t *)malloc16(pdsch_dmrs_init_length*sizeof(uint32_t));
+        pdsch_dmrs[slot][symb][q] = malloc16(pdsch_dmrs_init_length * sizeof(uint32_t));
         AssertFatal(pdsch_dmrs[slot][symb][q]!=NULL, "NR init: pdsch_dmrs for slot %d symbol %d nscid %d - malloc failed\n", slot, symb, q);
+        memset(pdsch_dmrs[slot][symb][q], 0, sizeof(uint32_t) * pdsch_dmrs_init_length);
       }
     }
   }
