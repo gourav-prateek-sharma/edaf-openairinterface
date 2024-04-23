@@ -650,7 +650,7 @@ void nr_rlc_reestablish_entity(int ue_id, int lc_id)
   nr_rlc_entity_t *rb = get_rlc_entity_from_lcid(ue, lc_id);
 
   if (rb != NULL) {
-    LOG_D(RLC, "RB found! (channel ID %d) \n", lc_id);
+    LOG_D(RLC, "%s: RB found! (channel ID %d), re-establish RLC\n", __func__, lc_id);
     rb->reestablishment(rb);
   } else {
     LOG_E(RLC, "no RLC entity found (channel ID %d) for reestablishment\n", lc_id);
