@@ -841,7 +841,7 @@ void tx_rf(RU_t *ru,int frame,int slot, uint64_t timestamp) {
     flags_burst = proc->first_tx == 1 ? TX_BURST_START : TX_BURST_MIDDLE;
   }
 
-  if (fp->freq_range == nr_FR2)
+  if (fp->freq_range == FR2)
     flags_gpio = get_gpio_flags(ru, slot);
 
   const int flags = flags_burst | (flags_gpio << 4);

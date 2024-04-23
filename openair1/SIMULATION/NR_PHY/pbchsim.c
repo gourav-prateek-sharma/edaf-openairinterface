@@ -487,7 +487,7 @@ int main(int argc, char **argv)
   frame_parms->N_RB_DL = N_RB_DL;
   frame_parms->Nid_cell = Nid_cell;
   frame_parms->ssb_type = nr_ssb_type_C;
-  frame_parms->freq_range = mu<2 ? nr_FR1 : nr_FR2;
+  frame_parms->freq_range = mu<2 ? FR1 : FR2;
 
   nr_phy_config_request_sim_pbchsim(gNB,N_RB_DL,N_RB_DL,mu,Nid_cell,SSB_positions);
   gNB->gNB_config.tdd_table.tdd_period.value = 6;
@@ -620,8 +620,8 @@ int main(int argc, char **argv)
     for (i=0; i<frame_parms->Lmax; i++) {
       if((SSB_positions >> i) & 0x01) {
 
-        const int sc_offset = frame_parms->freq_range == nr_FR1 ? ssb_subcarrier_offset<<mu : ssb_subcarrier_offset;
-        const int prb_offset = frame_parms->freq_range == nr_FR1 ? gNB->gNB_config.ssb_table.ssb_offset_point_a.value<<mu : gNB->gNB_config.ssb_table.ssb_offset_point_a.value << (mu - 2);
+        const int sc_offset = frame_parms->freq_range == FR1 ? ssb_subcarrier_offset<<mu : ssb_subcarrier_offset;
+        const int prb_offset = frame_parms->freq_range == FR1 ? gNB->gNB_config.ssb_table.ssb_offset_point_a.value<<mu : gNB->gNB_config.ssb_table.ssb_offset_point_a.value << (mu - 2);
         msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.bchPayload = 0x55dd33;
         msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbBlockIndex = i;
         msgDataTx.ssb[i].ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset = sc_offset;
