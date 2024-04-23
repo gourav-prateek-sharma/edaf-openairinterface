@@ -31,8 +31,8 @@
 #include <stdlib.h>
 
 typedef struct {
-  void* lib_ctx;
-  void* mac;
+  void *mac_implementation;
+  void *mac_context;
   uint8_t key[16];
 } cbc_cmac_ctx_t ;
 

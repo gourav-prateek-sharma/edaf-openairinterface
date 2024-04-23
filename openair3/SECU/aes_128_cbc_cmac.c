@@ -40,10 +40,10 @@ cbc_cmac_ctx_t init_aes_128_cbc_cmac(const uint8_t key[16])
   DevAssert(mac_implementation != NULL);
 
   /* Create a context for the CMAC operation */
-  EVP_MAC_CTX* mac = EVP_MAC_CTX_new(mac_implementation);
-  DevAssert(mac != NULL);
+  EVP_MAC_CTX* mac_context = EVP_MAC_CTX_new(mac_implementation);
+  DevAssert(mac_context != NULL);
 
-  cbc_cmac_ctx_t ctx = { .lib_ctx = mac_implementation, .mac = mac };
+  cbc_cmac_ctx_t ctx = { .mac_implementation = mac_implementation, .mac_context = mac_context };
   memcpy(ctx.key, key, 16);
 
   // The underlying cipher to be used
@@ -55,7 +55,7 @@ cbc_cmac_ctx_t init_aes_128_cbc_cmac(const uint8_t key[16])
   params[1] = OSSL_PARAM_construct_end();
 
   /* Initialise the CMAC operation */
-  int rc = EVP_MAC_init(mac, key, 16, params);
+  int rc = EVP_MAC_init(mac_context, key, 16, params);
   DevAssert(rc != 0);
 
   return ctx;
@@ -77,9 +77,9 @@ void cipher_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx, const aes_128_t* k_iv, b
    * somewhere else in the codebase.
    * If not used, remove from aes_128_t*
    */
-  int rc = EVP_MAC_init(ctx->mac, k_iv->key, 16, NULL);
+  int rc = EVP_MAC_init(ctx->mac_context, k_iv->key, 16, NULL);
 #else
-  int rc = EVP_MAC_init(ctx->mac, NULL, 0, NULL);
+  int rc = EVP_MAC_init(ctx->mac_context, NULL, 0, NULL);
 #endif
   DevAssert(rc != 0);
 
@@ -96,24 +96,24 @@ void cipher_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx, const aes_128_t* k_iv, b
   }
 
   /* Make one or more calls to process the data to be authenticated */
-  rc = EVP_MAC_update(ctx->mac, iv, sz_iv);
+  rc = EVP_MAC_update(ctx->mac_context, iv, sz_iv);
   DevAssert(rc != 0);
 
   /* Make one or more calls to process the data to be authenticated */
-  rc = EVP_MAC_update(ctx->mac, msg.buf, msg.len);
+  rc = EVP_MAC_update(ctx->mac_context, msg.buf, msg.len);
   DevAssert(rc != 0);
 
   /* Make a call to the final with a NULL buffer to get the length of the MAC */
   size_t out_len = 0;
-  rc = EVP_MAC_final(ctx->mac, out, &out_len, len_out);
+  rc = EVP_MAC_final(ctx->mac_context, out, &out_len, len_out);
   DevAssert(rc != 0);
 }
 
 void free_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx)
 {
   DevAssert(ctx != NULL);
-  EVP_MAC_CTX_free(ctx->mac);
-  EVP_MAC_free(ctx->lib_ctx);
+  EVP_MAC_CTX_free(ctx->mac_context);
+  EVP_MAC_free(ctx->mac_implementation);
 }
 
 #else
@@ -122,15 +122,15 @@ void free_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx)
 cbc_cmac_ctx_t init_aes_128_cbc_cmac(const uint8_t key[16])
 {
   DevAssert(key != NULL);
-  cbc_cmac_ctx_t ctx = {.lib_ctx = NULL, .mac = NULL };
+  cbc_cmac_ctx_t ctx = {.mac_implementation = NULL, .mac_context = NULL };
 
-  ctx.mac = CMAC_CTX_new();
-  DevAssert(ctx.mac != NULL);
+  ctx.mac_context = CMAC_CTX_new();
+  DevAssert(ctx.mac_context != NULL);
 
   //assert(16 == sizeof(ctx.key));
   memcpy(ctx.key, key, 16); //sizeof(ctx.key));
 
-  CMAC_Init(ctx.mac, ctx.key, 16, EVP_aes_128_cbc(), NULL);
+  CMAC_Init(ctx.mac_context, ctx.key, 16, EVP_aes_128_cbc(), NULL);
   return ctx;
 }
 
@@ -144,7 +144,7 @@ void cipher_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx, const aes_128_t* k_iv, b
   //cipher, and impl all set to NULL and key_len set to 0. In that case, any
   //data already processed is discarded and ctx is re-initialized to start
   //reading data anew.
-  CMAC_Init(ctx->mac, NULL, 0, NULL, NULL);
+  CMAC_Init(ctx->mac_context, NULL, 0, NULL, NULL);
 
   size_t sz_iv = 0;
   uint8_t* iv = NULL;
@@ -158,18 +158,18 @@ void cipher_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx, const aes_128_t* k_iv, b
     AssertFatal(0 != 0, "Unknwon Initialization vector");
   }
 
-  CMAC_Update(ctx->mac, iv, sz_iv);
+  CMAC_Update(ctx->mac_context, iv, sz_iv);
 
-  CMAC_Update(ctx->mac, msg.buf, msg.len);
+  CMAC_Update(ctx->mac_context, msg.buf, msg.len);
   size_t len_res = 0;
-  CMAC_Final(ctx->mac, out, &len_res);
+  CMAC_Final(ctx->mac_context, out, &len_res);
   DevAssert(len_res <= len_out);
 }
 
 void free_aes_128_cbc_cmac(cbc_cmac_ctx_t const* ctx)
 {
   DevAssert(ctx != NULL);
-  CMAC_CTX_free(ctx->mac);
+  CMAC_CTX_free(ctx->mac_context);
 }
 
 #endif
