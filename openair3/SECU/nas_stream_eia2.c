@@ -58,7 +58,7 @@ void nas_stream_encrypt_eia2(nas_stream_cipher_t const *stream_cipher, uint8_t o
   size_t const m_length = stream_cipher->blength >> 3;
   uint8_t result[16] = {0};
   byte_array_t msg = {.buf = stream_cipher->message, .len = m_length };
-  cipher_aes_128_cbc_cmac((cbc_cmac_ctx_t *)stream_cipher->context, &k_iv, msg, sizeof(result), result);
+  cipher_aes_128_cbc_cmac(ctx, &k_iv, msg, sizeof(result), result);
 
   memcpy(out, result, 4);
 }
