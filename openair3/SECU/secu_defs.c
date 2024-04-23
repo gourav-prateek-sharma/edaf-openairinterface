@@ -104,10 +104,10 @@ void stream_ciphering_free(int ciphering_algorithm, stream_security_context_t *c
   }
 }
 
-stream_security_container_t *stream_security_container_create(int ciphering_algorithm,
-                                                              int integrity_algorithm,
-                                                              const uint8_t *ciphering_key,
-                                                              const uint8_t *integrity_key)
+stream_security_container_t *stream_security_container_init(int ciphering_algorithm,
+                                                            int integrity_algorithm,
+                                                            const uint8_t *ciphering_key,
+                                                            const uint8_t *integrity_key)
 {
   stream_security_container_t *container = calloc(1, sizeof(*container));
   AssertFatal(container != NULL, "out of memory\n");

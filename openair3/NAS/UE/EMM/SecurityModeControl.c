@@ -267,7 +267,7 @@ int emm_proc_security_mode_command(nas_user_t *user, int native_ksi, int ksi,
           /* Set new security context indicator */
           security_context_is_new = true;
           /* create contexts */
-          user->emm_data->security->security_container = stream_security_container_create(
+          user->emm_data->security->security_container = stream_security_container_init(
                   seea,
                   seia,
                   user->emm_data->non_current->knas_enc.value,

@@ -516,9 +516,9 @@ static void generateAuthenticationResp(nr_ue_nas_t *nas, as_nas_info_t *initialN
 {
   derive_ue_keys(buf, nas);
   /* todo: as of now, nia2 is hardcoded in derive_ue_keys(), remove this hardcoding, use NAS signalling for getting proper algorithm */
-  /* todo: deal with ciphering for this stream_security_container_create() (handle ciphering in general) */
+  /* todo: deal with ciphering for this stream_security_container_init() (handle ciphering in general) */
   /* todo: stream_security_container_delete() is not called anywhere, deal with that */
-  nas->security_container = stream_security_container_create(0, 2 /* hardcoded: nia2 */, NULL, nas->security.knas_int);
+  nas->security_container = stream_security_container_init(0, 2 /* hardcoded: nia2 */, NULL, nas->security.knas_int);
   OctetString res;
   res.length = 16;
   res.value = calloc(1,16);

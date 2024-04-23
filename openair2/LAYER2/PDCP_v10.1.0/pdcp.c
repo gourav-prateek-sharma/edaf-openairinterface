@@ -2128,8 +2128,8 @@ pdcp_config_set_security(
     kRRCint != NULL ? memcpy(pdcp_pP->kRRCint, kRRCint+16, 16) : memset(pdcp_pP->kRRCint, 0, 16);
     kUPenc != NULL ? memcpy(pdcp_pP->kUPenc, kUPenc+16, 16) : memset(pdcp_pP->kUPenc, 0, 16);
 
-    pdcp_pP->security_container_rrc = stream_security_container_create(pdcp_pP->cipheringAlgorithm, pdcp_pP->integrityProtAlgorithm, pdcp_pP->kRRCenc, pdcp_pP->kRRCint);
-    pdcp_pP->security_container_up = stream_security_container_create(pdcp_pP->cipheringAlgorithm, 0, pdcp_pP->kUPenc, NULL);
+    pdcp_pP->security_container_rrc = stream_security_container_init(pdcp_pP->cipheringAlgorithm, pdcp_pP->integrityProtAlgorithm, pdcp_pP->kRRCenc, pdcp_pP->kRRCint);
+    pdcp_pP->security_container_up = stream_security_container_init(pdcp_pP->cipheringAlgorithm, 0, pdcp_pP->kUPenc, NULL);
 
     /* Activate security */
     pdcp_pP->security_activated = 1;

@@ -58,10 +58,10 @@ stream_security_context_t *stream_ciphering_init(int ciphering_algorithm, const 
 void stream_integrity_free(int integrity_algorithm, stream_security_context_t *integrity_context);
 void stream_ciphering_free(int ciphering_algorithm, stream_security_context_t *ciphering_context);
 
-stream_security_container_t *stream_security_container_create(int ciphering_algorithm,
-                                                              int integrity_algorithm,
-                                                              const uint8_t *ciphering_key,
-                                                              const uint8_t *integrity_key);
+stream_security_container_t *stream_security_container_init(int ciphering_algorithm,
+                                                            int integrity_algorithm,
+                                                            const uint8_t *ciphering_key,
+                                                            const uint8_t *integrity_key);
 void stream_security_container_delete(stream_security_container_t *container);
 
 /*!
