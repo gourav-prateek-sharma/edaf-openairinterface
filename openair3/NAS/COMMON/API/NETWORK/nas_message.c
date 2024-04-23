@@ -1053,7 +1053,7 @@ static int _nas_message_decrypt(
       stream_cipher.message    = (unsigned char *)src;
       /* length in bits */
       stream_cipher.blength    = length << 3;
-      stream_compute_encrypt(EEA1_128_ALG_ID, &stream_cipher, (unsigned char *)dest);
+      stream_compute_encrypt(EEA2_128_ALG_ID, &stream_cipher, (unsigned char *)dest);
 
       /* Decode the first octet (security header type or EPS bearer identity,
        * and protocol discriminator) */
