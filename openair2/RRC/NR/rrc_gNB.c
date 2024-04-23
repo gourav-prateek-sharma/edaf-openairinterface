@@ -1725,6 +1725,7 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
     return;
   }
   gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+  UE->f1_ue_context_active = true;
 
   NR_CellGroupConfig_t *cellGroupConfig = NULL;
   asn_dec_rval_t dec_rval = uper_decode_complete(NULL,
@@ -1743,13 +1744,14 @@ static void rrc_CU_process_ue_context_setup_response(MessageDef *msg_p, instance
     xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, UE->masterCellGroup);
 
   if (resp->drbs_to_be_setup_length > 0) {
-    AssertFatal(resp->srbs_to_be_setup_length > 0 && resp->srbs_to_be_setup[0].srb_id == 2, "logic bug: we set up DRBs, so need to have both SRB1&SRB2\n");
+    /* Note: we would ideally check that SRB2 is acked, but at least LiteOn DU
+     * seems buggy and does not ack, so simply check that locally we activated */
+    AssertFatal(UE->Srb[1].Active && UE->Srb[2].Active, "SRBs 1 and 2 must be active during DRB Establishment");
     e1_send_bearer_updates(rrc, UE, resp->drbs_to_be_setup_length, resp->drbs_to_be_setup);
   }
 
-  /* at this point, we don't have to do anything: the UE context setup request
-   * includes the Security Command, whose response will trigger the following
-   * messages (UE capability, to be specific) */
+  protocol_ctxt_t ctxt = {.rntiMaybeUEid = resp->gNB_CU_ue_id, .module_id = instance};
+  rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
 }
 
 static void rrc_CU_process_ue_context_release_request(MessageDef *msg_p)
@@ -1996,48 +1998,12 @@ void rrc_gNB_process_e1_bearer_context_setup_resp(e1ap_bearer_setup_resp_t *resp
     }
   }
 
-  /* Instruction towards the DU for SRB2 configuration */
-  int nb_srb = 0;
-  f1ap_srb_to_be_setup_t srbs[1] = {0};
-  if (UE->Srb[2].Active == 0) {
-    activate_srb(UE, 2);
-    nb_srb = 1;
-    srbs[0].srb_id = 2;
-    srbs[0].lcid = 2;
-  }
+  AssertFatal(UE->as_security_active, "logic bug: security should be active when activating DRBs\n");
 
-  if (!UE->as_security_active) {
-    /* no AS security active, need to activate security before data*/
-    protocol_ctxt_t ctxt = {.rntiMaybeUEid = UE->rrc_ue_id};
-    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p);
-  }
-
-  /* Gather UE capability if present */
-  cu_to_du_rrc_information_t cu2du = {0};
-  cu_to_du_rrc_information_t *cu2du_p = NULL;
-  if (UE->ue_cap_buffer.len > 0 && UE->ue_cap_buffer.buf != NULL) {
-    cu2du_p = &cu2du;
-    cu2du.uE_CapabilityRAT_ContainerList = UE->ue_cap_buffer.buf;
-    cu2du.uE_CapabilityRAT_ContainerList_length = UE->ue_cap_buffer.len;
-  }
-
-  f1_ue_data_t ue_data = cu_get_f1_ue_data(UE->rrc_ue_id);
-  RETURN_IF_INVALID_ASSOC_ID(ue_data);
-  f1ap_ue_context_modif_req_t ue_context_modif_req = {
-      .gNB_CU_ue_id = UE->rrc_ue_id,
-      .gNB_DU_ue_id = ue_data.secondary_ue,
-      .plmn.mcc = rrc->configuration.mcc[0],
-      .plmn.mnc = rrc->configuration.mnc[0],
-      .plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0],
-      .nr_cellid = rrc->nr_cellid,
-      .servCellId = 0, /* TODO: correct value? */
-      .srbs_to_be_setup_length = nb_srb,
-      .srbs_to_be_setup = srbs,
-      .drbs_to_be_setup_length = nb_drb,
-      .drbs_to_be_setup = drbs,
-      .cu_to_du_rrc_information = cu2du_p,
-  };
-  rrc->mac_rrc.ue_context_modification_request(ue_data.du_assoc_id, &ue_context_modif_req);
+  if (!UE->f1_ue_context_active)
+    rrc_gNB_generate_UeContextSetupRequest(rrc, ue_context_p, nb_drb, drbs);
+  else
+    rrc_gNB_generate_UeContextModificationRequest(rrc, ue_context_p, nb_drb, drbs, 0, NULL);
 }
 
 /**
