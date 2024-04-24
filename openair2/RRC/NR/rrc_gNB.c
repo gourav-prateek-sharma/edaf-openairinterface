@@ -186,79 +186,12 @@ static int get_ssb_scs(const f1ap_served_cell_info_t *cell_info)
   return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.tbw.scs : cell_info->fdd.dl_tbw.scs;
 }
 
-static int get_dl_arfcn(const f1ap_served_cell_info_t *cell_info)
+static int get_ssb_arfcn(const nr_rrc_du_container_t *du)
 {
-  return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.freqinfo.arfcn : cell_info->fdd.dl_freqinfo.arfcn;
-}
-
-static int get_dl_bw(const f1ap_served_cell_info_t *cell_info)
-{
-  return cell_info->mode == F1AP_MODE_TDD ? cell_info->tdd.tbw.nrb : cell_info->fdd.dl_tbw.nrb;
-}
-
-static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_t *mib, const NR_SIB1_t *sib1)
-{
-  DevAssert(cell_info != NULL && sib1 != NULL && mib != NULL);
-  const NR_FrequencyInfoDL_SIB_t *freq_info = &sib1->servingCellConfigCommon->downlinkConfigCommon.frequencyInfoDL;
-  AssertFatal(freq_info->scs_SpecificCarrierList.list.count == 1,
-              "cannot handle more than one carrier, but has %d\n",
-              freq_info->scs_SpecificCarrierList.list.count);
-  AssertFatal(freq_info->scs_SpecificCarrierList.list.array[0]->offsetToCarrier == 0,
-              "cannot handle offsetToCarrier != 0, but is %ld\n",
-              freq_info->scs_SpecificCarrierList.list.array[0]->offsetToCarrier);
-
-  long offsetToPointA = freq_info->offsetToPointA;
-  long kssb = mib->ssb_SubcarrierOffset;
-  uint32_t dl_arfcn = get_dl_arfcn(cell_info);
-  int scs = get_ssb_scs(cell_info);
-  int band = get_dl_band(cell_info);
-  uint64_t freqpointa = from_nrarfcn(band, scs, dl_arfcn);
-  uint64_t freqssb = 0;
-  // 3GPP TS 38.211 sections 7.4.3.1 and 4.4.4.2
-  // for FR1 offsetToPointA and k_SSB are expressed in terms of 15 kHz SCS
-  // for FR2 offsetToPointA is expressed in terms of 60 kHz SCS and k_SSB expressed in terms of the subcarrier spacing provided
-  // by the higher-layer parameter subCarrierSpacingCommon
-  // FR1 includes frequency bands from 410 MHz (ARFCN 82000) to 7125 MHz (ARFCN 875000)
-  // FR2 includes frequency bands from 24.25 GHz (ARFCN 2016667) to 71.0 GHz (ARFCN 2795832)
-  if (dl_arfcn >= 82000 && dl_arfcn < 875000)
-    freqssb = freqpointa + 15000 * (offsetToPointA * 12 + kssb)  + 10ll * 12 * (1 << scs) * 15000;
-  else if (dl_arfcn >= 2016667 && dl_arfcn < 2795832)
-    freqssb = freqpointa + 60000 * offsetToPointA * 12 + (1 << scs) * 15000 * (kssb  + 10ll * 12);
-  else
-    AssertFatal(false, "Invalid absoluteFrequencyPointA: %u\n", dl_arfcn);
-
-  int band_size_hz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, scs, get_dl_bw(cell_info)) * 1000 * 1000;
-  uint32_t ssb_arfcn = to_nrarfcn(band, freqssb, scs, band_size_hz);
-
-  LOG_D(NR_RRC,
-        "freqpointa %ld Hz/%d offsetToPointA %ld kssb %ld scs %d band %d band_size_hz %d freqssb %ld Hz/%d\n",
-        freqpointa,
-        dl_arfcn,
-        offsetToPointA,
-        kssb,
-        scs,
-        band,
-        band_size_hz,
-        freqssb,
-        ssb_arfcn);
-
-  if (RC.nrmac) {
-    // debugging: let's test this is the correct ARFCN
-    // in the CU, we have no access to the SSB ARFCN and therefore need to
-    // compute it ourselves. If we are running in monolithic, though, we have
-    // access to the MAC structures and hence can read and compare to the
-    // original SSB ARFCN. If the below creates problems, it can safely be
-    // taken out (but the reestablishment will likely not work).
-    const NR_ServingCellConfigCommon_t *scc = RC.nrmac[0]->common_channels[0].ServingCellConfigCommon;
-    uint32_t scc_ssb_arfcn = *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
-    AssertFatal(ssb_arfcn == scc_ssb_arfcn,
-                "mismatch of SCC SSB ARFCN original %u vs. computed %u! Note: you can remove this Assert, the gNB might run but UE "
-                "connection instable\n",
-                scc_ssb_arfcn,
-                ssb_arfcn);
-  }
-
-  return ssb_arfcn;
+  DevAssert(du != NULL && du->mtc != NULL);
+  /* format has been verified when accepting MeasurementTimingConfiguration */
+  NR_MeasTimingList_t *mtlist = du->mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming;
+  return mtlist->list.array[0]->frequencyAndTiming->carrierFreq;
 }
 
 ///---------------------------------------------------------------------------------------------------------------///
@@ -582,13 +515,8 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
   f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
   int scs = get_ssb_scs(cell_info);
   int band = get_dl_band(cell_info);
-  NR_MeasConfig_t *measconfig = NULL;
-  if (du->mib != NULL && du->sib1 != NULL) {
-    /* we cannot calculate the default measurement config without MIB&SIB1, as
-     * we don't know the DU's SSB ARFCN */
-    uint32_t ssb_arfcn = get_ssb_arfcn(cell_info, du->mib, du->sib1);
-    measconfig = get_defaultMeasConfig(ssb_arfcn, band, scs);
-  }
+  uint32_t ssb_arfcn = get_ssb_arfcn(du);
+  NR_MeasConfig_t *measconfig = get_defaultMeasConfig(ssb_arfcn, band, scs);
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, false);
   NR_DRB_ToAddModList_t *DRBs = createDRBlist(ue_p, false);
 
@@ -996,7 +924,7 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
   uint8_t xid = rrc_gNB_get_next_transaction_identifier(module_id);
   ue_p->xids[xid] = RRC_REESTABLISH;
   const f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
-  uint32_t ssb_arfcn = get_ssb_arfcn(cell_info, du->mib, du->sib1);
+  uint32_t ssb_arfcn = get_ssb_arfcn(du);
   int size = do_RRCReestablishment(ue_context_pP, buffer, RRC_BUF_SIZE, xid, cell_info->nr_pci, ssb_arfcn);
 
   LOG_I(NR_RRC, "[RAPROC] UE %04x Logical Channel DL-DCCH, Generating NR_RRCReestablishment (bytes %d)\n", ue_p->rnti, size);
@@ -1283,6 +1211,14 @@ static void rrc_handle_RRCReestablishmentRequest(gNB_RRC_INST *rrc,
   if (!UE->as_security_active) {
     /* no active security context, need to restart entire connection */
     LOG_E(NR_RRC, "UE requested Reestablishment without activated AS security\n");
+    goto fallback_rrc_setup;
+  }
+
+  if (du->mtc == NULL) {
+    // some UEs don't send MeasurementTimingConfiguration, so we don't know the
+    // SSB ARFCN and can't do reestablishment. handle it gracefully by doing
+    // RRC setup procedure instead
+    LOG_E(NR_RRC, "no MeasurementTimingConfiguration for this cell, cannot perform reestablishment\n");
     goto fallback_rrc_setup;
   }
 

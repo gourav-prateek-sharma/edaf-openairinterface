@@ -166,14 +166,10 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     }
   }
 
+  // MTC is mandatory, but some DUs don't send it in the F1 Setup Request, so
+  // "tolerate" this behavior, despite it being mandatory
   NR_MeasurementTimingConfiguration_t *mtc =
       extract_mtc(cell_info->measurement_timing_config, cell_info->measurement_timing_config_len);
-  if (!mtc) {
-    LOG_W(RRC, "cannot decode MeasurementTimingConfiguration of DU ID %ld, rejecting\n", req->gNB_DU_id);
-    f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
-    rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
-    return;
-  }
 
   const f1ap_gnb_du_system_info_t *sys_info = req->cell[0].sys_info;
   NR_MIB_t *mib = NULL;
