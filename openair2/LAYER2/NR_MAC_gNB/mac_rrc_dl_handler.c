@@ -687,6 +687,12 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     nr_mac_enable_ue_rrc_processing_timer(mac, UE, /* apply_cellGroup = */ true);
     NR_SCHED_UNLOCK(&mac->sched_lock);
     UE->expect_reconfiguration = false;
+    /* Re-establish RLC for all remaining bearers */
+    if (UE->reestablish_rlc) {
+      for (int i = 1; i < UE->UE_sched_ctrl.dl_lc_num; ++i)
+        nr_rlc_reestablish_entity(dl_rrc->gNB_DU_ue_id, UE->UE_sched_ctrl.dl_lc_ids[i]);
+      UE->reestablish_rlc = false;
+    }
   }
 
   if (dl_rrc->old_gNB_DU_ue_id != NULL) {
@@ -716,6 +722,9 @@ void dl_rrc_message_transfer(const f1ap_dl_rrc_message_t *dl_rrc)
     pthread_mutex_unlock(&mac->sched_lock);
     nr_rlc_remove_ue(dl_rrc->gNB_DU_ue_id);
     nr_rlc_update_id(*dl_rrc->old_gNB_DU_ue_id, dl_rrc->gNB_DU_ue_id);
+    /* Set flag to trigger RLC re-establishment
+     * for remaining RBs in next RRCReconfiguration */
+    UE->reestablish_rlc = true;
     /* 38.331 clause 5.3.7.4: apply the specified configuration defined in 9.2.1 for SRB1 */
     nr_rlc_reconfigure_entity(dl_rrc->gNB_DU_ue_id, 1, NULL);
     instance_t f1inst = get_f1_gtp_instance();

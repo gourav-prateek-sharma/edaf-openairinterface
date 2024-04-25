@@ -1080,6 +1080,10 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
   for (i = 1; i < ue_p->masterCellGroup->rlc_BearerToAddModList->list.count; ++i)
     asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, ue_p->masterCellGroup->rlc_BearerToAddModList->list.array[i]);
 
+  /*
+   * At this stage, PDCP entity are re-established and reestablishRLC is flagged
+   * with RRCReconfiguration to complete RLC re-establishment of remaining bearers
+   */
   for (i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++) {
     asn1cCallocOne(cellGroupConfig->rlc_BearerToAddModList->list.array[i]->reestablishRLC,
                    NR_RLC_BearerConfig__reestablishRLC_true);
