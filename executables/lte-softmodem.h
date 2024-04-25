@@ -189,8 +189,6 @@ void kill_feptx_thread(RU_t *ru);
 void init_fep_thread(RU_t *ru, pthread_attr_t *attr_fep);
 void init_feptx_thread(RU_t *ru, pthread_attr_t *attr_feptx);
 void fep_full(RU_t *ru, int subframe);
-void configure_ru(int, void *arg);
-void configure_rru(int, void *arg);
 void ru_fep_full_2thread(RU_t *ru,int subframe);
 void feptx_ofdm(RU_t*ru, int frame_tx, int tti_tx);
 void feptx_prec(struct RU_t_s *ru, int frame_tx, int tti_tx);

@@ -53,14 +53,6 @@
 #include "common/utils/LOG/vcd_signal_dumper.h"
 
 #include <executables/softmodem-common.h>
-
-#ifdef SMBV
-#include "PHY/TOOLS/smbv.h"
-unsigned short config_frames[4] = {2,9,11,13};
-#endif
-
-
-
 /* these variables have to be defined before including ENB_APP/enb_paramdef.h and GNB_APP/gnb_paramdef.h */
 static int DEFBANDS[] = {7};
 static int DEFENBS[] = {0};
@@ -81,34 +73,13 @@ static int DEFRUTPCORES[] = {-1,-1,-1,-1};
 #include "T.h"
 #include "nfapi_interface.h"
 #include <nfapi/oai_integration/vendor_ext.h>
-
-extern int oai_exit;
+#include "executables/nr-softmodem-common.h"
 
 uint16_t sl_ahead;
-
-extern struct timespec timespec_sub(struct timespec lhs, struct timespec rhs);
-extern struct timespec timespec_add(struct timespec lhs, struct timespec rhs);
-extern void  nr_phy_free_RU(RU_t *);
-extern void  nr_phy_config_request(NR_PHY_Config_t *gNB);
-#include "executables/thread-common.h"
-//extern PARALLEL_CONF_t get_thread_parallel_conf(void);
-//extern WORKER_CONF_t   get_thread_worker_conf(void);
-
-void stop_RU(int nb_ru);
-
-void configure_ru(int idx, void *arg);
-void configure_rru(int idx, void *arg);
-int attach_rru(RU_t *ru);
-int connect_rau(RU_t *ru);
 static void NRRCconfig_RU(configmodule_interface_t *cfg);
-
-extern int emulate_rf;
-extern int numerology;
 
 /*************************************************************/
 /* Functions to attach and configure RRU                     */
-
-extern void wait_gNBs(void);
 
 int attach_rru(RU_t *ru) {
   ssize_t      msg_len,len;
@@ -146,8 +117,7 @@ int attach_rru(RU_t *ru) {
     }
   }
 
-  configure_ru(ru->idx,
-               (RRU_capabilities_t *)&rru_config_msg.msg[0]);
+  configure_ru(ru, (RRU_capabilities_t *)&rru_config_msg.msg[0]);
   rru_config_msg.type = RRU_config;
   rru_config_msg.len  = sizeof(RRU_CONFIG_msg_t)-MAX_RRU_CONFIG_SIZE+sizeof(RRU_config_t);
   LOG_I(PHY,"Sending Configuration to RRU %d (num_bands %d,band0 %d,txfreq %u,rxfreq %u,att_tx %d,att_rx %d,N_RB_DL %d,N_RB_UL %d,3/4FS %d, prach_FO %d, prach_CI %d)\n",ru->idx,
@@ -263,8 +233,7 @@ int connect_rau(RU_t *ru) {
             ((RRU_config_t *)&rru_config_msg.msg[0])->threequarter_fs[0],
             ((RRU_config_t *)&rru_config_msg.msg[0])->prach_FreqOffset[0],
             ((RRU_config_t *)&rru_config_msg.msg[0])->prach_ConfigIndex[0]);
-      configure_rru(ru->idx,
-                    (void *)&rru_config_msg.msg[0]);
+      configure_rru(ru, (void *)&rru_config_msg.msg[0]);
       configuration_received = 1;
     }
   }
@@ -1486,10 +1455,8 @@ void init_RU_proc(RU_t *ru) {
 
   if(emulate_rf)
     threadCreate( &proc->pthread_emulateRF, emulatedRF_thread, (void *)proc, "emulateRF", -1, OAI_PRIORITY_RT );
-  if (opp_enabled == 1) 
-    threadCreate( &ru->ru_stats_thread, ru_stats_thread, (void *)ru,"ru_stats", -1, OAI_PRIORITY_RT );
-  if (get_thread_worker_conf() == WORKER_ENABLE) {
-  }
+  if (opp_enabled == 1)
+    threadCreate(&ru->ru_stats_thread, ru_stats_thread, (void *)ru, "ru_stats", -1, OAI_PRIORITY_RT);
   LOG_I(PHY, "Initialized RU proc %d (%s,%s),\n", ru->idx, NB_functions[ru->function], NB_timing[ru->if_timing]);
 }
 
@@ -1585,19 +1552,19 @@ const char rru_format_options[4][20] = {"OAI_IF5_only", "OAI_IF4p5_only", "OAI_I
 const char rru_formats[3][20] = {"OAI_IF5", "MBP_IF5", "OAI_IF4p5"};
 const char ru_if_formats[4][20] = {"LOCAL_RF", "REMOTE_OAI_IF5", "REMOTE_MBP_IF5", "REMOTE_OAI_IF4p5"};
 
-void configure_ru(int idx,
-                  void *arg) {
-  RU_t               *ru           = RC.ru[idx];
+void configure_ru(void *ruu, void *arg)
+{
+  RU_t *ru = (RU_t *)ruu;
   RRU_config_t       *config       = (RRU_config_t *)arg;
   RRU_capabilities_t *capabilities = (RRU_capabilities_t *)arg;
   nfapi_nr_config_request_scf_t *cfg = &ru->config;
   int ret;
-  LOG_I(PHY, "Received capabilities from RRU %d\n",idx);
+  LOG_I(PHY, "Received capabilities from RRU %d\n", ru->idx);
 
   if (capabilities->FH_fmt < MAX_FH_FMTs) LOG_I(PHY, "RU FH options %s\n",rru_format_options[capabilities->FH_fmt]);
 
   ret = check_capabilities(ru,capabilities);
-  AssertFatal(ret == 0, "Cannot configure RRU %d, check_capabilities returned %d\n", idx, ret);
+  AssertFatal(ret == 0, "Cannot configure RRU %d, check_capabilities returned %d\n", ru->idx, ret);
   // take antenna capabilities of RRU
   ru->nb_tx                      = capabilities->nb_tx[0];
   ru->nb_rx                      = capabilities->nb_rx[0];
@@ -1625,10 +1592,10 @@ void configure_ru(int idx,
   nr_phy_init_RU(ru);
 }
 
-void configure_rru(int idx,
-                   void *arg) {
+void configure_rru(void *ruu, void *arg)
+{
   RRU_config_t *config     = (RRU_config_t *)arg;
-  RU_t         *ru         = RC.ru[idx];
+  RU_t *ru = (RU_t *)ruu;
   nfapi_nr_config_request_scf_t *cfg = &ru->config;
   ru->nr_frame_parms->nr_band                                             = config->band_list[0];
   ru->nr_frame_parms->dl_CarrierFreq                                      = config->tx_freq[0];

@@ -151,5 +151,5 @@ extern double cpuf;
 extern int emulate_rf;
 extern int numerology;
 extern int usrp_tx_thread;
-
+void wait_gNBs(void);
 #endif
