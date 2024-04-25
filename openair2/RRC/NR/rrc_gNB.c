@@ -513,10 +513,14 @@ static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *co
   const nr_rrc_du_container_t *du = get_du_for_ue(rrc, ue_p->rrc_ue_id);
   DevAssert(du != NULL);
   f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
-  int scs = get_ssb_scs(cell_info);
-  int band = get_dl_band(cell_info);
-  uint32_t ssb_arfcn = get_ssb_arfcn(du);
-  NR_MeasConfig_t *measconfig = get_defaultMeasConfig(ssb_arfcn, band, scs);
+  NR_MeasConfig_t *measconfig = NULL;
+  if (du->mtc != NULL) {
+    int scs = get_ssb_scs(cell_info);
+    int band = get_dl_band(cell_info);
+    const NR_MeasTimingList_t *mtlist = du->mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming;
+    const NR_MeasTiming_t *mt = mtlist->list.array[0];
+    measconfig = get_defaultMeasConfig(mt, band, scs);
+  }
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, false);
   NR_DRB_ToAddModList_t *DRBs = createDRBlist(ue_p, false);
 
