@@ -227,8 +227,7 @@ static int get_ssb_arfcn(const f1ap_served_cell_info_t *cell_info, const NR_MIB_
   else
     AssertFatal(false, "Invalid absoluteFrequencyPointA: %u\n", dl_arfcn);
 
-  int bw_index = get_supported_band_index(scs, band > 256 ? FR2 : FR1, get_dl_bw(cell_info));
-  int band_size_hz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, bw_index) * 1000 * 1000;
+  int band_size_hz = get_supported_bw_mhz(band > 256 ? FR2 : FR1, scs, get_dl_bw(cell_info)) * 1000 * 1000;
   uint32_t ssb_arfcn = to_nrarfcn(band, freqssb, scs, band_size_hz);
 
   LOG_D(NR_RRC,

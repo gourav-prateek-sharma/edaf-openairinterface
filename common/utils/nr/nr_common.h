@@ -206,7 +206,7 @@ uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols);
 int get_nb_periods_per_frame(uint8_t tdd_period);
 long rrc_get_max_nr_csrs(const int max_rbs, long b_SRS);
 bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_t frame_type);
-int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index);
+int get_supported_bw_mhz(frequency_range_t frequency_range, int scs, int nb_rb);
 int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs);
 void get_samplerate_and_bw(int mu,
                            int n_rb,
