@@ -350,6 +350,12 @@ void rx_nr_prach_ru(RU_t *ru,
     dftlen = dftlen*6;
     break;
 
+  case 245760:
+    // 200 MHz @ 245.76 Ms/s
+    Ncp <<= 3;
+    dftlen <<= 3;
+    break;
+
   default:
     AssertFatal(1==0,"sample rate %f MHz not supported for numerology %d\n", fp->samples_per_subframe / 1000.0, mu);
   }
