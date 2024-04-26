@@ -630,7 +630,7 @@ void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max)
 
   // we already stored MSG3 in the buffer, we can use that
   if (ra->Msg3_buffer) {
-    buf = ra->Msg3_buffer;
+    memcpy(buf, ra->Msg3_buffer, sizeof(uint8_t) * TBS_max);
     return;
   }
 
