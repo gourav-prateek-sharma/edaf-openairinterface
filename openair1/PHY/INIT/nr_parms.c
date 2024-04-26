@@ -252,7 +252,7 @@ void nr_init_frame_parms(nfapi_nr_config_request_scf_t* cfg, NR_DL_FRAME_PARMS *
   fp->get_samples_slot_timestamp = &get_samples_slot_timestamp;
   fp->get_slot_from_timestamp = &get_slot_from_timestamp;
   fp->samples_per_frame = 10 * fp->samples_per_subframe;
-  fp->freq_range = (fp->dl_CarrierFreq < 6e9)? nr_FR1 : nr_FR2;
+  fp->freq_range = (fp->dl_CarrierFreq < 6e9)? FR1 : FR2;
 
   fp->Ncp = Ncp;
 
@@ -341,12 +341,12 @@ int nr_init_frame_parms_ue(NR_DL_FRAME_PARMS *fp,
   fp->get_samples_per_slot = &get_samples_per_slot;
   fp->get_samples_slot_timestamp = &get_samples_slot_timestamp;
   fp->samples_per_frame = 10 * fp->samples_per_subframe;
-  fp->freq_range = (fp->dl_CarrierFreq < 6e9)? nr_FR1 : nr_FR2;
+  fp->freq_range = (fp->dl_CarrierFreq < 6e9)? FR1 : FR2;
 
   uint8_t sco = 0;
-  if (((fp->freq_range == nr_FR1) && (config->ssb_table.ssb_subcarrier_offset < 24)) ||
-      ((fp->freq_range == nr_FR2) && (config->ssb_table.ssb_subcarrier_offset < 12))) {
-    if (fp->freq_range == nr_FR1)
+  if (((fp->freq_range == FR1) && (config->ssb_table.ssb_subcarrier_offset < 24)) ||
+      ((fp->freq_range == FR2) && (config->ssb_table.ssb_subcarrier_offset < 12))) {
+    if (fp->freq_range == FR1)
       sco = config->ssb_table.ssb_subcarrier_offset>>config->ssb_config.scs_common;
     else
       sco = config->ssb_table.ssb_subcarrier_offset;
@@ -379,7 +379,7 @@ void nr_init_frame_parms_ue_sa(NR_DL_FRAME_PARMS *frame_parms, uint64_t downlink
   frame_parms->numerology_index = mu;
   frame_parms->dl_CarrierFreq = downlink_frequency;
   frame_parms->ul_CarrierFreq = downlink_frequency + delta_duplex;
-  frame_parms->freq_range = (frame_parms->dl_CarrierFreq < 6e9)? nr_FR1 : nr_FR2;
+  frame_parms->freq_range = (frame_parms->dl_CarrierFreq < 6e9)? FR1 : FR2;
   frame_parms->N_RB_UL = frame_parms->N_RB_DL;
 
   frame_parms->nr_band = nr_band;

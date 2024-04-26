@@ -71,7 +71,7 @@ int nr_adjust_synch_ue(NR_DL_FRAME_PARMS *frame_parms,
 
   int diff = ue->max_pos_avg >> 15;
 
-  if (frame_parms->freq_range==nr_FR2) 
+  if (frame_parms->freq_range == FR2)
     sync_offset = 2;
   else
     sync_offset = 0;

@@ -139,7 +139,7 @@ typedef uint32_t (*get_samples_slot_timestamp_t)(int slot, const NR_DL_FRAME_PAR
 
 struct NR_DL_FRAME_PARMS {
   /// frequency range
-  nr_frequency_range_e freq_range;
+  frequency_range_t freq_range;
   //  /// Placeholder to replace overlapping fields below
   //  nfapi_nr_rf_config_t rf_config;
   /// Placeholder to replace SSB overlapping fields below
