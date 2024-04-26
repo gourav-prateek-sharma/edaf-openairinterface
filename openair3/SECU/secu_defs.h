@@ -28,10 +28,14 @@
 #define SECU_DIRECTION_UPLINK   0
 #define SECU_DIRECTION_DOWNLINK 1
 
-/* stream_security_context_t is an opaque structure
- * it is different for each integrity and ciphering algorithm in use
+/* stream_security_context_t is an opaque structure.
+ * It is different for each integrity and ciphering algorithm in use.
+ * Defined as a struct to have compilation time type checking
+ * (the "context" field is never actually used).
  */
-typedef void stream_security_context_t;
+typedef struct {
+  void *context;
+} stream_security_context_t;
 
 /* stream_security_container_t contains the current configuration
  * of integrity and ciphering. It is used by PDCP and NAS.
