@@ -1108,8 +1108,8 @@ void ru_tx_func(void *param) {
   for (; i < fp->slots_per_subframe / 2; i++)
     cumul_samples += fp->get_samples_per_slot(i, fp);
   int samples = cumul_samples / i;
-  int absslot_tx = info->timestamp_tx / samples;
-  int absslot_rx = absslot_tx - ru->sl_ahead;
+  int64_t absslot_tx = info->timestamp_tx / samples;
+  int64_t absslot_rx = absslot_tx - ru->sl_ahead;
   int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
   clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.start_RU_TX[rt_prof_idx]);
   // do TX front-end processing if needed (precoding and/or IDFTs)
@@ -1335,7 +1335,7 @@ void *ru_thread( void *param ) {
       proc->timestamp_tx += fp->get_samples_per_slot(i % fp->slots_per_frame, fp);
     proc->tti_tx = (proc->tti_rx + ru->sl_ahead) % fp->slots_per_frame;
     proc->frame_tx = proc->tti_rx > proc->tti_tx ? (proc->frame_rx + 1) & 1023 : proc->frame_rx;
-    int absslot_rx = proc->timestamp_rx/fp->get_samples_per_slot(proc->tti_rx,fp);
+    int64_t absslot_rx = proc->timestamp_rx/fp->get_samples_per_slot(proc->tti_rx,fp);
     int rt_prof_idx = absslot_rx % RT_PROF_DEPTH;
     clock_gettime(CLOCK_MONOTONIC,&ru->rt_ru_profiling.return_RU_south_in[rt_prof_idx]);
     LOG_D(PHY,"AFTER fh_south_in - SFN/SL:%d%d RU->proc[RX:%d.%d TX:%d.%d] RC.gNB[0]:[RX:%d%d TX(SFN):%d]\n",
