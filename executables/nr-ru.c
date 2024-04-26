@@ -1089,9 +1089,11 @@ void ru_tx_func(void *param) {
 
   if(!emulate_rf) {
     // do outgoing fronthaul (south) if needed
-    if ((ru->fh_north_asynch_in == NULL) && (ru->fh_south_out)) ru->fh_south_out(ru,frame_tx,slot_tx,info->timestamp_tx);
+    if ((ru->fh_north_asynch_in == NULL) && (ru->fh_south_out))
+      ru->fh_south_out(ru, frame_tx, slot_tx, info->timestamp_tx);
 
-    if (ru->fh_north_out) ru->fh_north_out(ru);
+    if (ru->fh_north_out)
+      ru->fh_north_out(ru);
   } else {
     if(frame_tx == print_frame) {
       for (int i=0; i<ru->nb_tx; i++) {

@@ -372,7 +372,6 @@ extern uint16_t sl_ahead;
 extern uint16_t sf_ahead;
 extern int oai_exit;
 
-void rx_func(void *param);
 void ru_tx_func(void *param);
 void configure_ru(void *, void *arg);
 void configure_rru(void *, void *arg);

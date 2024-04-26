@@ -836,9 +836,7 @@ typedef struct gNB_MAC_INST_s {
 
   nr_mac_rrc_ul_if_t mac_rrc;
   f1_config_t f1_config;
-
   int16_t frame;
-  int16_t slot;
 
   pthread_mutex_t sched_lock;
 
