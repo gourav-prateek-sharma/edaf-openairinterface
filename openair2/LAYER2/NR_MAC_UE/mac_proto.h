@@ -100,7 +100,7 @@ NR_UE_MAC_INST_t * nr_l2_init_ue(int nb_inst);
 NR_UE_MAC_INST_t *get_mac_inst(module_id_t module_id);
 
 void reset_mac_inst(NR_UE_MAC_INST_t *nr_mac);
-void reset_ra(NR_UE_MAC_INST_t *nr_mac, NR_UE_MAC_reset_cause_t cause);
+void reset_ra(NR_UE_MAC_INST_t *nr_mac, bool free_prach);
 void release_mac_configuration(NR_UE_MAC_INST_t *mac,
                                NR_UE_MAC_reset_cause_t cause);
 
@@ -293,7 +293,7 @@ void nr_get_prach_resources(NR_UE_MAC_INST_t *mac,
 
 void prepare_msg4_feedback(NR_UE_MAC_INST_t *mac, int pid, int ack_nack);
 void configure_initial_pucch(PUCCH_sched_t *pucch, int res_ind);
-
+void release_PUCCH_SRS(NR_UE_MAC_INST_t *mac);
 void nr_ue_reset_sync_state(NR_UE_MAC_INST_t *mac);
 void nr_ue_send_synch_request(NR_UE_MAC_INST_t *mac, module_id_t module_id, int cc_id, int cell_id);
 
@@ -312,6 +312,7 @@ void init_RA(NR_UE_MAC_INST_t *mac,
 
 int16_t get_prach_tx_power(NR_UE_MAC_INST_t *mac);
 void free_rach_structures(NR_UE_MAC_INST_t *nr_mac, int bwp_id);
+void schedule_RA_after_SR_failure(NR_UE_MAC_INST_t *mac);
 void nr_Msg1_transmitted(NR_UE_MAC_INST_t *mac);
 void nr_Msg3_transmitted(NR_UE_MAC_INST_t *mac, uint8_t CC_id, frame_t frameP, slot_t slotP, uint8_t gNB_id);
 void nr_get_msg3_payload(NR_UE_MAC_INST_t *mac, uint8_t *buf, int TBS_max);
@@ -335,7 +336,7 @@ void remove_ul_config_last_item(fapi_nr_ul_config_request_pdu_t *pdu);
 fapi_nr_ul_config_request_pdu_t *fapiLockIterator(fapi_nr_ul_config_request_t *ul_config, frame_t frame_tx, int slot_tx);
 
 void release_ul_config(fapi_nr_ul_config_request_pdu_t *pdu, bool clearIt);
-
+void clear_ul_config_request(NR_UE_MAC_INST_t *mac, int scs);
 int16_t compute_nr_SSB_PL(NR_UE_MAC_INST_t *mac, short ssb_rsrp_dBm);
 
 // PUSCH scheduler:

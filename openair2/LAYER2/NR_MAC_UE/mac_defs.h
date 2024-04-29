@@ -308,7 +308,7 @@ typedef struct {
   /// number of attempt for rach
   uint8_t RA_attempt_number;
   /// Random-access procedure flag
-  uint8_t RA_active;
+  bool RA_active;
   /// Random-access preamble index
   int ra_PreambleIndex;
   // When multiple SSBs per RO is configured, this indicates which one is selected in this RO -> this is used to properly compute the PRACH preamble
@@ -340,6 +340,8 @@ typedef struct {
   uint8_t Msg3_size;
   /// Msg3 buffer
   uint8_t *Msg3_buffer;
+
+  bool msg3_C_RNTI;
 
   /// Random-access Contention Resolution Timer
   NR_timer_t contention_resolution_timer;

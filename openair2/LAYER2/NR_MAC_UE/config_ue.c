@@ -1422,7 +1422,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   switch (cause) {
     case GO_TO_IDLE:
-      reset_ra(mac, cause);
+      reset_ra(mac, true);
       release_mac_configuration(mac, cause);
       nr_ue_init_mac(mac);
       nr_ue_mac_default_configs(mac);
@@ -1431,14 +1431,14 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
       break;
     case DETACH:
       LOG_A(NR_MAC, "Received detach indication\n");
-      reset_ra(mac, cause);
+      reset_ra(mac, true);
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
       mac->state = UE_DETACHING;
       break;
     case T300_EXPIRY:
-      reset_ra(mac, cause);
+      reset_ra(mac, false);
       reset_mac_inst(mac);
       mac->state = UE_SYNC; // still in sync but need to restart RA
       break;
@@ -2038,6 +2038,47 @@ static void configure_servingcell_info(NR_UE_ServingCell_Info_t *sc_info, NR_Ser
       default:
         AssertFatal(false, "Invalid case\n");
     }
+  }
+}
+
+/// This function implements 38.331 Section 5.3.12: UE actions upon PUCCH/SRS release request
+void release_PUCCH_SRS(NR_UE_MAC_INST_t *mac)
+{
+  // release PUCCH-CSI-Resources configured in CSI-ReportConfig
+  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
+  NR_CSI_MeasConfig_t *meas_config = sc_info->csi_MeasConfig;
+  if (meas_config && meas_config->csi_ReportConfigToAddModList) {
+    for (int i = 0; i < meas_config->csi_ReportConfigToAddModList->list.count; i++) {
+      struct NR_CSI_ReportConfig__reportConfigType *type = &meas_config->csi_ReportConfigToAddModList->list.array[i]->reportConfigType;
+      switch (type->present) {
+        case NR_CSI_ReportConfig__reportConfigType_PR_periodic :
+          for (int j = type->choice.periodic->pucch_CSI_ResourceList.list.count; j > 0 ; j--)
+            asn_sequence_del(&type->choice.periodic->pucch_CSI_ResourceList.list, j - 1, 1);
+          break;
+        case NR_CSI_ReportConfig__reportConfigType_PR_semiPersistentOnPUCCH :
+          for (int j = type->choice.semiPersistentOnPUCCH->pucch_CSI_ResourceList.list.count; j > 0 ; j--)
+            asn_sequence_del(&type->choice.semiPersistentOnPUCCH->pucch_CSI_ResourceList.list, j - 1, 1);
+          break;
+        case NR_CSI_ReportConfig__reportConfigType_PR_semiPersistentOnPUSCH :
+        case NR_CSI_ReportConfig__reportConfigType_PR_aperiodic :
+          // no PUCCH config to release
+          break;
+        default :
+          AssertFatal(false, "Invalid CSI report type\n");
+      }
+    }
+  }
+
+  for (int bwp = 0; bwp < mac->ul_BWPs.count; bwp++) {
+    // release SchedulingRequestResourceConfig instances configured in PUCCH-Config
+    NR_PUCCH_Config_t *pucch_Config = mac->ul_BWPs.array[bwp]->pucch_Config;
+    for (int j = pucch_Config->schedulingRequestResourceToAddModList->list.count; j > 0 ; j--)
+      asn_sequence_del(&pucch_Config->schedulingRequestResourceToAddModList->list, j - 1, 1);
+    // release SRS-Resource instances configured in SRS-Config
+    // TODO not clear if only SRS-Resources or also the ResourceSet should be released
+    NR_SRS_Config_t *srs_Config = mac->ul_BWPs.array[bwp]->srs_Config;
+    for (int j = srs_Config->srs_ResourceToAddModList->list.count; j > 0 ; j--)
+      asn_sequence_del(&srs_Config->srs_ResourceToAddModList->list, j - 1, 1);
   }
 }
 

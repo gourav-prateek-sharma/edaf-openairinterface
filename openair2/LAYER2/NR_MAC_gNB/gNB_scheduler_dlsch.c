@@ -132,9 +132,14 @@ int nr_write_ce_dlsch_pdu(module_id_t module_idP,
     // contention resolution identity MAC ce has a fixed 48 bit size
     // this contains the UL CCCH SDU. If UL CCCH SDU is longer than 48 bits,
     // it contains the first 48 bits of the UL CCCH SDU
-    LOG_T(NR_MAC, "[gNB ][RAPROC] Generate contention resolution msg: %x.%x.%x.%x.%x.%x\n",
-          ue_cont_res_id[0], ue_cont_res_id[1], ue_cont_res_id[2],
-          ue_cont_res_id[3], ue_cont_res_id[4], ue_cont_res_id[5]);
+    LOG_D(NR_MAC,
+          "[gNB ][RAPROC] Generate contention resolution msg: %x.%x.%x.%x.%x.%x\n",
+          ue_cont_res_id[0],
+          ue_cont_res_id[1],
+          ue_cont_res_id[2],
+          ue_cont_res_id[3],
+          ue_cont_res_id[4],
+          ue_cont_res_id[5]);
     // Copying bytes (6 octects) to CEs pointer
     mac_ce_size = 6;
     memcpy(ce_ptr, ue_cont_res_id, mac_ce_size);

@@ -2452,7 +2452,7 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *p
 
   if(!pucch_Config ||
      !pucch_Config->schedulingRequestResourceToAddModList ||
-     pucch_Config->schedulingRequestResourceToAddModList->list.count==0)
+     pucch_Config->schedulingRequestResourceToAddModList->list.count == 0)
     return false; // SR not configured
 
   int sr_count = 0;
@@ -2476,7 +2476,12 @@ bool trigger_periodic_scheduling_request(NR_UE_MAC_INST_t *mac, PUCCH_sched_t *p
       pucch->pucch_resource = sr_pucch;
       pucch->n_sr = 1;
       /* sr_payload = 1 means that this is a positive SR, sr_payload = 0 means that it is a negative SR */
-      pucch->sr_payload = nr_ue_get_SR(mac, frame, slot, sr_Config->schedulingRequestID);
+      int ret = nr_ue_get_SR(mac, frame, slot, sr_Config->schedulingRequestID);
+      if (ret < 0) {
+        memset(pucch, 0, sizeof(*pucch));
+        return false;
+      }
+      pucch->sr_payload = ret;
       sr_count++;
       AssertFatal(sr_count < 2, "Cannot handle more than 1 SR per slot yet\n");
     }
@@ -2518,18 +2523,18 @@ int8_t nr_ue_get_SR(NR_UE_MAC_INST_t *mac, frame_t frame, slot_t slot, NR_Schedu
     return 1;
   }
 
-  // TODO
-  // notify RRC to release PUCCH for all Serving Cells;
-  // notify RRC to release SRS for all Serving Cells;
-  // clear any configured downlink assignments and uplink grants;
-  // clear any PUSCH resources for semi-persistent CSI reporting;
+  LOG_W(NR_MAC,
+        "[UE %d] SR not served! SR counter %d reached sr_MaxTransmissions %d\n",
+        mac->ue_id,
+        sr_info->counter,
+        sr_info->maxTransmissions);
+
   // initiate a Random Access procedure (see clause 5.1) on the SpCell and cancel all pending SRs.
-  LOG_E(NR_MAC, "[UE %d] SR not served. Triggering of new RA procedure not implemented yet.\n", mac->ue_id);
   sr_info->pending = false;
   sr_info->counter = 0;
   nr_timer_stop(&sr_info->prohibitTimer);
-
-  return 0;
+  schedule_RA_after_SR_failure(mac);
+  return -1;
 }
 
 // section 5.2.5 of 38.214
@@ -3529,7 +3534,7 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
         mac_len = 6;
 
         if (ra->ra_state == nrRA_WAIT_CONTENTION_RESOLUTION) {
-          LOG_I(MAC, "[UE %d][RAPROC] Frame %d : received contention resolution identity: 0x%02x%02x%02x%02x%02x%02x Terminating RA procedure\n",
+          LOG_I(MAC, "[UE %d]Frame %d Contention resolution identity: 0x%02x%02x%02x%02x%02x%02x Terminating RA procedure\n",
                 mac->ue_id,
                 frameP,
                 pduP[1],
@@ -3541,21 +3546,21 @@ void nr_ue_process_mac_pdu(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *dl_i
 
           bool ra_success = true;
 	  if (!IS_SOFTMODEM_IQPLAYER) { // Control is bypassed when replaying IQs (BMC)
-	    for(int i = 0; i<mac_len; i++) {
-	      if(ra->cont_res_id[i] != pduP[i+1]) {
+	    for(int i = 0; i < mac_len; i++) {
+	      if(ra->cont_res_id[i] != pduP[i + 1]) {
 		ra_success = false;
 		break;
 	      }
 	    }
 	  }
 
-          if ( (ra->RA_active == 1) && ra_success) {
+          if (ra->RA_active && ra_success) {
             nr_ra_succeeded(mac, gNB_index, frameP, slot);
-          } else if (!ra_success){
+          } else if (!ra_success) {
             // TODO: Handle failure of RA procedure @ MAC layer
             //  nr_ra_failed(module_idP, CC_id, prach_resources, frameP, slot); // prach_resources is a PHY structure
             ra->ra_state = nrRA_UE_IDLE;
-            ra->RA_active = 0;
+            ra->RA_active = false;
           }
         }
         break;
@@ -3996,7 +4001,8 @@ static void nr_ue_process_rar(NR_UE_MAC_INST_t *mac, nr_downlink_indication_t *d
       if (!ra->cfra) {
         ra->t_crnti = rar->TCRNTI_2 + (rar->TCRNTI_1 << 8);
         rnti = ra->t_crnti;
-        nr_mac_rrc_msg3_ind(mac->ue_id, rnti, dl_info->gNB_index);
+        if (!ra->msg3_C_RNTI)
+          nr_mac_rrc_msg3_ind(mac->ue_id, rnti, dl_info->gNB_index);
       }
       fapi_nr_ul_config_request_pdu_t *pdu = lockGet_ul_config(mac, frame_tx, slot_tx, FAPI_NR_UL_CONFIG_TYPE_PUSCH);
       if (!pdu)
