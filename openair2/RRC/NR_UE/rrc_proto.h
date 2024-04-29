@@ -86,7 +86,7 @@ void nr_mac_rrc_sync_ind(const module_id_t module_id,
 void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
                           NR_Release_Cause_t release_cause,
                           NR_RRCRelease_t *RRCRelease);
-
+void handle_RRCRelease(NR_UE_RRC_INST_t *rrc);
 void nr_mac_rrc_ra_ind(const module_id_t mod_id, int frame, bool success);
 void nr_mac_rrc_msg3_ind(const module_id_t mod_id, const int rnti, int gnb_id);
 void set_rlf_sib1_timers_and_constants(NR_UE_Timers_Constants_t *tac, NR_SIB1_t *sib1);

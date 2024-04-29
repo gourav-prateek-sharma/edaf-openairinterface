@@ -1623,15 +1623,14 @@ static int nr_rrc_ue_decode_dcch(NR_UE_RRC_INST_t *rrc,
         } break;
 
         case NR_DL_DCCH_MessageType__c1_PR_rrcResume:
-          LOG_I(NR_RRC, "Received rrcResume on DL-DCCH-Message\n");
+          LOG_E(NR_RRC, "Received rrcResume on DL-DCCH-Message -> Not handled\n");
           break;
         case NR_DL_DCCH_MessageType__c1_PR_rrcRelease:
           LOG_I(NR_RRC, "[UE %ld] Received RRC Release (gNB %d)\n", rrc->ue_id, gNB_indexP);
-          // TODO properly implement procedures in 5.3.8.3 of 38.331
-          NR_Release_Cause_t cause = OTHER;
-          if (rrc->detach_after_release)
-            rrc->nrRrcState = RRC_STATE_DETACH_NR;
-          nr_rrc_going_to_IDLE(rrc, cause, dl_dcch_msg->message.choice.c1->choice.rrcRelease);
+          // delay the actions 60 ms from the moment the RRCRelease message was received
+          UPDATE_IE(rrc->RRCRelease, dl_dcch_msg->message.choice.c1->choice.rrcRelease, NR_RRCRelease_t);
+          nr_timer_setup(&rrc->release_timer, 60, 10); // 10ms step
+          nr_timer_start(&rrc->release_timer);
           break;
 
         case NR_DL_DCCH_MessageType__c1_PR_ueCapabilityEnquiry:
@@ -2134,6 +2133,46 @@ static void process_lte_nsa_msg(NR_UE_RRC_INST_t *rrc, nsa_msg_t *msg, int msg_l
     default:
       LOG_E(NR_RRC, "No NSA Message Found\n");
   }
+}
+
+void handle_RRCRelease(NR_UE_RRC_INST_t *rrc)
+{
+  NR_UE_Timers_Constants_t *tac = &rrc->timers_and_constants;
+  // stop timer T380, if running
+  nr_timer_stop(&tac->T380);
+  // stop timer T320, if running
+  nr_timer_stop(&tac->T320);
+  if (rrc->detach_after_release)
+    rrc->nrRrcState = RRC_STATE_DETACH_NR;
+  const struct NR_RRCRelease_IEs *rrcReleaseIEs = rrc->RRCRelease ? rrc->RRCRelease->criticalExtensions.choice.rrcRelease : NULL;
+  if (!rrc->as_security_activated) {
+    // ignore any field included in RRCRelease message except waitTime
+    // perform the actions upon going to RRC_IDLE as specified in 5.3.11 with the release cause 'other'
+    // upon which the procedure ends
+    NR_Release_Cause_t cause = OTHER;
+    nr_rrc_going_to_IDLE(rrc, cause, rrc->RRCRelease);
+    asn1cFreeStruc(asn_DEF_NR_RRCRelease, rrc->RRCRelease);
+    return;
+  }
+  bool suspend = false;
+  if (rrcReleaseIEs) {
+    if (rrcReleaseIEs->redirectedCarrierInfo)
+      LOG_E(NR_RRC, "redirectedCarrierInfo in RRCRelease not handled\n");
+    if (rrcReleaseIEs->cellReselectionPriorities)
+      LOG_E(NR_RRC, "cellReselectionPriorities in RRCRelease not handled\n");
+    if (rrcReleaseIEs->deprioritisationReq)
+      LOG_E(NR_RRC, "deprioritisationReq in RRCRelease not handled\n");
+    if (rrcReleaseIEs->suspendConfig) {
+      suspend = true;
+      // procedures to go in INACTIVE state
+      AssertFatal(false, "Inactive State not supported\n");
+    }
+  }
+  if (!suspend) {
+    NR_Release_Cause_t cause = OTHER;
+    nr_rrc_going_to_IDLE(rrc, cause, rrc->RRCRelease);
+  }
+  asn1cFreeStruc(asn_DEF_NR_RRCRelease, rrc->RRCRelease);
 }
 
 void nr_rrc_going_to_IDLE(NR_UE_RRC_INST_t *rrc,
