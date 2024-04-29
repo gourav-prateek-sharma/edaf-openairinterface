@@ -1694,7 +1694,7 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
   if (pointa > 2016666) { //FR2
     x = table_6_3_3_2_4_prachConfig_Index[index][2];
     s_map = table_6_3_3_2_4_prachConfig_Index[index][5];
-    *N_RA_sfn += count_bits_set(s_map);
+    *N_RA_sfn += count_bits64(s_map);
     *N_RA_slot = table_6_3_3_2_4_prachConfig_Index[index][7]; // Number of RACH slots within a subframe
     *max_association_period = 160/(x * 10); 
     if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1721,7 +1721,7 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
     if (unpaired) {
       x = table_6_3_3_2_3_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_3_prachConfig_Index[index][4];
-      *N_RA_sfn += count_bits_set(s_map);
+      *N_RA_sfn += count_bits64(s_map);
       *N_RA_slot = table_6_3_3_2_3_prachConfig_Index[index][6]; // Number of RACH slots within a subframe
       *max_association_period = 160/(x * 10); 
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
@@ -1746,7 +1746,7 @@ int get_nr_prach_occasion_info_from_index(uint8_t index,
     else { // FDD
       x = table_6_3_3_2_2_prachConfig_Index[index][2];
       s_map = table_6_3_3_2_2_prachConfig_Index[index][4];
-      *N_RA_sfn += count_bits_set(s_map);
+      *N_RA_sfn += count_bits64(s_map);
       *N_RA_slot = table_6_3_3_2_2_prachConfig_Index[index][6];
       if (start_symbol != NULL && N_t_slot != NULL && N_dur != NULL && format != NULL){
         *start_symbol = table_6_3_3_2_2_prachConfig_Index[index][5];
