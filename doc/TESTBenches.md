@@ -9,10 +9,10 @@
 | asterix       | 172.21.16.127   | CI-Asterix-Usage      | *unused*           | 172.21.19.14                                          |
 | obelix        | 172.21.16.128   | CI-Obelix-Usage       | eNB (n40, n78), nrUE | 172.21.19.13, X300 (192.168.60.2)                   |
 | porcepix      | 172.21.16.136   | CI-Porcepix           | Executor, EPC, 5GC | --                                                    |
-| nrmodule2     | 172.21.16.139   | CI-NrModule2          | Quectel            | Quectel module                                        |
+| up2           | 172.21.19.68    | CI-UP2-Usage          | COTS UE            | Quectel RM520N                                        |
 | nepes         | 172.21.16.137   | CI-Nepes              | gNB (n78), EPC/5GC | B200mini (30C51EB)                                    |
 | ofqot         | 172.21.16.109   | CI-Ofqot              | gNB (n78)          | B200mini (30C51D4)                                    |
-| idefix        | 172.21.16.135   | CI-Idefix             | Quectel            | Quectel module                                        |
+| idefix        | 172.21.16.135   | CI-Idefix             | COTS UE            | Quectel RM500Q                                        |
 | caracal       | 172.21.16.132   | CI-Caracal            | gNB/phytest        | N300 (192.168.10.2)                                   |
 | amariue       | 172.21.16.144   | CI-Amarisoft-UE-Usage | nrUE               | Amarisoft UE simulator                                |
 | nano          | 172.21.18.48    | CI-Nano-Legacy-EPC    | Executor, EPC, adb | 2x COTS (adb)                                         |
@@ -23,7 +23,8 @@
 | avra          | 172.21.16.124   | CI-Avra-Usage         | gNB (n78)          | AW2S Jaguar (192.168.80.239)                          |
 | orion         | 172.21.16.134   | CI-Orion-Build-Sanity-Check-Deploy-Test, CI-Orion-DsTester-Deploy-Test | Build | |
 | aerial2       | 172.21.16.131   | CI-Aerial2-Usage      | gNB (PNF/Nvidia CUBB + VNF) | Foxconn RU, _Nvidia Aerial SDK integrated_   |
-| sphex         | 172.21.17.54    | CI-Sphex-Usage        | Quectel             | Quectel module                                       |
+| sphex         | 172.21.17.54    | CI-Sphex-Usage        | COTS UE            | Quectel RM500Q                                        |
+| matix         | 172.21.19.58    | CI-Matix-Usage        | gNB (n77)          | N310                                                  |
 
 Note: The available resources, and their current usage, is indicated here:
 - [Lockable resources of jenkins-oai](https://jenkins-oai.eurecom.fr/lockable-resources/):
@@ -154,7 +155,7 @@ information on how the images are built.
   - tests OAI 4G for 10 MHz/TM1; known to be unstable
 - [RAN-LTE-TDD-2x2-Container](https://jenkins-oai.eurecom.fr/view/RAN/job/RAN-LTE-TDD-2x2-Container/)
   ~4G-LTE
-  - obelix + N310, porcepix, nrmodule2 + Quectel
+  - obelix + N310, porcepix, up2 + Quectel
   - TM1 and TM2 test, IF4p5 fronthaul
 - [RAN-LTE-TDD-LTEBOX-Container](https://jenkins-oai.eurecom.fr/job/RAN-LTE-TDD-LTEBOX-Container/)
   ~4G-LTE
@@ -191,8 +192,12 @@ information on how the images are built.
   - OpenShift cluster for CN deployment and container images for gNB and UE deployment
 - [RAN-SA-AERIAL-CN5G](https://jenkins-oai.eurecom.fr/job/RAN-SA-AERIAL-CN5G/)
   ~5G-NR
-  - 5G-NR SA test setup: OAI VNF  + PNF/NVIDIA CUBB on Aerial2 (U22) + Foxconn RU, COTS UE (Quctel RM500Q), OAI CN5G
+  - 5G-NR SA test setup: OAI VNF  + PNF/NVIDIA CUBB on Aerial2 (U22) + Foxconn RU, sphex + COTS UE (Quectel RM500Q), OAI CN5G
   - container images for gNB deployment
+- [RAN-SA-2x2-Module-CN5G](https://jenkins-oai.eurecom.fr/view/RAN/job/RAN-SA-2x2-Module-CN5G/)
+  ~5G-NR
+  - matix + N310 (gNB), up2 + COTS UE (Quectel RM520N), OAI 5GC deployed in docker on matix
+  - NR performance tests: 2x2 configuration, 60 MHz and 100 MHz bandwidth
 
 ### RAN-CI-NSA-Trigger
 
@@ -201,9 +206,6 @@ information on how the images are built.
 - [RAN-NSA-2x2-Module-OAIEPC](https://jenkins-oai.eurecom.fr/job/RAN-NSA-2x2-Module-OAIEPC/)
   - obelix + N310 (eNB), asterix + N310 (gNB), nrmodule2 + Quectel, porcepix w/ Magma EPC
   - LTE 2x2 and NR 2x2 (non-standalone)
-- [RAN-SA-Module-CN5G](https://jenkins-oai.eurecom.fr/view/RAN/job/RAN-SA-Module-CN5G/)
-  - asterix + N310 (gNB), nrmodule2 + Quectel, porcepix w/ OAI 5GC
-  - NR 2x2 (standalone)
 
 ## How to reproduce CI results
 
