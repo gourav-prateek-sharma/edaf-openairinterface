@@ -129,10 +129,10 @@ def Iperf_analyzeV3BIDIRJson(filename):
 	with open(filename) as file:
 		filename = json.load(file)
 		try:
-			sender_bitrate_dl   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
-			receiver_bitrate_dl = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
-			sender_bitrate_ul   = round(filename['end']['streams'][1]['sender']['bits_per_second']/1000000,2)
-			receiver_bitrate_ul = round(filename['end']['streams'][1]['receiver']['bits_per_second']/1000000,2)
+			sender_bitrate_ul   = round(filename['end']['streams'][0]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate_ul = round(filename['end']['streams'][0]['receiver']['bits_per_second']/1000000,2)
+			sender_bitrate_dl   = round(filename['end']['streams'][1]['sender']['bits_per_second']/1000000,2)
+			receiver_bitrate_dl = round(filename['end']['streams'][1]['receiver']['bits_per_second']/1000000,2)
 		except Exception as e:
 			return (False, 'Could not compute BIDIR bitrate!')
 

@@ -189,7 +189,7 @@
 
   <testCase id="170003">
     <class>Iperf</class>
-    <desc>iperf (DL/TCP)(30 sec)(multi-ue profile)</desc>
+    <desc>iperf (DL/TCP)(30 sec)(single-ue profile)</desc>
     <iperf_args>-t 30 -R</iperf_args>
     <id>idefix</id>
     <svr_id>sabox-nepes</svr_id>
@@ -198,7 +198,7 @@
 
   <testCase id="170004">
     <class>Iperf</class>
-    <desc>iperf (UL/TCP)(30 sec)(multi-ue profile)</desc>
+    <desc>iperf (UL/TCP)(30 sec)(single-ue profile)</desc>
     <iperf_args>-t 30</iperf_args>
     <id>idefix</id>
     <svr_id>sabox-nepes</svr_id>

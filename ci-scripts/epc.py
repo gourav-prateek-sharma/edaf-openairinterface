@@ -298,39 +298,18 @@ class EPCManagement():
 						html_cell += '(' + res4.group('date') + ')'
 					html_cell += '\n'
 		elif re.match('OC-OAI-CN5G', self.Type, re.IGNORECASE):
-			self.testCase_id = HTML.testCase_id
-			imageNames = ["oai-nrf", "oai-amf", "oai-smf", "oai-spgwu-tiny", "oai-ausf", "oai-udm", "oai-udr", "mysql","oai-traffic-server"]
-			logging.debug('Deploying OAI CN5G on Openshift Cluster')
-			lIpAddr = self.IPAddress
-			lSourcePath = "/opt/oai-cn5g-fed-develop-2023-04-28-20897"
-			succeeded = OC.OC_login(mySSH, self.OCUserName, self.OCPassword, OC.CI_OC_CORE_NAMESPACE)
+			succeeded, report = OC.OC_deploy_CN(mySSH, self.OCUserName, self.OCPassword)
 			if not succeeded:
-				logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
-				HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_LOGIN_FAIL)
-				return False
-			for ii in imageNames:
-					mySSH.run(f'helm uninstall {ii}', reportNonZero=False)
-			mySSH.run(f'helm spray {lSourcePath}/ci-scripts/charts/oai-5g-basic/.')
-			ret = mySSH.run(f'oc get pods', silent=True)
-			if ret.stdout.count('Running') != 9:
-				logging.error('\u001B[1m Deploying 5GCN Failed using helm chart on OC Cluster\u001B[0m')
-				for ii in imageNames:
-					mySSH.run('helm uninstall '+ ii)
-				ret = mySSH.run(f'oc get pods')
-				if re.search('No resources found', ret.stdout):
-					logging.debug('All pods uninstalled')
-					OC.OC_logout(mySSH)
-					mySSH.close()
-					HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_PROJECT_FAIL)
-					return False
-			ret = mySSH.run(f'oc get pods', silent=True)
-			for line in ret.stdout.split('\n')[1:]:
+				HTML.CreateHtmlTestRow('N/A', 'KO', report)
+				HTML.CreateHtmlTabFooter(False)
+				mySSH.close()
+				sys.exit("OC OAI CN5G: CN deployment failed!")
+			for line in report.stdout.split('\n')[1:]:
 				columns = line.strip().split()
 				name = columns[0]
 				status = columns[2]
 				html_cell += status + '    ' + name
 				html_cell += '\n'
-			OC.OC_logout(mySSH)
 		else:
 			logging.error('This option should not occur!')
 		mySSH.close()
@@ -562,8 +541,6 @@ class EPCManagement():
 		HTML.CreateHtmlTestRow('N/A', 'OK', CONST.ALL_PROCESSES_OK)
 
 	def Terminate5GCN(self, HTML):
-		imageNames = ["mysql", "oai-nrf", "oai-amf", "oai-smf", "oai-spgwu-tiny", "oai-ausf", "oai-udm", "oai-udr", "oai-traffic-server"]
-		containerInPods = ["", "-c nrf", "-c amf", "-c smf", "-c spgwu", "-c ausf", "-c udm", "-c udr", ""]
 		mySSH = cls_cmd.getConnection(self.IPAddress)
 		message = ''
 		if re.match('ltebox', self.Type, re.IGNORECASE):
@@ -598,36 +575,13 @@ class EPCManagement():
 			mySSH.copyin(f'{self.SourceCodePath}/logs/test_logs_CN.zip','test_logs_CN.zip')
 			logging.debug(message)
 		elif re.match('OC-OAI-CN5G', self.Type, re.IGNORECASE):
-			logging.debug('Terminating OAI CN5G on Openshift Cluster')
-			lIpAddr = self.IPAddress
-			lSourcePath = self.SourceCodePath
-			mySSH.run(f'rm -Rf {lSourcePath}/logs')
-			mySSH.run(f'mkdir -p {lSourcePath}/logs')
-			logging.debug('OC OAI CN5G - Collecting Log files to workspace')
-			succeeded = OC.OC_login(mySSH, self.OCUserName, self.OCPassword, OC.CI_OC_CORE_NAMESPACE)
+			succeeded, report = OC.OC_undeploy_CN(mySSH, self.OCUserName, self.OCPassword)
 			if not succeeded:
-				logging.error('\u001B[1m OC Cluster Login Failed\u001B[0m')
-				HTML.CreateHtmlTestRow('N/A', 'KO', CONST.OC_LOGIN_FAIL)
-				return False
-			mySSH.run(f'oc describe pod &> {lSourcePath}/logs/describe-pods-post-test.log')
-			mySSH.run(f'oc get pods.metrics.k8s &> {lSourcePath}/logs/nf-resource-consumption.log')
-			for ii, ci in zip(imageNames, containerInPods):
-			       podName = mySSH.run(f"oc get pods | grep {ii} | awk \'{{print $1}}\'").stdout.strip()
-			       if not podName:
-				       logging.debug(f'{ii} pod not found!')
-				       HTML.CreateHtmlTestRow(self.Type, 'KO', CONST.INVALID_PARAMETER)
-				       HTML.CreateHtmlTabFooter(False)
-			       mySSH.run(f'oc logs -f {podName} {ci} &> {lSourcePath}/logs/{ii}.log &')
-			       mySSH.run(f'helm uninstall {ii}')
-			       podName = ''
-			mySSH.run(f'cd {lSourcePath}/logs && zip -r -qq test_logs_CN.zip *.log')
-			mySSH.copyin(f'{lSourcePath}/logs/test_logs_CN.zip','test_logs_CN.zip')
-			ret = mySSH.run(f'oc get pods', silent=True)
-			res = re.search(f'No resources found in {OC.CI_OC_CORE_NAMESPACE} namespace.', ret.stdout)
-			if res is not None:
-			       logging.debug('OC OAI CN5G components uninstalled')
-			       message = 'OC OAI CN5G components uninstalled'
-			OC.OC_logout(mySSH)
+				HTML.CreateHtmlTestRow('N/A', 'KO', report)
+				HTML.CreateHtmlTabFooter(False)
+				sys.exit("OC OAI CN5G: CN undeployment failed!")
+			else:
+				message = report.stdout
 		else:
 			logging.error('This should not happen!')
 		mySSH.close()

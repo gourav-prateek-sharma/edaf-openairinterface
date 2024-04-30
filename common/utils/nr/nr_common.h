@@ -79,11 +79,6 @@ static inline const char *rnti_types(nr_rnti_type_t rr)
 
 #define NR_MAX_NB_LAYERS 4 // 8
 
-typedef enum {
-  nr_FR1 = 0,
-  nr_FR2
-} nr_frequency_range_e;
-
 typedef struct nr_bandentry_s {
   int16_t band;
   uint64_t ul_min;
@@ -176,7 +171,16 @@ static inline int get_num_dmrs(uint16_t dmrs_mask )
   return(num_dmrs);
 }
 
-static __attribute__((always_inline)) inline int count_bits_set(uint64_t v)
+static inline int count_bits(uint8_t *arr, int sz)
+{
+  AssertFatal(sz % sizeof(int) == 0, "to implement if needed\n");
+  int ret = 0;
+  for (uint *ptr = (uint *)arr; (uint8_t *)ptr < arr + sz; ptr++)
+    ret += __builtin_popcount(*ptr);
+  return ret;
+}
+
+static __attribute__((always_inline)) inline int count_bits64(uint64_t v)
 {
   return __builtin_popcountll(v);
 }
@@ -206,7 +210,7 @@ uint16_t SL_to_bitmap(int startSymbolIndex, int nrOfSymbols);
 int get_nb_periods_per_frame(uint8_t tdd_period);
 long rrc_get_max_nr_csrs(const int max_rbs, long b_SRS);
 bool compare_relative_ul_channel_bw(int nr_band, int scs, int nb_ul, frame_type_t frame_type);
-int get_supported_bw_mhz(frequency_range_t frequency_range, int bw_index);
+int get_supported_bw_mhz(frequency_range_t frequency_range, int scs, int nb_rb);
 int get_supported_band_index(int scs, frequency_range_t freq_range, int n_rbs);
 void get_samplerate_and_bw(int mu,
                            int n_rb,

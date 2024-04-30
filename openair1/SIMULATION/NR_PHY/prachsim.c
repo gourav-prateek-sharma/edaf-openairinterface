@@ -422,7 +422,7 @@ int main(int argc, char **argv){
   frame_parms->N_RB_UL          = N_RB_UL;
   frame_parms->threequarter_fs  = threequarter_fs;
   frame_parms->frame_type       = TDD;
-  frame_parms->freq_range       = (mu != 3 ? nr_FR1 : nr_FR2);
+  frame_parms->freq_range       = (mu != 3 ? FR1 : FR2);
   frame_parms->numerology_index = mu;
 
   nr_phy_config_request_sim(gNB, N_RB_UL, N_RB_UL, mu, Nid_cell, SSB_positions);
@@ -447,7 +447,7 @@ int main(int argc, char **argv){
          frame_parms->Ncp,
          frame_parms->samples_per_subframe,
          frame_parms->frame_type == FDD ? "FDD" : "TDD",
-         frame_parms->freq_range == nr_FR1 ? "FR1" : "FR2");
+         frame_parms->freq_range == FR1 ? "FR1" : "FR2");
 
   ru->nr_frame_parms = frame_parms;
   ru->if_south       = LOCAL_RF;

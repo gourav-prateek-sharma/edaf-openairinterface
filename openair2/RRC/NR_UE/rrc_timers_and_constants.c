@@ -119,6 +119,10 @@ void nr_rrc_handle_timers(NR_UE_RRC_INST_t *rrc)
 {
   NR_UE_Timers_Constants_t *timers = &rrc->timers_and_constants;
 
+  bool release_timer_expired = nr_timer_tick(&rrc->release_timer);
+  if (release_timer_expired)
+    handle_RRCRelease(rrc);
+
   bool t300_expired = nr_timer_tick(&timers->T300);
   if(t300_expired) {
     LOG_W(NR_RRC, "Timer T300 expired! No timely response to RRCSetupRequest\n");

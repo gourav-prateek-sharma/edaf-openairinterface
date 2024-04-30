@@ -71,10 +71,10 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
   // for FR2 offsetToPointA is expressed in terms of 60 kHz SCS and k_SSB expressed in terms of the subcarrier spacing provided
   // by the higher-layer parameter subCarrierSpacingCommon
   const int scs = cfg->ssb_config.scs_common.value;
-  const int prb_offset = (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> scs
-                                                    : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> (scs - 2);
+  const int prb_offset = (fp->freq_range == FR1) ? ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> scs
+                                                 : ssb_pdu.ssb_pdu_rel15.ssbOffsetPointA >> (scs - 2);
   const int sc_offset =
-      (fp->freq_range == nr_FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs : ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset;
+      (fp->freq_range == FR1) ? ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset >> scs : ssb_pdu.ssb_pdu_rel15.SsbSubcarrierOffset;
   fp->ssb_start_subcarrier = (12 * prb_offset + sc_offset);
 
   if (fp->print_ue_help_cmdline_log && get_softmodem_params()->sa) {
@@ -134,7 +134,7 @@ void nr_common_signal_procedures(PHY_VARS_gNB *gNB,int frame,int slot, nfapi_nr_
 #endif
 
   // Beam_id is currently used only for FR2
-  if (fp->freq_range==nr_FR2){
+  if (fp->freq_range == FR2){
     LOG_D(PHY,"slot %d, ssb_index %d, beam %d\n",slot,ssb_index,cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value);
     for (int j=0;j<fp->symbols_per_slot;j++) 
       gNB->common_vars.beam_id[0][slot*fp->symbols_per_slot+j] = cfg->ssb_table.ssb_beam_id_list[ssb_index].beam_id.value;

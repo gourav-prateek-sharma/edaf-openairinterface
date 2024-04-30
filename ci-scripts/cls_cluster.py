@@ -44,6 +44,9 @@ OCUrl = "https://api.oai.cs.eurecom.fr:6443"
 OCRegistry = "default-route-openshift-image-registry.apps.oai.cs.eurecom.fr/"
 CI_OC_RAN_NAMESPACE = "oaicicd-ran"
 CI_OC_CORE_NAMESPACE = "oaicicd-core-for-ci-ran"
+CN_IMAGES = ["mysql", "oai-nrf", "oai-amf", "oai-smf", "oai-upf", "oai-ausf", "oai-udm", "oai-udr", "oai-traffic-server"]
+CN_CONTAINERS = ["", "-c nrf", "-c amf", "-c smf", "-c upf", "-c ausf", "-c udm", "-c udr", ""]
+
 
 def OC_login(cmd, ocUserName, ocPassword, ocProjectName):
 	if ocUserName == '' or ocPassword == '' or ocProjectName == '':
@@ -64,6 +67,51 @@ def OC_login(cmd, ocUserName, ocPassword, ocProjectName):
 
 def OC_logout(cmd):
 	cmd.run(f'oc logout')
+
+def OC_deploy_CN(cmd, ocUserName, ocPassword):
+	logging.debug('OC OAI CN5G: Deploying OAI CN5G on Openshift Cluster')
+	path = "/opt/oai-cn5g-fed-develop-2024-april-00102"
+	succeeded = OC_login(cmd, ocUserName, ocPassword, CI_OC_CORE_NAMESPACE)
+	if not succeeded:
+		return False, CONST.OC_LOGIN_FAIL
+	cmd.run('helm uninstall oai5gcn --wait --timeout 60s')
+	ret = cmd.run(f'helm install --wait --timeout 60s oai5gcn {path}/ci-scripts/charts/oai-5g-basic/.')
+	if ret.returncode != 0:
+		logging.error('OC OAI CN5G: Deployment failed')
+		OC_logout(cmd)
+		return False, CONST.OC_PROJECT_FAIL
+	report = cmd.run('oc get pods')
+	OC_logout(cmd)
+	return True, report
+
+def OC_undeploy_CN(cmd, ocUserName, ocPassword):
+	logging.debug('OC OAI CN5G: Terminating CN on Openshift Cluster')
+	path = "/opt/oai-cn5g-fed-develop-2024-april-00102"
+	succeeded = OC_login(cmd, ocUserName, ocPassword, CI_OC_CORE_NAMESPACE)
+	if not succeeded:
+		return False, CONST.OC_LOGIN_FAIL
+	cmd.run(f'rm -Rf {path}/logs')
+	cmd.run(f'mkdir -p {path}/logs')
+	logging.debug('OC OAI CN5G: Collecting log files to workspace')
+	cmd.run(f'oc describe pod &> {path}/logs/describe-pods-post-test.log')
+	cmd.run(f'oc get pods.metrics.k8s &> {path}/logs/nf-resource-consumption.log')
+	for ii, ci in zip(CN_IMAGES, CN_CONTAINERS):
+		podName = cmd.run(f"oc get pods | grep {ii} | awk \'{{print $1}}\'").stdout.strip()
+		if not podName:
+			logging.debug(f'{ii} pod not found!')
+		else:
+			cmd.run(f'oc logs -f {podName} {ci} &> {path}/logs/{ii}.log &')
+	cmd.run(f'cd {path}/logs && zip -r -qq test_logs_CN.zip *.log')
+	cmd.copyin(f'{path}/logs/test_logs_CN.zip','test_logs_CN.zip')
+	ret = cmd.run('helm uninstall --wait --timeout 60s oai5gcn')
+	if ret.returncode != 0:
+		logging.error('OC OAI CN5G: Undeployment failed')
+		cmd.run('helm uninstall --wait --timeout 60s oai5gcn')
+		OC_logout(cmd)
+		return False, CONST.OC_PROJECT_FAIL
+	report = cmd.run('oc get pods')
+	OC_logout(cmd)
+	return True, report
 
 class Cluster:
 	def __init__(self):

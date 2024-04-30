@@ -118,10 +118,9 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
   NR_FrequencyInfoDL_SIB_t *frequencyInfoDL = &scc->downlinkConfigCommon.frequencyInfoDL;
   AssertFatal(frequencyInfoDL->frequencyBandList.list.array[0]->freqBandIndicatorNR, "Field mandatory present for DL in SIB1\n");
   mac->nr_band = *frequencyInfoDL->frequencyBandList.list.array[0]->freqBandIndicatorNR;
-  int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                          mac->nr_band > 256 ? FR2 : FR1,
-                                          frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-  cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
+  cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range,
+                                                          frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+                                                          frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
 
   uint64_t dl_bw_khz = (12 * frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth) *
                        (15 << frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing);
@@ -140,10 +139,9 @@ static void config_common_ue_sa(NR_UE_MAC_INST_t *mac,
 
   NR_FrequencyInfoUL_SIB_t *frequencyInfoUL = &scc->uplinkConfigCommon->frequencyInfoUL;
   mac->p_Max = frequencyInfoUL->p_Max ? *frequencyInfoUL->p_Max : INT_MIN;
-  bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                      mac->nr_band > 256 ? FR2 : FR1,
-                                      frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-  cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
+  cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range,
+                                                              frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+                                                              frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
 
   if (frequencyInfoUL->absoluteFrequencyPointA == NULL)
     cfg->carrier_config.uplink_frequency = cfg->carrier_config.dl_frequency;
@@ -262,10 +260,9 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
     mac->frame_type = get_frame_type(mac->nr_band, get_softmodem_params()->numerology);
     mac->frequency_range = mac->nr_band < 256 ? FR1 : FR2;
 
-    int bw_index = get_supported_band_index(frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                            mac->nr_band > 256 ? FR2 : FR1,
-                                            frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-    cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
+    cfg->carrier_config.dl_bandwidth = get_supported_bw_mhz(mac->frequency_range,
+                                                            frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+                                                            frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
 
     cfg->carrier_config.dl_frequency = from_nrarfcn(mac->nr_band,
                                                     *scc->ssbSubcarrierSpacing,
@@ -287,10 +284,9 @@ static void config_common_ue(NR_UE_MAC_INST_t *mac,
     NR_FrequencyInfoUL_t *frequencyInfoUL = scc->uplinkConfigCommon->frequencyInfoUL;
     mac->p_Max = frequencyInfoUL->p_Max ? *frequencyInfoUL->p_Max : INT_MIN;
 
-    int bw_index = get_supported_band_index(frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
-                                            *frequencyInfoUL->frequencyBandList->list.array[0] > 256 ? FR2 : FR1,
-                                            frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
-    cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range, bw_index);
+    cfg->carrier_config.uplink_bandwidth = get_supported_bw_mhz(mac->frequency_range,
+                                                                frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+                                                                frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth);
 
     long *UL_pointA = NULL;
     if (frequencyInfoUL->absoluteFrequencyPointA)
@@ -1426,7 +1422,7 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
   NR_UE_MAC_INST_t *mac = get_mac_inst(module_id);
   switch (cause) {
     case GO_TO_IDLE:
-      reset_ra(mac, cause);
+      reset_ra(mac, true);
       release_mac_configuration(mac, cause);
       nr_ue_init_mac(mac);
       nr_ue_mac_default_configs(mac);
@@ -1435,14 +1431,14 @@ void nr_rrc_mac_config_req_reset(module_id_t module_id,
       break;
     case DETACH:
       LOG_A(NR_MAC, "Received detach indication\n");
-      reset_ra(mac, cause);
+      reset_ra(mac, true);
       reset_mac_inst(mac);
       nr_ue_reset_sync_state(mac);
       release_mac_configuration(mac, cause);
       mac->state = UE_DETACHING;
       break;
     case T300_EXPIRY:
-      reset_ra(mac, cause);
+      reset_ra(mac, false);
       reset_mac_inst(mac);
       mac->state = UE_SYNC; // still in sync but need to restart RA
       break;
@@ -2045,6 +2041,47 @@ static void configure_servingcell_info(NR_UE_ServingCell_Info_t *sc_info, NR_Ser
   }
 }
 
+/// This function implements 38.331 Section 5.3.12: UE actions upon PUCCH/SRS release request
+void release_PUCCH_SRS(NR_UE_MAC_INST_t *mac)
+{
+  // release PUCCH-CSI-Resources configured in CSI-ReportConfig
+  NR_UE_ServingCell_Info_t *sc_info = &mac->sc_info;
+  NR_CSI_MeasConfig_t *meas_config = sc_info->csi_MeasConfig;
+  if (meas_config && meas_config->csi_ReportConfigToAddModList) {
+    for (int i = 0; i < meas_config->csi_ReportConfigToAddModList->list.count; i++) {
+      struct NR_CSI_ReportConfig__reportConfigType *type = &meas_config->csi_ReportConfigToAddModList->list.array[i]->reportConfigType;
+      switch (type->present) {
+        case NR_CSI_ReportConfig__reportConfigType_PR_periodic :
+          for (int j = type->choice.periodic->pucch_CSI_ResourceList.list.count; j > 0 ; j--)
+            asn_sequence_del(&type->choice.periodic->pucch_CSI_ResourceList.list, j - 1, 1);
+          break;
+        case NR_CSI_ReportConfig__reportConfigType_PR_semiPersistentOnPUCCH :
+          for (int j = type->choice.semiPersistentOnPUCCH->pucch_CSI_ResourceList.list.count; j > 0 ; j--)
+            asn_sequence_del(&type->choice.semiPersistentOnPUCCH->pucch_CSI_ResourceList.list, j - 1, 1);
+          break;
+        case NR_CSI_ReportConfig__reportConfigType_PR_semiPersistentOnPUSCH :
+        case NR_CSI_ReportConfig__reportConfigType_PR_aperiodic :
+          // no PUCCH config to release
+          break;
+        default :
+          AssertFatal(false, "Invalid CSI report type\n");
+      }
+    }
+  }
+
+  for (int bwp = 0; bwp < mac->ul_BWPs.count; bwp++) {
+    // release SchedulingRequestResourceConfig instances configured in PUCCH-Config
+    NR_PUCCH_Config_t *pucch_Config = mac->ul_BWPs.array[bwp]->pucch_Config;
+    for (int j = pucch_Config->schedulingRequestResourceToAddModList->list.count; j > 0 ; j--)
+      asn_sequence_del(&pucch_Config->schedulingRequestResourceToAddModList->list, j - 1, 1);
+    // release SRS-Resource instances configured in SRS-Config
+    // TODO not clear if only SRS-Resources or also the ResourceSet should be released
+    NR_SRS_Config_t *srs_Config = mac->ul_BWPs.array[bwp]->srs_Config;
+    for (int j = srs_Config->srs_ResourceToAddModList->list.count; j > 0 ; j--)
+      asn_sequence_del(&srs_Config->srs_ResourceToAddModList->list, j - 1, 1);
+  }
+}
+
 void release_dl_BWP(NR_UE_MAC_INST_t *mac, int index)
 {
   NR_UE_DL_BWP_t *bwp = mac->dl_BWPs.array[index];
@@ -2139,18 +2176,8 @@ static void handle_mac_uecap_info(NR_UE_MAC_INST_t *mac, NR_UE_NR_Capability_t *
       NR_FeatureSetDownlinkPerCC_t *fs_dl_cc = fs_dlcc_list->list.array[i];
       if (mac->current_DL_BWP->scs != fs_dl_cc->supportedSubcarrierSpacingDL)
         continue;
-      int uecap_bw_index;
-      if (fs_dl_cc->supportedBandwidthDL.present == NR_SupportedBandwidth_PR_fr1) {
-        uecap_bw_index = fs_dl_cc->supportedBandwidthDL.choice.fr1;
-        // 90 MHz option is indicated by a separate pointer in case indicated supported BW is 100MHz
-        // so we need to increase the index by 1 unit to point to 100 MHz if not 90MHz
-        if (uecap_bw_index == NR_SupportedBandwidth__fr1_mhz100 && !fs_dl_cc->channelBW_90mhz)
-          uecap_bw_index++;
-      }
-      else
-        uecap_bw_index = fs_dl_cc->supportedBandwidthDL.choice.fr2;
       int dl_bw_mhz = mac->phy_config.config_req.carrier_config.dl_bandwidth;
-      if (dl_bw_mhz != get_supported_bw_mhz(mac->frequency_range, uecap_bw_index))
+      if (!supported_bw_comparison(dl_bw_mhz, &fs_dl_cc->supportedBandwidthDL, fs_dl_cc->channelBW_90mhz))
         continue;
       if (fs_dl_cc->maxNumberMIMO_LayersPDSCH)
         mac->uecap_maxMIMO_PDSCH_layers = 2 << *fs_dl_cc->maxNumberMIMO_LayersPDSCH;
@@ -2162,18 +2189,8 @@ static void handle_mac_uecap_info(NR_UE_MAC_INST_t *mac, NR_UE_NR_Capability_t *
       NR_FeatureSetUplinkPerCC_t *fs_ul_cc = fs_ulcc_list->list.array[i];
       if (mac->current_UL_BWP->scs != fs_ul_cc->supportedSubcarrierSpacingUL)
         continue;
-      int uecap_bw_index;
-      if (fs_ul_cc->supportedBandwidthUL.present == NR_SupportedBandwidth_PR_fr1) {
-        uecap_bw_index = fs_ul_cc->supportedBandwidthUL.choice.fr1;
-        // 90 MHz option is indicated by a separate pointer in case indicated supported BW is 100MHz
-        // so we need to increase the index by 1 unit to point to 100 MHz if not 90MHz
-        if (uecap_bw_index == NR_SupportedBandwidth__fr1_mhz100 && !fs_ul_cc->channelBW_90mhz)
-          uecap_bw_index++;
-      }
-      else
-        uecap_bw_index = fs_ul_cc->supportedBandwidthUL.choice.fr2;
       int ul_bw_mhz = mac->phy_config.config_req.carrier_config.uplink_bandwidth;
-      if (ul_bw_mhz != get_supported_bw_mhz(mac->frequency_range, uecap_bw_index))
+      if (!supported_bw_comparison(ul_bw_mhz, &fs_ul_cc->supportedBandwidthUL, fs_ul_cc->channelBW_90mhz))
         continue;
       if (fs_ul_cc->maxNumberMIMO_LayersNonCB_PUSCH)
         mac->uecap_maxMIMO_PUSCH_layers_nocb = 1 << *fs_ul_cc->maxNumberMIMO_LayersNonCB_PUSCH;

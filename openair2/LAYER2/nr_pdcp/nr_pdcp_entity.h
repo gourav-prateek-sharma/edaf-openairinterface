@@ -28,6 +28,7 @@
 
 #include "nr_pdcp_sdu.h"
 #include "openair2/RRC/NR/rrc_gNB_radio_bearers.h"
+#include "openair3/SECU/secu_defs.h"
 
 /* PDCP Formats according to clause 6.2 of 3GPP TS 38.323 */
 /* SN Size applicable to SRBs, UM DRBs and AM DRBs */
@@ -151,16 +152,17 @@ typedef struct nr_pdcp_entity_t {
   int integrity_algorithm;
   unsigned char ciphering_key[16];
   unsigned char integrity_key[16];
-  void *security_context;
-  void (*cipher)(void *security_context,
+  stream_security_context_t *security_context;
+  void (*cipher)(stream_security_context_t *security_context,
                  unsigned char *buffer, int length,
                  int bearer, int count, int direction);
-  void (*free_security)(void *security_context);
-  void *integrity_context;
-  void (*integrity)(void *integrity_context, unsigned char *out,
+  void (*free_security)(stream_security_context_t *security_context);
+  stream_security_context_t *integrity_context;
+  void (*integrity)(stream_security_context_t *integrity_context,
+                 unsigned char *out,
                  unsigned char *buffer, int length,
                  int bearer, int count, int direction);
-  void (*free_integrity)(void *integrity_context);
+  void (*free_integrity)(stream_security_context_t *integrity_context);
   /* security/integrity algorithms need to know uplink/downlink information
    * which is reverse for gnb and ue, so we need to know if this
    * pdcp entity is for a gnb or an ue

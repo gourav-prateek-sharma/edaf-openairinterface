@@ -57,7 +57,10 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
   uint32_t         rx_deliv_hfn;
 
   if (entity->entity_suspended) {
-    LOG_W(PDCP, "PDCP entity %d is suspended. Quit RX procedure.\n", entity->rb_id);
+    LOG_W(PDCP,
+          "PDCP entity (%s) %d is suspended. Quit RX procedure.\n",
+          entity->type > NR_PDCP_DRB_UM ? "SRB" : "DRB",
+          entity->rb_id);
     return;
   }
 
@@ -190,6 +193,13 @@ static void nr_pdcp_entity_recv_pdu(nr_pdcp_entity_t *entity,
       count++;
     }
     entity->rx_deliv = count;
+    LOG_D(PDCP,
+          "%s: entity (%s) %d - rx_deliv = %d, rcvd_sn = %d \n",
+          __func__,
+          entity->type == NR_PDCP_DRB_AM ? "DRB" : "SRB",
+          entity->rb_id,
+          entity->rx_deliv,
+          rcvd_sn);
   }
 
   if (entity->t_reordering_start != 0 && entity->rx_deliv >= entity->rx_reord) {
@@ -220,7 +230,10 @@ static int nr_pdcp_entity_process_sdu(nr_pdcp_entity_t *entity,
   int      dc_bit;
 
   if (entity->entity_suspended) {
-    LOG_W(PDCP, "PDCP entity %d is suspended. Quit SDU processing.\n", entity->rb_id);
+    LOG_W(PDCP,
+          "PDCP entity (%s) %d is suspended. Quit SDU processing.\n",
+          entity->type > NR_PDCP_DRB_UM ? "SRB" : "DRB",
+          entity->rb_id);
     return -1;
   }
 
@@ -387,6 +400,14 @@ static void check_t_reordering(nr_pdcp_entity_t *entity)
   if (entity->t_reordering_start == 0
       || entity->t_current <= entity->t_reordering_start + entity->t_reordering)
     return;
+  LOG_D(PDCP,
+        "%s: entity (%s) %d: t_reordering_start = %ld, t_current = %ld, t_reordering = %d \n",
+        __func__,
+        entity->type > NR_PDCP_DRB_UM ? "SRB" : "DRB",
+        entity->rb_id,
+        entity->t_reordering_start,
+        entity->t_current,
+        entity->t_reordering);
 
   /* stop timer */
   entity->t_reordering_start = 0;
@@ -450,15 +471,29 @@ static void deliver_all_sdus(nr_pdcp_entity_t *entity)
   }
 }
 
+/**
+ * @brief PDCP Entity Suspend according to 5.1.4 of 3GPP TS 38.323
+ * Transmitting PDCP entity shall:
+ * - set TX_NEXT to the initial value;
+ * - discard all stored PDCP PDUs (NOTE: PDUs are stored in RLC)
+ * Receiving PDCP entity shall:
+ * - if t-Reordering is running:
+ *   a) stop and reset t-Reordering;
+ *   b) deliver all stored PDCP SDUs
+ * - set RX_NEXT and RX_DELIV to the initial value.
+ */
 static void nr_pdcp_entity_suspend(nr_pdcp_entity_t *entity)
 {
+  /* Transmitting PDCP entity */
   entity->tx_next = 0;
+  /* Receiving PDCP entity */
   if (entity->t_reordering_start != 0) {
     entity->t_reordering_start = 0;
     deliver_all_sdus(entity);
   }
   entity->rx_next = 0;
   entity->rx_deliv = 0;
+  /* Flag to keep track of PDCP entity status */
   entity->entity_suspended = true;
 }
 

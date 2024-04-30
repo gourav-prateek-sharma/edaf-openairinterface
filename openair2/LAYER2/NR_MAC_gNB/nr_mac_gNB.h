@@ -683,6 +683,8 @@ typedef struct {
   NR_CellGroupConfig_t *CellGroup;
   /// CellGroupConfig that is to be activated after the next reconfiguration
   bool expect_reconfiguration;
+  /// reestablishRLC has to be signaled in RRCreconfiguration
+  bool reestablish_rlc;
   NR_CellGroupConfig_t *reconfigCellGroup;
   bool apply_cellgroup;
   NR_UE_NR_Capability_t *capability;
