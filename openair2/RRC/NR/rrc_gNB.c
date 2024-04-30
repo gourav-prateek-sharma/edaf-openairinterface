@@ -369,6 +369,9 @@ unsigned int rrc_gNB_get_next_transaction_identifier(module_id_t gnb_mod_idP)
   return tmp;
 }
 
+/**
+ * @brief Create srb-ToAddModList for RRCSetup and RRCReconfiguration messages
+*/
 static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, bool reestablish)
 {
   if (!ue->Srb[1].Active) {
@@ -380,6 +383,7 @@ static NR_SRB_ToAddModList_t *createSRBlist(gNB_RRC_UE_t *ue, bool reestablish)
     if (ue->Srb[i].Active) {
       asn1cSequenceAdd(list->list, NR_SRB_ToAddMod_t, srb);
       srb->srb_Identity = i;
+      /* Set reestablishPDCP only for SRB2 */
       if (reestablish && i == 2) {
         asn1cCallocOne(srb->reestablishPDCP, NR_SRB_ToAddMod__reestablishPDCP_true);
       }
@@ -1017,13 +1021,11 @@ static void rrc_gNB_generate_RRCReestablishment(rrc_gNB_ue_context_t *ue_context
 
   /* SRBs */
   for (int srb_id = 1; srb_id < NR_NUM_SRB; srb_id++) {
-    if (ue_p->Srb[srb_id].Active) {
+    if (ue_p->Srb[srb_id].Active)
       nr_pdcp_config_set_security(ue_p->rrc_ue_id, srb_id, security_mode, kRRCenc, kRRCint, kUPenc);
-      nr_pdcp_reestablishment(ue_p->rrc_ue_id, srb_id, true);
-    }
   }
-  /* PDCP Reestablishment over E1 */
-  cuup_notify_reestablishment(rrc, ue_p);
+  /* Re-establish PDCP for SRB1, according to 5.3.7.4 of 3GPP TS 38.331 */
+  nr_pdcp_reestablishment(ue_p->rrc_ue_id, 1, true);
   /* F1AP DL RRC Message Transfer */
   f1_ue_data_t ue_data = cu_get_f1_ue_data(ue_p->rrc_ue_id);
   RETURN_IF_INVALID_ASSOC_ID(ue_data);
@@ -1074,12 +1076,28 @@ static void rrc_gNB_process_RRCReestablishmentComplete(const protocol_ctxt_t *co
   for (i = 1; i < ue_p->masterCellGroup->rlc_BearerToAddModList->list.count; ++i)
     asn1cSeqAdd(&cellGroupConfig->rlc_BearerToAddModList->list, ue_p->masterCellGroup->rlc_BearerToAddModList->list.array[i]);
 
+  /*
+   * At this stage, PDCP entity are re-established and reestablishRLC is flagged
+   * with RRCReconfiguration to complete RLC re-establishment of remaining bearers
+   */
   for (i = 0; i < cellGroupConfig->rlc_BearerToAddModList->list.count; i++) {
     asn1cCallocOne(cellGroupConfig->rlc_BearerToAddModList->list.array[i]->reestablishRLC,
                    NR_RLC_BearerConfig__reestablishRLC_true);
   }
 
+  /* Re-establish SRB2 according to clause 5.3.5.6.3 of 3GPP TS 38.331
+   * (SRB1 is re-established with RRCReestablishment message)
+   */
+  int srb_id = 2;
+  if (ue_p->Srb[srb_id].Active) {
+      nr_pdcp_reestablishment(ue_p->rrc_ue_id, srb_id, true);
+  }
+  /* PDCP Reestablishment of DRBs according to 5.3.5.6.5 of 3GPP TS 38.331 (over E1) */
+  cuup_notify_reestablishment(rrc, ue_p);
+
+  /* Create srb-ToAddModList */
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, true);
+  /* Create drb-ToAddModList */
   NR_DRB_ToAddModList_t *DRBs = createDRBlist(ue_p, true);
 
   uint8_t new_xid = rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id);

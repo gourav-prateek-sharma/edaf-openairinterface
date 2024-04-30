@@ -1929,13 +1929,11 @@ void nr_rrc_initiate_rrcReestablishment(NR_UE_RRC_INST_t *rrc,
   for (int i = 1; i < 4; i++) {
     if (rrc->Srb[i] == RB_ESTABLISHED) {
       rrc->Srb[i] = RB_SUSPENDED;
-      nr_pdcp_suspend_srb(rrc->ue_id, i);
     }
   }
   for (int i = 1; i <= MAX_DRBS_PER_UE; i++) {
     if (get_DRB_status(rrc, i) == RB_ESTABLISHED) {
       set_DRB_status(rrc, i, RB_SUSPENDED);
-      nr_pdcp_suspend_drb(rrc->ue_id, i);
     }
   }
   // release the MCG SCell(s), if configured

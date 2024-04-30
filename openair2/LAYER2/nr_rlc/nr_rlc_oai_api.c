@@ -650,7 +650,7 @@ void nr_rlc_reestablish_entity(int ue_id, int lc_id)
   nr_rlc_entity_t *rb = get_rlc_entity_from_lcid(ue, lc_id);
 
   if (rb != NULL) {
-    LOG_D(RLC, "RB found! (channel ID %d) \n", lc_id);
+    LOG_D(RLC, "RB found! (channel ID %d), re-establish RLC\n", lc_id);
     rb->reestablishment(rb);
   } else {
     LOG_E(RLC, "no RLC entity found (channel ID %d) for reestablishment\n", lc_id);
@@ -1065,12 +1065,11 @@ bool nr_rlc_update_id(int from_id, int to_id)
   }
   ue->ue_id = to_id;
   LOG_I(RLC, "Update old UE ID %d context to ID %d\n", from_id, to_id);
-  for (int i = 0; i < sizeof(ue->srb) / sizeof(ue->srb[0]); ++i)
-    if (ue->srb[i])
-      ue->srb[i]->reestablishment(ue->srb[i]);
-  for (int i = 0; i < sizeof(ue->drb) / sizeof(ue->drb[0]); ++i)
-    if (ue->drb[i])
-      ue->drb[i]->reestablishment(ue->drb[i]);
+  /* re-establish RLC for SRB1: according to 5.3.7.4 of TS 38.331 */
+  if (ue->srb[0]) {
+    LOG_I(RLC, "Re-establish RLC for SRB 1\n");
+    ue->srb[0]->reestablishment(ue->srb[0]);
+  }
   nr_rlc_manager_unlock(nr_rlc_ue_manager);
   return true;
 }
