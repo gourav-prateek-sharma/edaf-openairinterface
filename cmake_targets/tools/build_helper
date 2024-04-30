@@ -128,6 +128,7 @@ check_supported_distribution() {
         "rhel9.1")     return 0 ;;
         "rhel9.2")     return 0 ;;
         "rhel9.3")     return 0 ;;
+        "rhel9.4")     return 0 ;;
         "centos7")     return 0 ;;
         "centos8")     return 0 ;;
         "rocky8.7")    return 0 ;;
