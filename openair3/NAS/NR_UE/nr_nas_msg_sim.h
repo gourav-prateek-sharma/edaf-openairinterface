@@ -41,6 +41,7 @@
 #include "as_message.h"
 #include "FGSUplinkNasTransport.h"
 #include <openair3/UICC/usim_interface.h>
+#include "secu_defs.h"
 
 #define PLAIN_5GS_MSG                                      0b0000
 #define INTEGRITY_PROTECTED                                0b0001
@@ -98,6 +99,7 @@ typedef struct {
 typedef struct {
   uicc_t *uicc;
   ue_sa_security_key_t security;
+  stream_security_container_t *security_container;
   Guti5GSMobileIdentity_t *guti;
   bool termination_procedure;
 } nr_ue_nas_t;

@@ -2124,9 +2124,12 @@ pdcp_config_set_security(
           pdcp_pP->cipheringAlgorithm,
           pdcp_pP->integrityProtAlgorithm);
 
-    kRRCenc != NULL ? memcpy(pdcp_pP->kRRCenc, kRRCenc, 32) : memset(pdcp_pP->kRRCenc, 0, 32);
-    kRRCint != NULL ? memcpy(pdcp_pP->kRRCint, kRRCint, 32) : memset(pdcp_pP->kRRCint, 0, 32);
-    kUPenc != NULL ? memcpy(pdcp_pP->kUPenc, kUPenc, 32) : memset(pdcp_pP->kUPenc, 0, 32);
+    kRRCenc != NULL ? memcpy(pdcp_pP->kRRCenc, kRRCenc+16, 16) : memset(pdcp_pP->kRRCenc, 0, 16);
+    kRRCint != NULL ? memcpy(pdcp_pP->kRRCint, kRRCint+16, 16) : memset(pdcp_pP->kRRCint, 0, 16);
+    kUPenc != NULL ? memcpy(pdcp_pP->kUPenc, kUPenc+16, 16) : memset(pdcp_pP->kUPenc, 0, 16);
+
+    pdcp_pP->security_container_rrc = stream_security_container_init(pdcp_pP->cipheringAlgorithm, pdcp_pP->integrityProtAlgorithm, pdcp_pP->kRRCenc, pdcp_pP->kRRCint);
+    pdcp_pP->security_container_up = stream_security_container_init(pdcp_pP->cipheringAlgorithm, 0, pdcp_pP->kUPenc, NULL);
 
     /* Activate security */
     pdcp_pP->security_activated = 1;
@@ -2196,6 +2199,8 @@ void rrc_pdcp_config_req (
         pdcp_p->last_submitted_pdcp_rx_sn = 4095;
         pdcp_p->seq_num_size = 0;
         pdcp_p->first_missing_pdu = -1;
+        stream_security_container_delete(pdcp_p->security_container_rrc);
+        stream_security_container_delete(pdcp_p->security_container_up);
         pdcp_p->security_activated = 0;
         h_rc = hashtable_remove(pdcp_coll_p, key);
         break;
