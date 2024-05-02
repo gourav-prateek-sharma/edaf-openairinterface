@@ -1321,6 +1321,7 @@ static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
 
   rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(ctxt_pP, ue_context_p, ue_cap_info);
 
+  rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
   rrc_forward_ue_nas_message(RC.nrrrc[ctxt_pP->instance], UE);
 
   return 0;
@@ -1419,9 +1420,6 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       break;
     case RRC_PDUSESSION_MODIFY:
       rrc_gNB_send_NGAP_PDUSESSION_MODIFY_RESP(ctxt_pP, ue_context_p, xid);
-      break;
-    case RRC_DEFAULT_RECONF:
-      rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
       break;
     case RRC_REESTABLISH_COMPLETE:
     case RRC_DEDICATED_RECONF:
@@ -1552,6 +1550,9 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
           rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
           /* else block is executed after receiving UE capability info */
         } else {
+          /* we already have capabilities, and no PDU sessions to setup, ack
+           * this UE */
+          rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
           rrc_forward_ue_nas_message(RC.nrrrc[0], &ue_context_p->ue_context);
         }
         break;
