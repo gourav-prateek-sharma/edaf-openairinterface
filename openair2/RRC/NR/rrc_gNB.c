@@ -476,90 +476,6 @@ static void rrc_gNB_process_RRCSetupComplete(const protocol_ctxt_t *const ctxt_p
 }
 
 //-----------------------------------------------------------------------------
-static void rrc_gNB_generate_defaultRRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP)
-//-----------------------------------------------------------------------------
-{
-  gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
-  gNB_RRC_UE_t *ue_p = &ue_context_pP->ue_context;
-  uint8_t xid = rrc_gNB_get_next_transaction_identifier(ctxt_pP->module_id);
-  ue_p->xids[xid] = RRC_DEFAULT_RECONF;
-
-  struct NR_RRCReconfiguration_v1530_IEs__dedicatedNAS_MessageList *dedicatedNAS_MessageList = CALLOC(1, sizeof(*dedicatedNAS_MessageList));
-
-  /* Add all NAS PDUs to the list */
-  for (int i = 0; i < ue_p->nb_of_pdusessions; i++) {
-    if (ue_p->pduSession[i].param.nas_pdu.buffer != NULL) {
-      asn1cSequenceAdd(dedicatedNAS_MessageList->list, NR_DedicatedNAS_Message_t, msg);
-      OCTET_STRING_fromBuf(msg, (char *)ue_p->pduSession[i].param.nas_pdu.buffer, ue_p->pduSession[i].param.nas_pdu.length);
-
-    }
-    if (ue_p->pduSession[i].status < PDU_SESSION_STATUS_ESTABLISHED) {
-      ue_p->pduSession[i].status = PDU_SESSION_STATUS_DONE;
-      LOG_D(NR_RRC, "setting the status for the default DRB (index %d) to (%d,%s)\n", i, ue_p->pduSession[i].status, "PDU_SESSION_STATUS_DONE");
-    }
-  }
-
-  if (ue_p->nas_pdu.length) {
-    asn1cSequenceAdd(dedicatedNAS_MessageList->list, NR_DedicatedNAS_Message_t, msg);
-    OCTET_STRING_fromBuf(msg, (char *)ue_p->nas_pdu.buffer, ue_p->nas_pdu.length);
-  }
-
-  /* If list is empty free the list and reset the address */
-  if (dedicatedNAS_MessageList->list.count == 0) {
-    free(dedicatedNAS_MessageList);
-    dedicatedNAS_MessageList = NULL;
-  }
-
-  const nr_rrc_du_container_t *du = get_du_for_ue(rrc, ue_p->rrc_ue_id);
-  DevAssert(du != NULL);
-  f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
-  NR_MeasConfig_t *measconfig = NULL;
-  if (du->mtc != NULL) {
-    int scs = get_ssb_scs(cell_info);
-    int band = get_dl_band(cell_info);
-    const NR_MeasTimingList_t *mtlist = du->mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming;
-    const NR_MeasTiming_t *mt = mtlist->list.array[0];
-    measconfig = get_defaultMeasConfig(mt, band, scs);
-  }
-  NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, false);
-  NR_DRB_ToAddModList_t *DRBs = createDRBlist(ue_p, false);
-
-  uint8_t buffer[RRC_BUF_SIZE] = {0};
-  int size = do_RRCReconfiguration(ue_p,
-                                   buffer,
-                                   RRC_BUF_SIZE,
-                                   xid,
-                                   SRBs,
-                                   DRBs,
-                                   NULL,
-                                   NULL,
-                                   measconfig,
-                                   dedicatedNAS_MessageList,
-                                   ue_p->masterCellGroup);
-  AssertFatal(size > 0, "cannot encode RRCReconfiguration in %s()\n", __func__);
-  free_defaultMeasConfig(measconfig);
-  freeSRBlist(SRBs);
-  freeDRBlist(DRBs);
-
-  if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
-    xer_fprint(stdout, &asn_DEF_NR_CellGroupConfig, ue_p->masterCellGroup);
-  }
-
-  clear_nas_pdu(&ue_p->nas_pdu);
-
-  LOG_DUMPMSG(NR_RRC, DEBUG_RRC,(char *)buffer, size, "[MSG] RRC Reconfiguration\n");
-
-  /* Free all NAS PDUs */
-  for (int i = 0; i < ue_p->nb_of_pdusessions; i++)
-    clear_nas_pdu(&ue_p->pduSession[i].param.nas_pdu);
-
-  LOG_I(NR_RRC, "UE %d: Generate RRCReconfiguration (bytes %d, xid %d)\n", ue_p->rrc_ue_id, size, xid);
-  AssertFatal(!NODE_IS_DU(rrc->node_type), "illegal node type DU!\n");
-
-  nr_rrc_transfer_protected_rrc_message(rrc, ue_p, DCCH, buffer, size);
-}
-
-//-----------------------------------------------------------------------------
 void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *ue_context_pP)
 //-----------------------------------------------------------------------------
 {
@@ -602,6 +518,18 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
 
   NR_CellGroupConfig_t *cellGroupConfig = ue_p->masterCellGroup;
 
+  const nr_rrc_du_container_t *du = get_du_for_ue(rrc, ue_p->rrc_ue_id);
+  DevAssert(du != NULL);
+  f1ap_served_cell_info_t *cell_info = &du->setup_req->cell[0].info;
+  NR_MeasConfig_t *measconfig = NULL;
+  if (du->mtc != NULL) {
+    int scs = get_ssb_scs(cell_info);
+    int band = get_dl_band(cell_info);
+    const NR_MeasTimingList_t *mtlist = du->mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming;
+    const NR_MeasTiming_t *mt = mtlist->list.array[0];
+    measconfig = get_defaultMeasConfig(mt, band, scs);
+  }
+
   uint8_t buffer[RRC_BUF_SIZE] = {0};
   NR_SRB_ToAddModList_t *SRBs = createSRBlist(ue_p, false);
   NR_DRB_ToAddModList_t *DRBs = createDRBlist(ue_p, false);
@@ -614,10 +542,11 @@ void rrc_gNB_generate_dedicatedRRCReconfiguration(const protocol_ctxt_t *const c
                                    DRBs,
                                    ue_p->DRB_ReleaseList,
                                    NULL,
-                                   NULL,
+                                   measconfig,
                                    dedicatedNAS_MessageList,
                                    cellGroupConfig);
   LOG_DUMPMSG(NR_RRC,DEBUG_RRC,(char *)buffer,size,"[MSG] RRC Reconfiguration\n");
+  free_defaultMeasConfig(measconfig);
   freeSRBlist(SRBs);
   freeDRBlist(DRBs);
   ASN_STRUCT_FREE(asn_DEF_NR_DRB_ToReleaseList, ue_p->DRB_ReleaseList);
@@ -1272,6 +1201,22 @@ static int handle_rrcReestablishmentComplete(const protocol_ctxt_t *const ctxt_p
   return 0;
 }
 
+static void rrc_forward_ue_nas_message(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE)
+{
+  if (UE->nas_pdu.buffer == NULL || UE->nas_pdu.length == 0)
+    return; // no problem: the UE will re-request a NAS PDU
+
+  uint8_t buffer[4096];
+  unsigned int xid = rrc_gNB_get_next_transaction_identifier(0);
+  uint32_t length = do_NR_DLInformationTransfer(buffer, sizeof(buffer), xid, UE->nas_pdu.length, UE->nas_pdu.buffer);
+  LOG_DUMPMSG(NR_RRC, DEBUG_RRC, buffer, length, "[MSG] RRC DL Information Transfer\n");
+  rb_id_t srb_id = UE->Srb[2].Active ? DCCH1 : DCCH;
+  nr_rrc_transfer_protected_rrc_message(rrc, UE, srb_id, buffer, length);
+  // no need to free UE->nas_pdu.buffer, do_NR_DLInformationTransfer() did that
+  UE->nas_pdu.buffer = NULL;
+  UE->nas_pdu.length = 0;
+}
+
 static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
                                           rrc_gNB_ue_context_t *ue_context_p,
                                           const NR_UECapabilityInformation_t *ue_cap_info)
@@ -1375,6 +1320,8 @@ static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
   }
 
   rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(ctxt_pP, ue_context_p, ue_cap_info);
+
+  rrc_forward_ue_nas_message(RC.nrrrc[ctxt_pP->instance], UE);
 
   return 0;
 }
@@ -1601,8 +1548,12 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
         ue_context_p->ue_context.as_security_active = true;
 
         /* trigger UE capability enquiry if we don't have them yet */
-        if (ue_context_p->ue_context.ue_cap_buffer.len == 0)
+        if (ue_context_p->ue_context.ue_cap_buffer.len == 0) {
           rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
+          /* else block is executed after receiving UE capability info */
+        } else {
+          rrc_forward_ue_nas_message(RC.nrrrc[0], &ue_context_p->ue_context);
+        }
         break;
 
       case NR_UL_DCCH_MessageType__c1_PR_securityModeFailure:
@@ -1943,7 +1894,6 @@ static void rrc_CU_process_ue_modification_required(MessageDef *msg_p)
     /* trigger reconfiguration */
     nr_rrc_reconfiguration_req(ue_context_p, &ctxt, 0, 0);
     //rrc_gNB_generate_dedicatedRRCReconfiguration(&ctxt, ue_context_p);
-    //rrc_gNB_generate_defaultRRCReconfiguration(&ctxt, ue_context_p);
     return;
   }
   LOG_W(RRC,
