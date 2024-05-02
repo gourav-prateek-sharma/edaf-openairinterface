@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
     oai_enb0:
         image: oaisoftwarealliance/oai-enb:develop

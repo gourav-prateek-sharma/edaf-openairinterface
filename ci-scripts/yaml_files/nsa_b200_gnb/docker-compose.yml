@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
     gnb_mono_tdd:
         image: oai-gnb:latest

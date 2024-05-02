@@ -1,4 +1,3 @@
-version: '3.8'
 services:
     oai-nr-ue:
         image: oai-nr-ue:latest

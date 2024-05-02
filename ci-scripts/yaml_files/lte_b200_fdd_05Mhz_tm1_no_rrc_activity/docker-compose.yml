@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
     enb_mono_fdd:
         image: oai-enb:latest

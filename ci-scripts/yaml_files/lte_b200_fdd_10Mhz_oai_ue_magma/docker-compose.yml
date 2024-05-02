@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
     lte_ue0:
         image: oai-lte-ue:latest

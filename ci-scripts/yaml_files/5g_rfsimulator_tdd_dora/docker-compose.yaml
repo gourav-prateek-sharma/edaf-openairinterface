@@ -1,4 +1,3 @@
-version: '3.8'
 services:
     oai-gnb:
         image: oaisoftwarealliance/oai-gnb:develop
