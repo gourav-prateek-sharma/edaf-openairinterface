@@ -1321,8 +1321,17 @@ static int handle_ueCapabilityInformation(const protocol_ctxt_t *const ctxt_pP,
 
   rrc_gNB_send_NGAP_UE_CAPABILITIES_IND(ctxt_pP, ue_context_p, ue_cap_info);
 
-  rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
-  rrc_forward_ue_nas_message(RC.nrrrc[ctxt_pP->instance], UE);
+  if (UE->n_initial_pdu > 0) {
+    /* there were PDU sessions with the NG UE Context setup, but we had to set
+     * up security and request capabilities, so trigger PDU sessions now. The
+     * UE NAS message will be forwarded in the corresponding reconfiguration,
+     * the Initial context setup response after reconfiguration complete. */
+    gNB_RRC_INST *rrc = RC.nrrrc[ctxt_pP->module_id];
+    trigger_bearer_setup(rrc, UE, UE->n_initial_pdu, UE->initial_pdus, 0);
+  } else {
+    rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
+    rrc_forward_ue_nas_message(RC.nrrrc[ctxt_pP->instance], UE);
+  }
 
   return 0;
 }
@@ -1415,7 +1424,13 @@ static void handle_rrcReconfigurationComplete(const protocol_ctxt_t *const ctxt_
       rrc_gNB_send_NGAP_PDUSESSION_RELEASE_RESPONSE(ctxt_pP, ue_context_p, xid);
     } break;
     case RRC_PDUSESSION_ESTABLISH:
-      if (UE->nb_of_pdusessions > 0)
+      if (UE->n_initial_pdu > 0) {
+        /* PDU sessions through initial UE context setup */
+        rrc_gNB_send_NGAP_INITIAL_CONTEXT_SETUP_RESP(ctxt_pP, ue_context_p);
+        UE->n_initial_pdu = 0;
+        free(UE->initial_pdus);
+        UE->initial_pdus = NULL;
+      } else if (UE->nb_of_pdusessions > 0)
         rrc_gNB_send_NGAP_PDUSESSION_SETUP_RESP(ctxt_pP, ue_context_p, xid);
       break;
     case RRC_PDUSESSION_MODIFY:
@@ -1548,7 +1563,14 @@ int rrc_gNB_decode_dcch(const protocol_ctxt_t *const ctxt_pP,
         /* trigger UE capability enquiry if we don't have them yet */
         if (ue_context_p->ue_context.ue_cap_buffer.len == 0) {
           rrc_gNB_generate_UECapabilityEnquiry(ctxt_pP, ue_context_p);
-          /* else block is executed after receiving UE capability info */
+          /* else blocks are executed after receiving UE capability info */
+        } else if (ue_context_p->ue_context.n_initial_pdu > 0) {
+          gNB_RRC_UE_t *UE = &ue_context_p->ue_context;
+          /* there were PDU sessions with the NG UE Context setup, but we had
+           * to set up security, so trigger PDU sessions now. The UE NAS
+           * message will be forwarded in the corresponding reconfiguration,
+           * the Initial context setup response after reconfiguration complete. */
+          trigger_bearer_setup(gnb_rrc_inst, UE, UE->n_initial_pdu, UE->initial_pdus, 0);
         } else {
           /* we already have capabilities, and no PDU sessions to setup, ack
            * this UE */

@@ -319,6 +319,11 @@ typedef struct gNB_RRC_UE_s {
   uint32_t                           ue_reconfiguration_counter;
   struct NR_SpCellConfig                                *spCellConfig;
 
+  /* NGUEContextSetup might come with PDU sessions, but setup needs to be
+   * delayed after security (and capability); PDU sessions are stored here */
+  int n_initial_pdu;
+  pdusession_t *initial_pdus;
+
   /* Nas Pdu */
   ngap_pdu_t nas_pdu;
 

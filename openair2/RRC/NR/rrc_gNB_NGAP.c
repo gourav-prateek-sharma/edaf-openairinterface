@@ -362,7 +362,7 @@ static int decodePDUSessionResourceSetup(pdusession_t *session)
   return 0;
 }
 
-static void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession_t *sessions, uint64_t ueAggMaxBitRateDownlink)
+void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession_t *sessions, uint64_t ueAggMaxBitRateDownlink)
 {
   e1ap_bearer_setup_req_t bearer_req = {0};
 
@@ -493,19 +493,15 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
   /* configure only integrity, ciphering comes after receiving SecurityModeComplete */
   nr_rrc_pdcp_config_security(&ctxt, ue_context_p, 0);
 
-  uint8_t nb_pdusessions_tosetup = req->nb_of_pdusessions;
-  /* if there are PDU sessions to setup, first send them to the CU-UP.
-   * Once the E1 bearer are activated, the CUCP will trigger the context
-   * setup. */
-  AssertFatal(nb_pdusessions_tosetup == 0, "no UE context setup request, so can't setup PDU sessions\n");
-  if (nb_pdusessions_tosetup > 0) {
-    trigger_bearer_setup(RC.nrrrc[instance],
-                         UE,
-                         req->nb_of_pdusessions,
-                         req->pdusession_param,
-                         /*req->ueAggMaxBitRateDownlink*/ 0);
-  } else {
-    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p);
+  rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p);
+  if (req->nb_of_pdusessions > 0) {
+    /* if there are PDU sessions to setup, store them to be created once
+     * security (and UE capabilities) are received */
+    UE->n_initial_pdu = req->nb_of_pdusessions;
+    UE->initial_pdus = calloc(UE->n_initial_pdu, sizeof(*UE->initial_pdus));
+    AssertFatal(UE->initial_pdus != NULL, "out of memory\n");
+    for (int i = 0; i < UE->n_initial_pdu; ++i)
+      UE->initial_pdus[i] = req->pdusession_param[i];
   }
 
   return 0;
