@@ -1164,13 +1164,10 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
 
   if (ue_context_p == NULL) {
     /* Can not associate this message to an UE index */
-    MessageDef *msg_complete_p = NULL;
     LOG_W(NR_RRC, "[gNB %ld] In NGAP_UE_CONTEXT_RELEASE_COMMAND: unknown UE from gNB_ue_ngap_id (%u)\n",
           instance,
           gNB_ue_ngap_id);
-    msg_complete_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
-    NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg_complete_p).gNB_ue_ngap_id = gNB_ue_ngap_id;
-    itti_send_msg_to_task(TASK_NGAP, instance, msg_complete_p);
+    rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(instance, gNB_ue_ngap_id, 0, NULL);
     return -1;
   }
 
@@ -1206,11 +1203,17 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
   return 0;
 }
 
-void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(
-  instance_t instance,
-  uint32_t   gNB_ue_ngap_id) {
+void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(instance_t instance,
+                                                   uint32_t gNB_ue_ngap_id,
+                                                   int num_pdu,
+                                                   uint32_t pdu_session_id[256])
+{
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
   NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).gNB_ue_ngap_id = gNB_ue_ngap_id;
+  NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).num_pdu_sessions = num_pdu;
+  for (int i = 0; i < num_pdu; ++i)
+    NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).pdu_session_id[i] = pdu_session_id[i];
+  LOG_W(RRC, "trigger release with %d pdu\n", num_pdu);
   itti_send_msg_to_task(TASK_NGAP, instance, msg);
 }
 
