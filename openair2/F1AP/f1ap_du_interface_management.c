@@ -119,13 +119,13 @@ static F1AP_Served_Cell_Information_t encode_served_cell_info(const f1ap_served_
     served_plmns_itemExtIEs->extensionValue.present = F1AP_ServedPLMNs_ItemExtIEs__extensionValue_PR_SliceSupportList;
     F1AP_SliceSupportList_t *slice_support_list = &served_plmns_itemExtIEs->extensionValue.choice.SliceSupportList;
 
-    AssertFatal(c->num_ssi == 1, "can only encode one slice\n");
     for (int s = 0; s < c->num_ssi; s++) {
       asn1cSequenceAdd(slice_support_list->list, F1AP_SliceSupportItem_t, slice);
-      INT8_TO_OCTET_STRING(c->sst, &slice->sNSSAI.sST);
-      if (c->sd != 0xffffff) {
+      const nssai_t *nssai = &c->nssai[s];
+      INT8_TO_OCTET_STRING(nssai->sst, &slice->sNSSAI.sST);
+      if (nssai->sd != 0xffffff) {
         asn1cCalloc(slice->sNSSAI.sD, tmp);
-        INT24_TO_OCTET_STRING(c->sd, tmp);
+        INT24_TO_OCTET_STRING(nssai->sd, tmp);
       }
     }
   }

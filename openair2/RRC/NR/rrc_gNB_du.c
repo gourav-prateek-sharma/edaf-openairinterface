@@ -258,8 +258,8 @@ static void update_cell_info(nr_rrc_du_container_t *du, const f1ap_served_cell_i
   if (new_ci->tac != NULL)
     *ci->tac = *new_ci->tac;
   ci->num_ssi = new_ci->num_ssi;
-  ci->sst = new_ci->sst;
-  ci->sd = new_ci->sd;
+  for (int s = 0; s < new_ci->num_ssi; ++s)
+    ci->nssai[s] = new_ci->nssai[s];
   ci->mode = new_ci->mode;
   if (ci->mode == F1AP_MODE_TDD)
     ci->tdd = new_ci->tdd;

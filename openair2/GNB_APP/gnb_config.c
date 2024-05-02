@@ -1075,6 +1075,8 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
     PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
   paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
   config_getlist(cfg, &PLMNParamList, PLMNParams, sizeof(PLMNParams) / sizeof(paramdef_t), aprefix);
+  AssertFatal(PLMNParamList.numelt > 0, "need to have a PLMN in PLMN section\n");
+  AssertFatal(PLMNParamList.numelt == 1, "cannot have more than one PLMN\n");
 
   // if fronthaul is F1, require gNB_DU_ID, else use gNB_ID
   if (separate_du) {
@@ -1099,8 +1101,20 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
               info->plmn.mnc_digit_length);
   info->nr_cellid = (uint64_t) * (GNBParamList.paramarray[0][GNB_NRCELLID_IDX].u64ptr);
 
-  LOG_W(GNB_APP, "no slices transported via F1 Setup Request!\n");
-  info->num_ssi = 0;
+  paramdef_t SNSSAIParams[] = GNBSNSSAIPARAMS_DESC;
+  paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
+  checkedparam_t config_check_SNSSAIParams[] = SNSSAIPARAMS_CHECK;
+  for (int J = 0; J < sizeofArray(SNSSAIParams); ++J)
+    SNSSAIParams[J].chkPptr = &(config_check_SNSSAIParams[J]);
+  char snssaistr[MAX_OPTNAME_SIZE * 2 + 8];
+  sprintf(snssaistr, "%s.[0].%s.[0]", GNB_CONFIG_STRING_GNB_LIST, GNB_CONFIG_STRING_PLMN_LIST);
+  config_getlist(config_get_if(), &SNSSAIParamList, SNSSAIParams, sizeofArray(SNSSAIParams), snssaistr);
+  info->num_ssi = SNSSAIParamList.numelt;
+  for (int s = 0; s < info->num_ssi; ++s) {
+    info->nssai[s].sst = *SNSSAIParamList.paramarray[s][GNB_SLICE_SERVICE_TYPE_IDX].uptr;
+    info->nssai[s].sd = *SNSSAIParamList.paramarray[s][GNB_SLICE_DIFFERENTIATOR_IDX].uptr;
+    AssertFatal(info->nssai[s].sd <= 0xffffff, "SD cannot be bigger than 0xffffff, but is %d\n", info->nssai[s].sd);
+  }
 
   return 1;
 }

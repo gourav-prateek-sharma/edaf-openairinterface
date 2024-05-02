@@ -76,6 +76,32 @@ static uint8_t *cp_octet_string(const OCTET_STRING_t *os, int *len)
   return buf;
 }
 
+static int read_slice_info(const F1AP_ServedPLMNs_Item_t *plmn, nssai_t *nssai, int max_nssai)
+{
+  if (plmn->iE_Extensions == NULL)
+    return 0;
+
+  const F1AP_ProtocolExtensionContainer_10696P34_t *p = (F1AP_ProtocolExtensionContainer_10696P34_t *)plmn->iE_Extensions;
+  if (p->list.count == 0)
+    return 0;
+
+  const F1AP_ServedPLMNs_ItemExtIEs_t *splmn = p->list.array[0];
+  DevAssert(splmn->id == F1AP_ProtocolIE_ID_id_TAISliceSupportList);
+  DevAssert(splmn->extensionValue.present == F1AP_ServedPLMNs_ItemExtIEs__extensionValue_PR_SliceSupportList);
+  const F1AP_SliceSupportList_t *ssl = &splmn->extensionValue.choice.SliceSupportList;
+  AssertFatal(ssl->list.count <= max_nssai, "cannot handle more than 16 slices\n");
+  for (int s = 0; s < ssl->list.count; ++s) {
+    const F1AP_SliceSupportItem_t *sl = ssl->list.array[s];
+    nssai_t *n = &nssai[s];
+    OCTET_STRING_TO_INT8(&sl->sNSSAI.sST, n->sst);
+    n->sd = 0xffffff;
+    if (sl->sNSSAI.sD != NULL)
+      OCTET_STRING_TO_INT24(sl->sNSSAI.sD, n->sd);
+  }
+
+  return ssl->list.count;
+}
+
 /*
     F1 Setup
 */
@@ -151,6 +177,9 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint3
     /* - nRPCI */
     req->cell[i].info.nr_pci = servedCellInformation->nRPCI;
     LOG_D(F1AP, "req->nr_pci[%d] %d \n", i, req->cell[i].info.nr_pci);
+
+    AssertFatal(servedCellInformation->servedPLMNs.list.count == 1, "only one PLMN handled\n");
+    req->cell[i].info.num_ssi = read_slice_info(servedCellInformation->servedPLMNs.list.array[0], req->cell[i].info.nssai, 16);
 
     // FDD Cells
     if (servedCellInformation->nR_Mode_Info.present==F1AP_NR_Mode_Info_PR_fDD) {
@@ -506,6 +535,10 @@ int CU_handle_gNB_DU_CONFIGURATION_UPDATE(instance_t instance, sctp_assoc_t asso
       /* - nRPCI */
       req->cell_to_add[i].info.nr_pci = servedCellInformation->nRPCI;
       LOG_D(F1AP, "req->nr_pci[%d] %d \n", i, req->cell_to_add[i].info.nr_pci);
+
+      AssertFatal(servedCellInformation->servedPLMNs.list.count == 1, "only one PLMN handled\n");
+      req->cell_to_add[i].info.num_ssi =
+          read_slice_info(servedCellInformation->servedPLMNs.list.array[0], req->cell_to_add[i].info.nssai, 16);
 
       // FDD Cells
       if (servedCellInformation->nR_Mode_Info.present == F1AP_NR_Mode_Info_PR_fDD) {

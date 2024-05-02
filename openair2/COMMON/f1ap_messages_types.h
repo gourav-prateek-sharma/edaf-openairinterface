@@ -129,10 +129,9 @@ typedef struct f1ap_served_cell_info_t {
   /* Tracking area code */
   uint32_t *tac;
 
-  // Number of slide support items (max 16, could be increased to as much as 1024)
+  // Number of slice support items (max 16, could be increased to as much as 1024)
   uint16_t num_ssi;
-  uint8_t sst;
-  uint8_t sd;
+  nssai_t nssai[16];
 
   f1ap_mode_t mode;
   union {
