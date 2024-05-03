@@ -621,7 +621,7 @@ uint32_t polar_decoder_int16(int16_t *input,
                              uint8_t ones_flag,
                              int8_t messageType,
                              uint16_t messageLength,
-                             uint8_t aggregation_level )
+                             uint8_t aggregation_level)
 {
   t_nrPolar_params *polarParams=nr_polar_params(messageType, messageLength, aggregation_level, true);
 
@@ -638,7 +638,13 @@ uint32_t polar_decoder_int16(int16_t *input,
 #endif
 
   int16_t d_tilde[polarParams->N];
-  nr_polar_rate_matching_int16(input, d_tilde, polarParams->rate_matching_pattern, polarParams->K, polarParams->N, polarParams->encoderLength, polarParams->i_bil);
+  nr_polar_rate_matching_int16(input,
+                               d_tilde,
+                               polarParams->rate_matching_pattern,
+                               polarParams->K,
+                               polarParams->N,
+                               polarParams->encoderLength,
+                               polarParams->i_bil);
 
   for (int i=0; i<polarParams->N; i++) {
     if (d_tilde[i]<-128) d_tilde[i]=-128;
@@ -792,13 +798,20 @@ uint32_t polar_decoder_int16(int16_t *input,
   printf("\n\n");
 #endif
 
-#if 0
-  printf("A %llx B %llx|%llx Cprime %llx|%llx  (crc %x,rxcrc %llx %d)\n",
+#ifdef POLAR_CODING_DEBUG
+  printf("A %lx B %lx|%lx Cprime %lx|%lx (crc %x,rxcrc %lx, XOR %lx, bits%d)\n",
          Ar,
-         B[1],B[0],Cprime[1],Cprime[0],crc,
-         rxcrc,polarParams->payloadBits);
+         B[1],
+         B[0],
+         Cprime[1],
+         Cprime[0],
+         crc,
+         rxcrc,
+         crc^rxcrc,
+         polarParams->payloadBits);
 #endif
-  out[0]=Ar;
+
+  out[0] = Ar;
 
   polarReturn crc^rxcrc;
 }
