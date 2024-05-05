@@ -73,8 +73,8 @@ int16_t find_nr_prach(PHY_VARS_gNB *gNB,int frame, int slot, find_type_t type) {
 void nr_fill_prach(PHY_VARS_gNB *gNB,
 		   int SFN,
 		   int Slot,
-		   nfapi_nr_prach_pdu_t *prach_pdu) {
-
+		   nfapi_nr_prach_pdu_t *prach_pdu)
+{
   int prach_id = find_nr_prach(gNB,SFN,Slot,SEARCH_EXIST_OR_FREE);
   AssertFatal(((prach_id >= 0) && (prach_id < NUMBER_OF_NR_PRACH_MAX)), "illegal or no prach_id found!!! prach_id %d\n", prach_id);
 

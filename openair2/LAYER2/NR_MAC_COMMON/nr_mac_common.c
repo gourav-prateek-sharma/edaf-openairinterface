@@ -702,8 +702,8 @@ static const int16_t N_RA_RB[16] = {6, 3, 2, 24, 12, 6, 12, 6, 3, 24, 12, 6, 12,
 
 /* Function to get number of RBs required for prach occasion based on
  * 38.211 Table 6.3.3.2-1 */
-int16_t get_N_RA_RB (int delta_f_RA_PRACH,int delta_f_PUSCH) {
-	
+int16_t get_N_RA_RB (int delta_f_RA_PRACH, int delta_f_PUSCH)
+{
   int8_t index = 0;
   switch(delta_f_RA_PRACH) {
     case 0 :
