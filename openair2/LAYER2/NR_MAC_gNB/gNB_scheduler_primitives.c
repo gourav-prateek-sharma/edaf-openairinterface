@@ -2997,7 +2997,7 @@ int nr_mac_enable_ue_rrc_processing_timer(gNB_MAC_INST *mac, NR_UE_info_t *UE, b
   // frames, after RRC processing timer.
   UE->UE_sched_ctrl.ta_frame = (mac->frame - 1 + 1024) % 1024;
 
-  LOG_D(NR_MAC, "%4d.%2d UE %04x: Activate RRC processing timer (%d ms)\n", mac->frame, mac->slot, UE->rnti, delay);
+  LOG_D(NR_MAC, "UE %04x: Activate RRC processing timer (%d ms)\n", UE->rnti, delay);
   return 0;
 }
 

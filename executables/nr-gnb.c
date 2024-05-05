@@ -106,11 +106,10 @@ time_stats_t softmodem_stats_rx_sf; // total rx time
 //#define TICK_TO_US(ts) (ts.diff)
 #define TICK_TO_US(ts) (ts.trials==0?0:ts.diff/ts.trials)
 #define L1STATSSTRLEN 16384
+static void rx_func(processingData_L1_t *param);
 
-static void tx_func(void *param)
+static void tx_func(processingData_L1tx_t *info)
 {
-  processingData_L1tx_t *info = (processingData_L1tx_t *) param;
-
   int frame_tx = info->frame;
   int slot_tx = info->slot;
   int frame_rx = info->frame_rx;
@@ -176,7 +175,6 @@ static void tx_func(void *param)
   deref_sched_response(info->sched_response_id);
 }
 
-
 void *L1_rx_thread(void *arg) 
 {
   PHY_VARS_gNB *gNB = (PHY_VARS_gNB*)arg;
@@ -206,9 +204,8 @@ void *L1_tx_thread(void *arg) {
   return NULL;
 }
 
-void rx_func(void *param)
+static void rx_func(processingData_L1_t *info)
 {
-  processingData_L1_t *info = (processingData_L1_t *) param;
   PHY_VARS_gNB *gNB = info->gNB;
   int frame_rx = info->frame_rx;
   int slot_rx = info->slot_rx;
@@ -387,7 +384,7 @@ void init_gNB_Tpool(int inst) {
   // create the TX thread responsible for TX processing start event (L1_tx_out msg queue), then launch tx_func()
   threadCreate(&gNB->L1_tx_thread, L1_tx_thread, (void *)gNB, "L1_tx_thread", gNB->L1_tx_thread_core, OAI_PRIORITY_RT_MAX);
 
-  notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, tx_func);
+  notifiedFIFO_elt_t *msgL1Tx = newNotifiedFIFO_elt(sizeof(processingData_L1tx_t), 0, &gNB->L1_tx_out, NULL);
   processingData_L1tx_t *msgDataTx = (processingData_L1tx_t *)NotifiedFifoData(msgL1Tx);
   memset(msgDataTx, 0, sizeof(processingData_L1tx_t));
   init_DLSCH_struct(gNB, msgDataTx);
