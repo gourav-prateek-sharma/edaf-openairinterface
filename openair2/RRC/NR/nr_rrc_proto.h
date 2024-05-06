@@ -80,13 +80,7 @@ int generate_CG_Config(gNB_RRC_INST *rrc,
 
 int parse_CG_ConfigInfo(gNB_RRC_INST *rrc, NR_CG_ConfigInfo_t *CG_ConfigInfo, x2ap_ENDC_sgnb_addition_req_t *m);
 
-void
-rrc_gNB_generate_SecurityModeCommand(
-  const protocol_ctxt_t *const ctxt_pP,
-  rrc_gNB_ue_context_t          *const ue_context_pP,
-  int n_drbs,
-  const f1ap_drb_to_be_setup_t *drbs
-);
+void rrc_gNB_generate_SecurityModeCommand(const protocol_ctxt_t *const ctxt_pP, rrc_gNB_ue_context_t *const ue_context_pP);
 
 unsigned int rrc_gNB_get_next_transaction_identifier(module_id_t gnb_mod_idP);
 
@@ -165,8 +159,25 @@ void nr_pdcp_add_drbs(eNB_flag_t enb_flag,
                       uint8_t *const kUPenc,
                       uint8_t *const kUPint);
 
+void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession_t *sessions, uint64_t ueAggMaxBitRateDownlink);
+
 int rrc_gNB_generate_pcch_msg(sctp_assoc_t assoc_id, const NR_SIB1_t *sib, uint32_t tmsi, uint8_t paging_drx);
 
 void nr_rrc_transfer_protected_rrc_message(const gNB_RRC_INST *rrc, const gNB_RRC_UE_t *ue_p, uint8_t srb_id, const uint8_t* buffer, int size);
 /** @}*/
+
+/* UE Management Procedures */
+
+void rrc_gNB_generate_UeContextSetupRequest(const gNB_RRC_INST *rrc,
+                                            rrc_gNB_ue_context_t *const ue_context_pP,
+                                            int n_drbs,
+                                            const f1ap_drb_to_be_setup_t *drbs);
+
+void rrc_gNB_generate_UeContextModificationRequest(const gNB_RRC_INST *rrc,
+                                                   rrc_gNB_ue_context_t *const ue_context_pP,
+                                                   int n_drbs,
+                                                   const f1ap_drb_to_be_setup_t *drbs,
+                                                   int n_rel_drbs,
+                                                   const f1ap_drb_to_be_released_t *rel_drbs);
+
 #endif

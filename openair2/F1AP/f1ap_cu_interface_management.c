@@ -67,6 +67,40 @@ int CU_send_ERROR_INDICATION(sctp_assoc_t assoc_id, F1AP_ErrorIndication_t *Erro
   AssertFatal(1==0,"Not implemented yet\n");
 }
 
+static uint8_t *cp_octet_string(const OCTET_STRING_t *os, int *len)
+{
+  uint8_t *buf = calloc(os->size, sizeof(*buf));
+  AssertFatal(buf != NULL, "out of memory\n");
+  memcpy(buf, os->buf, os->size);
+  *len = os->size;
+  return buf;
+}
+
+static int read_slice_info(const F1AP_ServedPLMNs_Item_t *plmn, nssai_t *nssai, int max_nssai)
+{
+  if (plmn->iE_Extensions == NULL)
+    return 0;
+
+  const F1AP_ProtocolExtensionContainer_10696P34_t *p = (F1AP_ProtocolExtensionContainer_10696P34_t *)plmn->iE_Extensions;
+  if (p->list.count == 0)
+    return 0;
+
+  const F1AP_ServedPLMNs_ItemExtIEs_t *splmn = p->list.array[0];
+  DevAssert(splmn->id == F1AP_ProtocolIE_ID_id_TAISliceSupportList);
+  DevAssert(splmn->extensionValue.present == F1AP_ServedPLMNs_ItemExtIEs__extensionValue_PR_SliceSupportList);
+  const F1AP_SliceSupportList_t *ssl = &splmn->extensionValue.choice.SliceSupportList;
+  AssertFatal(ssl->list.count <= max_nssai, "cannot handle more than 16 slices\n");
+  for (int s = 0; s < ssl->list.count; ++s) {
+    const F1AP_SliceSupportItem_t *sl = ssl->list.array[s];
+    nssai_t *n = &nssai[s];
+    OCTET_STRING_TO_INT8(&sl->sNSSAI.sST, n->sst);
+    n->sd = 0xffffff;
+    if (sl->sNSSAI.sD != NULL)
+      OCTET_STRING_TO_INT24(sl->sNSSAI.sD, n->sd);
+  }
+
+  return ssl->list.count;
+}
 
 /*
     F1 Setup
@@ -144,6 +178,9 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint3
     req->cell[i].info.nr_pci = servedCellInformation->nRPCI;
     LOG_D(F1AP, "req->nr_pci[%d] %d \n", i, req->cell[i].info.nr_pci);
 
+    AssertFatal(servedCellInformation->servedPLMNs.list.count == 1, "only one PLMN handled\n");
+    req->cell[i].info.num_ssi = read_slice_info(servedCellInformation->servedPLMNs.list.array[0], req->cell[i].info.nssai, 16);
+
     // FDD Cells
     if (servedCellInformation->nR_Mode_Info.present==F1AP_NR_Mode_Info_PR_fDD) {
       req->cell[i].info.mode = F1AP_MODE_FDD;
@@ -186,6 +223,11 @@ int CU_handle_F1_SETUP_REQUEST(instance_t instance, sctp_assoc_t assoc_id, uint3
     } else {
       AssertFatal(false, "unknown NR Mode info %d\n", servedCellInformation->nR_Mode_Info.present);
     }
+
+    /* MeasurementConfig */
+    if (servedCellInformation->measurementTimingConfiguration.size > 0)
+      req->cell[i].info.measurement_timing_config =
+          cp_octet_string(&servedCellInformation->measurementTimingConfiguration, &req->cell[i].info.measurement_timing_config_len);
 
     struct F1AP_GNB_DU_System_Information * DUsi=served_cells_item->gNB_DU_System_Information;
     if (DUsi != NULL) {
@@ -431,17 +473,367 @@ int CU_send_F1_SETUP_FAILURE(sctp_assoc_t assoc_id, const f1ap_setup_failure_t *
 
 int CU_handle_gNB_DU_CONFIGURATION_UPDATE(instance_t instance, sctp_assoc_t assoc_id, uint32_t stream, F1AP_F1AP_PDU_t *pdu)
 {
-  AssertFatal(1==0,"Not implemented yet\n");
+  LOG_D(F1AP, "CU_handle_gNB_DU_CONFIGURATION_UPDATE\n");
+  F1AP_GNBDUConfigurationUpdate_t *container;
+  F1AP_GNBDUConfigurationUpdateIEs_t *ie;
+  int i = 0;
+  DevAssert(pdu != NULL);
+  container = &pdu->choice.initiatingMessage->value.choice.GNBDUConfigurationUpdate;
+
+  /* gNB DU Configuration Update == Non UE-related procedure -> stream 0 */
+  if (stream != 0) {
+    LOG_W(F1AP, "[SCTP %d] Received f1 setup request on stream != 0 (%d)\n", assoc_id, stream);
+  }
+
+  MessageDef *message_p = itti_alloc_new_message(TASK_CU_F1, 0, F1AP_GNB_DU_CONFIGURATION_UPDATE);
+  message_p->ittiMsgHeader.originInstance = assoc_id;
+  f1ap_gnb_du_configuration_update_t *req = &F1AP_GNB_DU_CONFIGURATION_UPDATE(message_p);
+
+  /* 3GPP TS 38.473 Transaction ID*/
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t, ie, container, F1AP_ProtocolIE_ID_id_TransactionID, true);
+  req->transaction_id = ie->value.choice.TransactionID;
+  LOG_D(F1AP, "req->transaction_id %lu \n", req->transaction_id);
+
+  /* 3GPP TS 38.473 Served Cells To Add List */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t,
+                             ie,
+                             container,
+                             F1AP_ProtocolIE_ID_id_Served_Cells_To_Add_List,
+                             false);
+
+  if (ie != NULL) {
+    req->num_cells_to_add = ie->value.choice.Served_Cells_To_Add_List.list.count;
+    LOG_D(F1AP, "req->num_cells_to_add %d \n", req->num_cells_to_add);
+
+    for (i = 0; i < req->num_cells_to_add; i++) {
+      F1AP_Served_Cells_To_Add_Item_t *served_cells_item =
+          &((F1AP_Served_Cells_To_Add_ItemIEs_t *)ie->value.choice.Served_Cells_To_Add_List.list.array[i])
+               ->value.choice.Served_Cells_To_Add_Item;
+      F1AP_Served_Cell_Information_t *servedCellInformation = &served_cells_item->served_Cell_Information;
+      /* tac */
+      if (servedCellInformation->fiveGS_TAC) {
+        req->cell_to_add[i].info.tac = malloc(sizeof(*req->cell_to_add[i].info.tac));
+        AssertFatal(req->cell_to_add[i].info.tac != NULL, "out of memory\n");
+        OCTET_STRING_TO_INT24(servedCellInformation->fiveGS_TAC, *req->cell_to_add[i].info.tac);
+        LOG_D(F1AP, "req->tac[%d] %d \n", i, *req->cell_to_add[i].info.tac);
+      }
+
+      /* - nRCGI */
+      TBCD_TO_MCC_MNC(&(servedCellInformation->nRCGI.pLMN_Identity),
+                      req->cell_to_add[i].info.plmn.mcc,
+                      req->cell_to_add[i].info.plmn.mnc,
+                      req->cell_to_add[i].info.plmn.mnc_digit_length);
+      // NR cellID
+      BIT_STRING_TO_NR_CELL_IDENTITY(&servedCellInformation->nRCGI.nRCellIdentity, req->cell_to_add[i].info.nr_cellid);
+      LOG_D(F1AP,
+            "[SCTP %d] Received nRCGI: MCC %d, MNC %d, CELL_ID %llu\n",
+            assoc_id,
+            req->cell_to_add[i].info.plmn.mcc,
+            req->cell_to_add[i].info.plmn.mnc,
+            (long long unsigned int)req->cell_to_add[i].info.nr_cellid);
+
+      /* - nRPCI */
+      req->cell_to_add[i].info.nr_pci = servedCellInformation->nRPCI;
+      LOG_D(F1AP, "req->nr_pci[%d] %d \n", i, req->cell_to_add[i].info.nr_pci);
+
+      AssertFatal(servedCellInformation->servedPLMNs.list.count == 1, "only one PLMN handled\n");
+      req->cell_to_add[i].info.num_ssi =
+          read_slice_info(servedCellInformation->servedPLMNs.list.array[0], req->cell_to_add[i].info.nssai, 16);
+
+      // FDD Cells
+      if (servedCellInformation->nR_Mode_Info.present == F1AP_NR_Mode_Info_PR_fDD) {
+        req->cell_to_add[i].info.mode = F1AP_MODE_FDD;
+        f1ap_fdd_info_t *FDDs = &req->cell_to_add[i].info.fdd;
+        F1AP_FDD_Info_t *fDD_Info = servedCellInformation->nR_Mode_Info.choice.fDD;
+        FDDs->ul_freqinfo.arfcn = fDD_Info->uL_NRFreqInfo.nRARFCN;
+        AssertFatal(fDD_Info->uL_NRFreqInfo.freqBandListNr.list.count == 1, "cannot handle more than one frequency band\n");
+        for (int f = 0; f < fDD_Info->uL_NRFreqInfo.freqBandListNr.list.count; f++) {
+          F1AP_FreqBandNrItem_t *FreqItem = fDD_Info->uL_NRFreqInfo.freqBandListNr.list.array[f];
+          FDDs->ul_freqinfo.band = FreqItem->freqBandIndicatorNr;
+          AssertFatal(FreqItem->supportedSULBandList.list.count == 0, "cannot handle SUL bands!\n");
+        }
+        FDDs->dl_freqinfo.arfcn = fDD_Info->dL_NRFreqInfo.nRARFCN;
+        int dlBands = fDD_Info->dL_NRFreqInfo.freqBandListNr.list.count;
+        AssertFatal(dlBands == 0, "cannot handled more than one frequency band\n");
+        for (int dlB = 0; dlB < dlBands; dlB++) {
+          F1AP_FreqBandNrItem_t *FreqItem = fDD_Info->dL_NRFreqInfo.freqBandListNr.list.array[dlB];
+          FDDs->dl_freqinfo.band = FreqItem->freqBandIndicatorNr;
+          int num_available_supported_SULBands = FreqItem->supportedSULBandList.list.count;
+          AssertFatal(num_available_supported_SULBands == 0, "cannot handle SUL bands!\n");
+        }
+        FDDs->ul_tbw.scs = fDD_Info->uL_Transmission_Bandwidth.nRSCS;
+        FDDs->ul_tbw.nrb = nrb_lut[fDD_Info->uL_Transmission_Bandwidth.nRNRB];
+        FDDs->dl_tbw.scs = fDD_Info->dL_Transmission_Bandwidth.nRSCS;
+        FDDs->dl_tbw.nrb = nrb_lut[fDD_Info->dL_Transmission_Bandwidth.nRNRB];
+      } else if (servedCellInformation->nR_Mode_Info.present == F1AP_NR_Mode_Info_PR_tDD) {
+        req->cell_to_add[i].info.mode = F1AP_MODE_TDD;
+        f1ap_tdd_info_t *TDDs = &req->cell_to_add[i].info.tdd;
+        F1AP_TDD_Info_t *tDD_Info = servedCellInformation->nR_Mode_Info.choice.tDD;
+        TDDs->freqinfo.arfcn = tDD_Info->nRFreqInfo.nRARFCN;
+        AssertFatal(tDD_Info->nRFreqInfo.freqBandListNr.list.count == 1, "cannot handle more than one frequency band\n");
+        for (int f = 0; f < tDD_Info->nRFreqInfo.freqBandListNr.list.count; f++) {
+          struct F1AP_FreqBandNrItem *FreqItem = tDD_Info->nRFreqInfo.freqBandListNr.list.array[f];
+          TDDs->freqinfo.band = FreqItem->freqBandIndicatorNr;
+          int num_available_supported_SULBands = FreqItem->supportedSULBandList.list.count;
+          AssertFatal(num_available_supported_SULBands == 0, "cannot hanlde SUL bands!\n");
+        }
+        TDDs->tbw.scs = tDD_Info->transmission_Bandwidth.nRSCS;
+        TDDs->tbw.nrb = nrb_lut[tDD_Info->transmission_Bandwidth.nRNRB];
+      } else {
+        AssertFatal(false, "unknown NR Mode info %d\n", servedCellInformation->nR_Mode_Info.present);
+      }
+
+      /* MeasurementConfig */
+      if (servedCellInformation->measurementTimingConfiguration.size > 0)
+        req->cell_to_add[i].info.measurement_timing_config =
+            cp_octet_string(&servedCellInformation->measurementTimingConfiguration,
+                            &req->cell_to_add[i].info.measurement_timing_config_len);
+
+      struct F1AP_GNB_DU_System_Information *DUsi = served_cells_item->gNB_DU_System_Information;
+      // System Information
+      req->cell_to_add[i].sys_info = calloc(1, sizeof(*req->cell_to_add[i].sys_info));
+      AssertFatal(req->cell_to_add[i].sys_info != NULL, "out of memory\n");
+      f1ap_gnb_du_system_info_t *sys_info = req->cell_to_add[i].sys_info;
+      /* mib */
+      sys_info->mib = calloc(DUsi->mIB_message.size, sizeof(char));
+      memcpy(sys_info->mib, DUsi->mIB_message.buf, DUsi->mIB_message.size);
+      sys_info->mib_length = DUsi->mIB_message.size;
+      /* sib1 */
+      sys_info->sib1 = calloc(DUsi->sIB1_message.size, sizeof(char));
+      memcpy(sys_info->sib1, DUsi->sIB1_message.buf, DUsi->sIB1_message.size);
+      sys_info->sib1_length = DUsi->sIB1_message.size;
+    }
+  } else {
+    req->num_cells_to_add = 0;
+  }
+  /* 3GPP TS 38.473 Served Cells To Modify List */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t,
+                             ie,
+                             container,
+                             F1AP_ProtocolIE_ID_id_Served_Cells_To_Modify_List,
+                             false);
+
+  if (ie) {
+    req->num_cells_to_modify = ie->value.choice.Served_Cells_To_Modify_List.list.count;
+    LOG_D(F1AP, "req->num_cells_to_modify %d \n", req->num_cells_to_modify);
+
+    for (i = 0; i < req->num_cells_to_modify; i++) {
+      F1AP_Served_Cells_To_Modify_Item_t *served_cells_item =
+          &((F1AP_Served_Cells_To_Modify_ItemIEs_t *)ie->value.choice.Served_Cells_To_Modify_List.list.array[i])
+               ->value.choice.Served_Cells_To_Modify_Item;
+
+      /* OLD NRCGI */
+      TBCD_TO_MCC_MNC(&(served_cells_item->oldNRCGI.pLMN_Identity),
+                      req->cell_to_modify[i].old_plmn.mcc,
+                      req->cell_to_modify[i].old_plmn.mnc,
+                      req->cell_to_modify[i].old_plmn.mnc_digit_length);
+
+      BIT_STRING_TO_NR_CELL_IDENTITY(&served_cells_item->oldNRCGI.nRCellIdentity, req->cell_to_modify[i].old_nr_cellid);
+
+      F1AP_Served_Cell_Information_t *servedCellInformation = &served_cells_item->served_Cell_Information;
+      /* SERVED CELL INFORMATION*/
+      /* tac */
+      if (servedCellInformation->fiveGS_TAC) {
+        req->cell_to_modify[i].info.tac = malloc(sizeof(*req->cell_to_modify[i].info.tac));
+        AssertFatal(req->cell_to_modify[i].info.tac != NULL, "out of memory\n");
+        OCTET_STRING_TO_INT16(servedCellInformation->fiveGS_TAC, *req->cell_to_modify[i].info.tac);
+        LOG_D(F1AP, "req->tac[%d] %d \n", i, *req->cell_to_modify[i].info.tac);
+      }
+
+      /* - nRCGI */
+      TBCD_TO_MCC_MNC(&(servedCellInformation->nRCGI.pLMN_Identity),
+                      req->cell_to_modify[i].info.plmn.mcc,
+                      req->cell_to_modify[i].info.plmn.mnc,
+                      req->cell_to_modify[i].info.plmn.mnc_digit_length);
+      // NR cellID
+      BIT_STRING_TO_NR_CELL_IDENTITY(&servedCellInformation->nRCGI.nRCellIdentity, req->cell_to_modify[i].info.nr_cellid);
+      LOG_D(F1AP,
+            "[SCTP %d] Received nRCGI: MCC %d, MNC %d, CELL_ID %llu\n",
+            assoc_id,
+            req->cell_to_modify[i].info.plmn.mcc,
+            req->cell_to_modify[i].info.plmn.mnc,
+            (long long unsigned int)req->cell_to_modify[i].info.nr_cellid);
+
+      /* - nRPCI */
+      req->cell_to_modify[i].info.nr_pci = servedCellInformation->nRPCI;
+      LOG_D(F1AP, "req->nr_pci[%d] %d \n", i, req->cell_to_modify[i].info.nr_pci);
+
+      // FDD Cells
+      if (servedCellInformation->nR_Mode_Info.present == F1AP_NR_Mode_Info_PR_fDD) {
+        req->cell_to_modify[i].info.mode = F1AP_MODE_FDD;
+        f1ap_fdd_info_t *FDDs = &req->cell_to_modify[i].info.fdd;
+        F1AP_FDD_Info_t *fDD_Info = servedCellInformation->nR_Mode_Info.choice.fDD;
+        FDDs->ul_freqinfo.arfcn = fDD_Info->uL_NRFreqInfo.nRARFCN;
+        AssertFatal(fDD_Info->uL_NRFreqInfo.freqBandListNr.list.count == 1, "cannot handle more than one frequency band\n");
+        for (int f = 0; f < fDD_Info->uL_NRFreqInfo.freqBandListNr.list.count; f++) {
+          F1AP_FreqBandNrItem_t *FreqItem = fDD_Info->uL_NRFreqInfo.freqBandListNr.list.array[f];
+          FDDs->ul_freqinfo.band = FreqItem->freqBandIndicatorNr;
+          AssertFatal(FreqItem->supportedSULBandList.list.count == 0, "cannot handle SUL bands!\n");
+        }
+        FDDs->dl_freqinfo.arfcn = fDD_Info->dL_NRFreqInfo.nRARFCN;
+        int dlBands = fDD_Info->dL_NRFreqInfo.freqBandListNr.list.count;
+        AssertFatal(dlBands == 0, "cannot handled more than one frequency band\n");
+        for (int dlB = 0; dlB < dlBands; dlB++) {
+          F1AP_FreqBandNrItem_t *FreqItem = fDD_Info->dL_NRFreqInfo.freqBandListNr.list.array[dlB];
+          FDDs->dl_freqinfo.band = FreqItem->freqBandIndicatorNr;
+          int num_available_supported_SULBands = FreqItem->supportedSULBandList.list.count;
+          AssertFatal(num_available_supported_SULBands == 0, "cannot handle SUL bands!\n");
+        }
+        FDDs->ul_tbw.scs = fDD_Info->uL_Transmission_Bandwidth.nRSCS;
+        FDDs->ul_tbw.nrb = nrb_lut[fDD_Info->uL_Transmission_Bandwidth.nRNRB];
+        FDDs->dl_tbw.scs = fDD_Info->dL_Transmission_Bandwidth.nRSCS;
+        FDDs->dl_tbw.nrb = nrb_lut[fDD_Info->dL_Transmission_Bandwidth.nRNRB];
+      } else if (servedCellInformation->nR_Mode_Info.present == F1AP_NR_Mode_Info_PR_tDD) {
+        req->cell_to_modify[i].info.mode = F1AP_MODE_TDD;
+        f1ap_tdd_info_t *TDDs = &req->cell_to_modify[i].info.tdd;
+        F1AP_TDD_Info_t *tDD_Info = servedCellInformation->nR_Mode_Info.choice.tDD;
+        TDDs->freqinfo.arfcn = tDD_Info->nRFreqInfo.nRARFCN;
+        AssertFatal(tDD_Info->nRFreqInfo.freqBandListNr.list.count == 1, "cannot handle more than one frequency band\n");
+        for (int f = 0; f < tDD_Info->nRFreqInfo.freqBandListNr.list.count; f++) {
+          struct F1AP_FreqBandNrItem *FreqItem = tDD_Info->nRFreqInfo.freqBandListNr.list.array[f];
+          TDDs->freqinfo.band = FreqItem->freqBandIndicatorNr;
+          int num_available_supported_SULBands = FreqItem->supportedSULBandList.list.count;
+          AssertFatal(num_available_supported_SULBands == 0, "cannot hanlde SUL bands!\n");
+        }
+        TDDs->tbw.scs = tDD_Info->transmission_Bandwidth.nRSCS;
+        TDDs->tbw.nrb = nrb_lut[tDD_Info->transmission_Bandwidth.nRNRB];
+      } else {
+        AssertFatal(false, "unknown NR Mode info %d\n", servedCellInformation->nR_Mode_Info.present);
+      }
+
+      /* MeasurementConfig */
+      if (servedCellInformation->measurementTimingConfiguration.size > 0)
+        req->cell_to_modify[i].info.measurement_timing_config =
+            cp_octet_string(&servedCellInformation->measurementTimingConfiguration,
+                            &req->cell_to_modify[i].info.measurement_timing_config_len);
+
+      /*gNB DU SYSTEM INFORMATION */
+      struct F1AP_GNB_DU_System_Information *DUsi = served_cells_item->gNB_DU_System_Information;
+      if (DUsi != NULL) {
+        // System Information
+        req->cell_to_modify[i].sys_info = calloc(1, sizeof(*req->cell_to_modify[i].sys_info));
+        AssertFatal(req->cell_to_modify[i].sys_info != NULL, "out of memory\n");
+        f1ap_gnb_du_system_info_t *sys_info = req->cell_to_modify[i].sys_info;
+        /* mib */
+        sys_info->mib = calloc(DUsi->mIB_message.size, sizeof(char));
+        AssertFatal(req->cell_to_modify[i].sys_info->mib != NULL, "out of memory\n");
+        memcpy(sys_info->mib, DUsi->mIB_message.buf, DUsi->mIB_message.size);
+        sys_info->mib_length = DUsi->mIB_message.size;
+
+        /* sib1 */
+        sys_info->sib1 = calloc(DUsi->sIB1_message.size, sizeof(char));
+        AssertFatal(req->cell_to_modify[i].sys_info->sib1 != NULL, "out of memory\n");
+        memcpy(sys_info->sib1, DUsi->sIB1_message.buf, DUsi->sIB1_message.size);
+        sys_info->sib1_length = DUsi->sIB1_message.size;
+      }
+    }
+  } else {
+    req->num_cells_to_modify = 0;
+  }
+
+  /* 3GPP TS 38.473 Served Cells To Delete List */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t,
+                             ie,
+                             container,
+                             F1AP_ProtocolIE_ID_id_Served_Cells_To_Delete_List,
+                             false);
+  if (ie) {
+    req->num_cells_to_delete = ie->value.choice.Served_Cells_To_Delete_List.list.count;
+    LOG_D(F1AP, "req->num_cells_to_delete %d \n", req->num_cells_to_delete);
+
+    for (i = 0; i < req->num_cells_to_delete; i++) {
+      F1AP_Served_Cells_To_Delete_Item_t *served_cells_item =
+          &((F1AP_Served_Cells_To_Delete_ItemIEs_t *)ie->value.choice.Served_Cells_To_Delete_List.list.array[i])
+               ->value.choice.Served_Cells_To_Delete_Item;
+      /* - Old nRCGI */
+      TBCD_TO_MCC_MNC(&(served_cells_item->oldNRCGI.pLMN_Identity),
+                      req->cell_to_delete[i].plmn.mcc,
+                      req->cell_to_delete[i].plmn.mnc,
+                      req->cell_to_delete[i].plmn.mnc_digit_length);
+      // NR cellID
+      BIT_STRING_TO_NR_CELL_IDENTITY(&served_cells_item->oldNRCGI.nRCellIdentity, req->cell_to_delete[i].nr_cellid);
+      LOG_D(F1AP,
+            "[SCTP %d] Received nRCGI to delete: MCC %d, MNC %d, CELL_ID %llu\n",
+            assoc_id,
+            req->cell_to_delete[i].plmn.mcc,
+            req->cell_to_delete[i].plmn.mnc,
+            (long long unsigned int)req->cell_to_delete[i].nr_cellid);
+    }
+  } else {
+    req->num_cells_to_delete = 0;
+  }
+
+  /* 3GPP TS 38.473 Cells Status List */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t, ie, container, F1AP_ProtocolIE_ID_id_Cells_Status_List, false);
+
+  /* 3GPP TS 38.473 Dedicated SI Delivery Needed UE List */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t,
+                             ie,
+                             container,
+                             F1AP_ProtocolIE_ID_id_Dedicated_SIDelivery_NeededUE_List,
+                             false);
+
+  /* 3GPP TS 38.473 gNB-DU ID */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t, ie, container, F1AP_ProtocolIE_ID_id_gNB_DU_ID, false);
+  if (ie != NULL)
+    asn_INTEGER2ulong(&ie->value.choice.GNB_DU_ID, req->gNB_DU_ID);
+
+  /* 3GPP TS 38.473 gNB-DU TNL Association To Remove List */
+  F1AP_FIND_PROTOCOLIE_BY_ID(F1AP_GNBDUConfigurationUpdateIEs_t,
+                             ie,
+                             container,
+                             F1AP_ProtocolIE_ID_id_GNB_DU_TNL_Association_To_Remove_List,
+                             false);
+
+  LOG_D(F1AP, "Sending F1AP_GNB_DU_CONFIGURATION_UPDATE ITTI message \n");
+  itti_send_msg_to_task(TASK_RRC_GNB, GNB_MODULE_ID_TO_INSTANCE(instance), message_p);
+  return 0;
 }
 
 int CU_send_gNB_DU_CONFIGURATION_FAILURE(sctp_assoc_t assoc_id,
-    F1AP_GNBDUConfigurationUpdateFailure_t *GNBDUConfigurationUpdateFailure) {
+                                         f1ap_gnb_du_configuration_update_failure_t *GNBDUConfigurationUpdateFailure)
+{
   AssertFatal(1==0,"Not implemented yet\n");
 }
 
-int CU_send_gNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(sctp_assoc_t assoc_id,
-    F1AP_GNBDUConfigurationUpdateAcknowledge_t *GNBDUConfigurationUpdateAcknowledge) {
-  AssertFatal(1==0,"Not implemented yet\n");
+int CU_send_gNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(
+    sctp_assoc_t assoc_id,
+    f1ap_gnb_du_configuration_update_acknowledge_t *GNBDUConfigurationUpdateAcknowledge)
+{
+  F1AP_F1AP_PDU_t pdu = {};
+  uint8_t *buffer;
+  uint32_t len;
+
+  /* Create */
+  /* 0. Message */
+
+  pdu.present = F1AP_F1AP_PDU_PR_successfulOutcome;
+  asn1cCalloc(pdu.choice.successfulOutcome, succOut);
+  succOut->procedureCode = F1AP_ProcedureCode_id_gNBDUConfigurationUpdate;
+  succOut->criticality = F1AP_Criticality_reject;
+  succOut->value.present = F1AP_SuccessfulOutcome__value_PR_GNBDUConfigurationUpdateAcknowledge;
+  F1AP_GNBDUConfigurationUpdateAcknowledge_t *ack = &succOut->value.choice.GNBDUConfigurationUpdateAcknowledge;
+
+  /* Mandatory */
+  /* Transaction Id */
+  asn1cSequenceAdd(ack->protocolIEs.list, F1AP_GNBDUConfigurationUpdateAcknowledgeIEs_t, ie1);
+  ie1->id = F1AP_ProtocolIE_ID_id_TransactionID;
+  ie1->criticality = F1AP_Criticality_reject;
+  ie1->value.present = F1AP_GNBDUConfigurationUpdateAcknowledgeIEs__value_PR_TransactionID;
+  ie1->value.choice.TransactionID = GNBDUConfigurationUpdateAcknowledge->transaction_id;
+
+  /* Todo add optional fields */
+  /* encode */
+
+  if (f1ap_encode_pdu(&pdu, &buffer, &len) < 0) {
+    LOG_E(F1AP, "Failed to encode F1 gNB-DU CONFIGURATION UPDATE\n");
+    return -1;
+  }
+
+  LOG_DUMPMSG(F1AP, LOG_DUMP_CHAR, buffer, len, "F1AP gNB-DU CONFIGURATION UPDATE : ");
+  ASN_STRUCT_RESET(asn_DEF_F1AP_F1AP_PDU, &pdu);
+  f1ap_itti_send_sctp_data_req(assoc_id, buffer, len);
+  return 0;
 }
 
 /*

@@ -36,6 +36,8 @@
 #include "oai_asn1.h"
 #include "SIMULATION/TOOLS/sim.h" // for taus();
 
+#include "NR_MeasurementTimingConfiguration.h"
+
 #include "uper_decoder.h"
 #include "uper_encoder.h"
 
@@ -1873,6 +1875,95 @@ int encode_MIB_NR(NR_BCCH_BCH_Message_t *mib, int frame, uint8_t *buf, int buf_s
   AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
   LOG_D(NR_RRC, "Encoded MIB for frame %d sfn_msb %d, bits %lu\n", frame, sfn_msb, enc_rval.encoded);
   return (enc_rval.encoded + 7) / 8;
+}
+
+int encode_MIB_NR_setup(NR_MIB_t *mib, int frame, uint8_t *buf, int buf_size)
+{
+  DevAssert(mib != NULL);
+  uint8_t sfn_msb = (uint8_t)((frame >> 4) & 0x3f);
+  *mib->systemFrameNumber.buf = sfn_msb << 2;
+
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_MIB, NULL, mib, buf, buf_size);
+  AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
+  LOG_D(NR_RRC, "Encoded MIB for frame %d sfn_msb %d, bits %lu\n", frame, sfn_msb, enc_rval.encoded);
+  return (enc_rval.encoded + 7) / 8;
+}
+
+static struct NR_SSB_MTC__periodicityAndOffset get_SSB_MTC_periodicityAndOffset(long ssb_periodicityServingCell)
+{
+  struct NR_SSB_MTC__periodicityAndOffset po = {0};
+  switch (ssb_periodicityServingCell) {
+    case NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms5:
+      po.present = NR_SSB_MTC__periodicityAndOffset_PR_sf5;
+      po.choice.sf5 = 0;
+      break;
+    case NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms10:
+      po.present = NR_SSB_MTC__periodicityAndOffset_PR_sf10;
+      po.choice.sf10 = 0;
+      break;
+    case NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms20:
+      po.present = NR_SSB_MTC__periodicityAndOffset_PR_sf20;
+      po.choice.sf20 = 0;
+      break;
+    case NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms40:
+      po.present = NR_SSB_MTC__periodicityAndOffset_PR_sf40;
+      po.choice.sf40 = 0;
+      break;
+    case NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms80:
+      po.present = NR_SSB_MTC__periodicityAndOffset_PR_sf80;
+      po.choice.sf80 = 0;
+      break;
+    case NR_ServingCellConfigCommon__ssb_periodicityServingCell_ms160:
+      po.present = NR_SSB_MTC__periodicityAndOffset_PR_sf160;
+      po.choice.sf160 = 0;
+      break;
+    default:
+      AssertFatal(false, "illegal ssb_periodicityServingCell %ld\n", ssb_periodicityServingCell);
+      break;
+  }
+  return po;
+}
+
+NR_MeasurementTimingConfiguration_t *get_new_MeasurementTimingConfiguration(const NR_ServingCellConfigCommon_t *scc)
+{
+  NR_MeasurementTimingConfiguration_t *mtc = calloc(1, sizeof(*mtc));
+  AssertFatal(mtc != NULL, "out of memory\n");
+  mtc->criticalExtensions.present = NR_MeasurementTimingConfiguration__criticalExtensions_PR_c1;
+  mtc->criticalExtensions.choice.c1 = calloc(1, sizeof(*mtc->criticalExtensions.choice.c1));
+  AssertFatal(mtc->criticalExtensions.choice.c1 != NULL, "out of memory\n");
+  mtc->criticalExtensions.choice.c1->present = NR_MeasurementTimingConfiguration__criticalExtensions__c1_PR_measTimingConf;
+  NR_MeasurementTimingConfiguration_IEs_t *mtc_ie = calloc(1, sizeof(*mtc_ie));
+  AssertFatal(mtc_ie != NULL, "out of memory\n");
+  mtc->criticalExtensions.choice.c1->choice.measTimingConf = mtc_ie;
+  mtc_ie->measTiming = calloc(1, sizeof(*mtc_ie->measTiming));
+  AssertFatal(mtc_ie->measTiming != NULL, "out of memory\n");
+
+  asn1cSequenceAdd(mtc_ie->measTiming->list, NR_MeasTiming_t, mt);
+  AssertFatal(mt != NULL, "out of memory\n");
+  mt->frequencyAndTiming = calloc(1, sizeof(*mt->frequencyAndTiming));
+  AssertFatal(mt->frequencyAndTiming != NULL, "out of memory\n");
+  mt->frequencyAndTiming->carrierFreq = *scc->downlinkConfigCommon->frequencyInfoDL->absoluteFrequencySSB;
+  mt->frequencyAndTiming->ssbSubcarrierSpacing = *scc->ssbSubcarrierSpacing;
+
+  NR_SSB_MTC_t *ssb_mtc = &mt->frequencyAndTiming->ssb_MeasurementTimingConfiguration;
+  ssb_mtc->duration = NR_SSB_MTC__duration_sf1;
+  ssb_mtc->periodicityAndOffset = get_SSB_MTC_periodicityAndOffset(*scc->ssb_periodicityServingCell);
+
+  return mtc;
+}
+
+int encode_MeasurementTimingConfiguration(const struct NR_MeasurementTimingConfiguration *mtc, uint8_t *buf, int buf_len)
+{
+  DevAssert(mtc != NULL);
+  xer_fprint(stdout, &asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+  asn_enc_rval_t enc_rval = uper_encode_to_buffer(&asn_DEF_NR_MeasurementTimingConfiguration, NULL, mtc, buf, buf_len);
+  AssertFatal(enc_rval.encoded > 0, "ASN1 message encoding failed (%s, %lu)!\n", enc_rval.failed_type->name, enc_rval.encoded);
+  return (enc_rval.encoded + 7) / 8;
+}
+
+void free_MeasurementTimingConfiguration(NR_MeasurementTimingConfiguration_t *mtc)
+{
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
 }
 
 NR_BCCH_DL_SCH_Message_t *get_SIB1_NR(const NR_ServingCellConfigCommon_t *scc, const f1ap_plmn_t *plmn, uint64_t cellID, int tac)

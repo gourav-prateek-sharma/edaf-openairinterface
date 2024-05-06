@@ -144,6 +144,12 @@ void f1_setup_failure(const f1ap_setup_failure_t *failure)
   exit(1);
 }
 
+void gnb_du_configuration_update_acknowledge(const f1ap_gnb_du_configuration_update_acknowledge_t *ack)
+{
+  (void)ack;
+  LOG_I(MAC, "received gNB-DU configuration update acknowledge\n");
+}
+
 static NR_RLC_BearerConfig_t *get_bearerconfig_from_srb(const f1ap_srb_to_be_setup_t *srb)
 {
   long priority = srb->srb_id; // high priority for SRB

@@ -49,6 +49,61 @@ static bool rrc_gNB_plmn_matches(const gNB_RRC_INST *rrc, const f1ap_served_cell
     && conf->mnc[0] == info->plmn.mnc;
 }
 
+static bool extract_sys_info(const f1ap_gnb_du_system_info_t *sys_info, NR_MIB_t **mib, NR_SIB1_t **sib1)
+{
+  DevAssert(sys_info != NULL);
+  DevAssert(mib != NULL);
+  DevAssert(sib1 != NULL);
+
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_MIB, (void **)mib, sys_info->mib, sys_info->mib_length);
+  if (dec_rval.code != RC_OK) {
+    LOG_E(RRC, "Failed to decode NR_MIB (%zu bits) of DU\n", dec_rval.consumed);
+    ASN_STRUCT_FREE(asn_DEF_NR_MIB, *mib);
+    return false;
+  }
+
+  if (sys_info->sib1) {
+    dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_SIB1, (void **)sib1, sys_info->sib1, sys_info->sib1_length);
+    if (dec_rval.code != RC_OK) {
+      ASN_STRUCT_FREE(asn_DEF_NR_MIB, *mib);
+      ASN_STRUCT_FREE(asn_DEF_NR_SIB1, *sib1);
+      LOG_E(RRC, "Failed to decode NR_SIB1 (%zu bits), rejecting DU\n", dec_rval.consumed);
+      return false;
+    }
+  }
+
+  if (LOG_DEBUGFLAG(DEBUG_ASN1)) {
+    xer_fprint(stdout, &asn_DEF_NR_MIB, *mib);
+    xer_fprint(stdout, &asn_DEF_NR_SIB1, *sib1);
+  }
+
+  return true;
+}
+
+static NR_MeasurementTimingConfiguration_t *extract_mtc(uint8_t *buf, int buf_len)
+{
+  NR_MeasurementTimingConfiguration_t *mtc = NULL;
+  asn_dec_rval_t dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_MeasurementTimingConfiguration, (void **)&mtc, buf, buf_len);
+  if (dec_rval.code != RC_OK) {
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+    return NULL;
+  }
+  /* verify that it has the format we need */
+  if (mtc->criticalExtensions.present != NR_MeasurementTimingConfiguration__criticalExtensions_PR_c1
+      || mtc->criticalExtensions.choice.c1 == NULL
+      || mtc->criticalExtensions.choice.c1->present != NR_MeasurementTimingConfiguration__criticalExtensions__c1_PR_measTimingConf
+      || mtc->criticalExtensions.choice.c1->choice.measTimingConf == NULL
+      || mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming == NULL
+      || mtc->criticalExtensions.choice.c1->choice.measTimingConf->measTiming->list.count == 0) {
+    LOG_E(RRC, "error: measurementTimingConfiguration does not have expected format (at least one measTiming entry\n");
+    if (LOG_DEBUGFLAG(DEBUG_ASN1))
+      xer_fprint(stdout, &asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
+    return NULL;
+  }
+  return mtc;
+}
+
 void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
 {
   AssertFatal(assoc_id != 0, "illegal assoc_id == 0: should be -1 (monolithic) or >0 (split)\n");
@@ -111,34 +166,22 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
     }
   }
 
-  // if there is no system info or no SIB1 and we run in SA mode, we cannot handle it
+  // MTC is mandatory, but some DUs don't send it in the F1 Setup Request, so
+  // "tolerate" this behavior, despite it being mandatory
+  NR_MeasurementTimingConfiguration_t *mtc =
+      extract_mtc(cell_info->measurement_timing_config, cell_info->measurement_timing_config_len);
+
   const f1ap_gnb_du_system_info_t *sys_info = req->cell[0].sys_info;
-  NR_BCCH_BCH_Message_t *mib = NULL;
+  NR_MIB_t *mib = NULL;
   NR_SIB1_t *sib1 = NULL;
 
   if (sys_info != NULL && sys_info->mib != NULL && !(sys_info->sib1 == NULL && get_softmodem_params()->sa)) {
-    asn_dec_rval_t dec_rval =
-        uper_decode_complete(NULL, &asn_DEF_NR_BCCH_BCH_Message, (void **)&mib, sys_info->mib, sys_info->mib_length);
-    if (dec_rval.code != RC_OK || mib->message.present != NR_BCCH_BCH_MessageType_PR_mib
-        || mib->message.choice.messageClassExtension == NULL) {
-      LOG_E(RRC, "Failed to decode NR_BCCH_BCH_MESSAGE (%zu bits) of DU, rejecting DU\n", dec_rval.consumed);
+    if (!extract_sys_info(sys_info, &mib, &sib1)) {
+      LOG_W(RRC, "rejecting DU ID %ld\n", req->gNB_DU_id);
       f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
       rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
-      ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_Message, mib);
+      ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, mtc);
       return;
-    }
-
-    if (sys_info->sib1) {
-      dec_rval = uper_decode_complete(NULL, &asn_DEF_NR_SIB1, (void **)&sib1, sys_info->sib1, sys_info->sib1_length);
-      if (dec_rval.code != RC_OK) {
-        LOG_E(RRC, "Failed to decode NR_SIB1 (%zu bits) of DU, rejecting DU\n", dec_rval.consumed);
-        f1ap_setup_failure_t fail = {.cause = F1AP_CauseProtocol_semantic_error};
-        rrc->mac_rrc.f1_setup_failure(assoc_id, &fail);
-        ASN_STRUCT_FREE(asn_DEF_NR_SIB1, sib1);
-        return;
-      }
-      if (LOG_DEBUGFLAG(DEBUG_ASN1))
-        xer_fprint(stdout, &asn_DEF_NR_SIB1, sib1);
     }
   }
   LOG_I(RRC, "Accepting DU %ld (%s), sending F1 Setup Response\n", req->gNB_DU_id, req->gNB_DU_name);
@@ -155,12 +198,10 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   du->setup_req = calloc(1,sizeof(*du->setup_req));
   AssertFatal(du->setup_req, "out of memory\n");
   *du->setup_req = *req;
-  if (mib != NULL && sib1 != NULL) {
-    du->mib = mib->message.choice.mib;
-    mib->message.choice.mib = NULL;
-    ASN_STRUCT_FREE(asn_DEF_NR_BCCH_BCH_MessageType, mib);
-    du->sib1 = sib1;
-  }
+  // MIB can be null and configured later via DU Configuration Update
+  du->mib = mib;
+  du->sib1 = sib1;
+  du->mtc = mtc;
   RB_INSERT(rrc_du_tree, &rrc->dus, du);
   rrc->num_dus++;
 
@@ -169,7 +210,7 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
       .nr_cellid = cell_info->nr_cellid,
       .nrpci = cell_info->nr_pci,
       .num_SI = 0,
-  };  
+  };
 
   f1ap_setup_resp_t resp = {.transaction_id = req->transaction_id,
                             .num_cells_to_activate = 1,
@@ -179,28 +220,6 @@ void rrc_gNB_process_f1_setup_req(f1ap_setup_req_t *req, sctp_assoc_t assoc_id)
   if (rrc->node_name != NULL)
     resp.gNB_CU_name = strdup(rrc->node_name);
   rrc->mac_rrc.f1_setup_response(assoc_id, &resp);
-
-  /*
-  MessageDef *msg_p2 = itti_alloc_new_message(TASK_RRC_GNB, 0, F1AP_GNB_CU_CONFIGURATION_UPDATE);
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).gNB_CU_name = rrc->node_name;
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].plmn.mcc = rrc->configuration.mcc[0];
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].plmn.mnc = rrc->configuration.mnc[0];
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].plmn.mnc_digit_length = rrc->configuration.mnc_digit_length[0];
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].nr_cellid = rrc->nr_cellid;
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].nrpci = req->cell[0].info.nr_pci;
-  int num_SI = 0;
-
-  if (rrc->carrier.SIB23) {
-    F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].SI_container[2] = rrc->carrier.SIB23;
-    F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].SI_container_length[2] = rrc->carrier.sizeof_SIB23;
-    num_SI++;
-  }
-
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).cells_to_activate[0].num_SI = num_SI;
-  F1AP_GNB_CU_CONFIGURATION_UPDATE(msg_p2).num_cells_to_activate = 1;
-  // send
-  itti_send_msg_to_task(TASK_CU_F1, 0, msg_p2);
-  */
 }
 
 static int invalidate_du_connections(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id)
@@ -226,6 +245,107 @@ static int invalidate_du_connections(gNB_RRC_INST *rrc, sctp_assoc_t assoc_id)
   return count;
 }
 
+static void update_cell_info(nr_rrc_du_container_t *du, const f1ap_served_cell_info_t *new_ci)
+{
+  DevAssert(du != NULL);
+  DevAssert(new_ci != NULL);
+
+  AssertFatal(du->setup_req->num_cells_available == 1, "expected 1 cell for DU, but has %d\n", du->setup_req->num_cells_available);
+  f1ap_served_cell_info_t *ci = &du->setup_req->cell[0].info;
+
+  ci->nr_cellid = new_ci->nr_cellid;
+  ci->nr_pci = new_ci->nr_pci;
+  if (new_ci->tac != NULL)
+    *ci->tac = *new_ci->tac;
+  ci->num_ssi = new_ci->num_ssi;
+  for (int s = 0; s < new_ci->num_ssi; ++s)
+    ci->nssai[s] = new_ci->nssai[s];
+  ci->mode = new_ci->mode;
+  if (ci->mode == F1AP_MODE_TDD)
+    ci->tdd = new_ci->tdd;
+  else
+    ci->fdd = new_ci->fdd;
+
+  NR_MeasurementTimingConfiguration_t *new_mtc =
+      extract_mtc(new_ci->measurement_timing_config, new_ci->measurement_timing_config_len);
+  if (new_mtc != NULL) {
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, du->mtc);
+    du->mtc = new_mtc;
+  } else {
+    LOG_E(RRC, "error decoding MeasurementTimingConfiguration during cell update, ignoring new config\n");
+    ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, new_mtc);
+  }
+}
+
+void rrc_gNB_process_f1_du_configuration_update(f1ap_gnb_du_configuration_update_t *conf_up, sctp_assoc_t assoc_id)
+{
+  AssertFatal(assoc_id != 0, "illegal assoc_id == 0: should be -1 (monolithic) or >0 (split)\n");
+  gNB_RRC_INST *rrc = RC.nrrrc[0];
+  DevAssert(rrc);
+
+  // check:
+  // - it is one cell
+  // - PLMN and Cell ID matches
+  // - no previous DU with the same ID
+  // else reject
+
+  nr_rrc_du_container_t *du = get_du_by_assoc_id(rrc, assoc_id);
+  AssertError(du != NULL, return, "no DU found for assoc_id %d\n", assoc_id);
+
+  const f1ap_served_cell_info_t *info = &du->setup_req->cell[0].info;
+  if (conf_up->num_cells_to_add > 0) {
+    // Here we check if the number of cell limit is respectet, otherwise send failure
+    LOG_W(RRC, "du_configuration_update->cells_to_add_list is not supported yet");
+  }
+
+  if (conf_up->num_cells_to_modify > 0) {
+    // here the old nrcgi is used to find the cell information, if it exist then we modify consequently otherwise we fail
+    AssertFatal(conf_up->num_cells_to_modify == 1, "cannot handle more than one cell!\n");
+
+    if (info->nr_cellid != conf_up->cell_to_modify[0].old_nr_cellid) {
+      LOG_W(RRC, "no cell with ID %ld found, ignoring gNB-DU configuration update\n", conf_up->cell_to_modify[0].old_nr_cellid);
+      return;
+    }
+
+    // verify the new plmn of the cell
+    if (!rrc_gNB_plmn_matches(rrc, &conf_up->cell_to_modify[0].info)) {
+      LOG_W(RRC, "PLMN does not match, ignoring gNB-DU configuration update\n");
+      return;
+    }
+
+    update_cell_info(du, &conf_up->cell_to_modify[0].info);
+
+    const f1ap_gnb_du_system_info_t *sys_info = conf_up->cell_to_modify[0].sys_info;
+
+    if (sys_info != NULL && sys_info->mib != NULL && !(sys_info->sib1 == NULL && get_softmodem_params()->sa)) {
+      // MIB is mandatory, so will be overwritten. SIB1 is optional, so will
+      // only be overwritten if present in sys_info
+      ASN_STRUCT_FREE(asn_DEF_NR_MIB, du->mib);
+      if (sys_info->sib1 != NULL)
+        ASN_STRUCT_FREE(asn_DEF_NR_SIB1, du->sib1);
+
+      NR_MIB_t *mib = NULL;
+      if (!extract_sys_info(sys_info, &mib, &du->sib1)) {
+        LOG_W(RRC, "cannot update sys_info for DU %ld\n", du->setup_req->gNB_DU_id);
+      } else {
+        DevAssert(mib != NULL);
+        du->mib = mib;
+        LOG_I(RRC, "update system information of DU %ld\n", du->setup_req->gNB_DU_id);
+      }
+    }
+  }
+
+  if (conf_up->num_cells_to_delete > 0) {
+    // delete the cell and send cell to desactive IE in the response.
+    LOG_W(RRC, "du_configuration_update->cells_to_delete_list is not supported yet");
+  }
+
+  /* Send DU Configuration Acknowledgement */
+  f1ap_gnb_du_configuration_update_acknowledge_t ack = {.transaction_id = conf_up->transaction_id};
+
+  rrc->mac_rrc.gnb_du_configuration_update_acknowledge(assoc_id, &ack);
+}
+
 void rrc_CU_process_f1_lost_connection(gNB_RRC_INST *rrc, f1ap_lost_connection_t *lc, sctp_assoc_t assoc_id)
 {
   AssertFatal(assoc_id != 0, "illegal assoc_id == 0: should be -1 (monolithic) or >0 (split)\n");
@@ -242,6 +362,7 @@ void rrc_CU_process_f1_lost_connection(gNB_RRC_INST *rrc, f1ap_lost_connection_t
   LOG_I(RRC, "releasing DU ID %ld (%s) on assoc_id %d\n", req->gNB_DU_id, req->gNB_DU_name, assoc_id);
   ASN_STRUCT_FREE(asn_DEF_NR_MIB, du->mib);
   ASN_STRUCT_FREE(asn_DEF_NR_SIB1, du->sib1);
+  ASN_STRUCT_FREE(asn_DEF_NR_MeasurementTimingConfiguration, du->mtc);
   /* TODO: free setup request */
   nr_rrc_du_container_t *removed = RB_REMOVE(rrc_du_tree, &rrc->dus, du);
   DevAssert(removed != NULL);
@@ -281,5 +402,18 @@ void dump_du_info(const gNB_RRC_INST *rrc, FILE *f)
     }
     const f1ap_served_cell_info_t *info = &sr->cell[0].info;
     fprintf(f, ": nrCellID %ld, PCI %d\n", info->nr_cellid, info->nr_pci);
+
+    if (info->mode == F1AP_MODE_TDD) {
+      const f1ap_nr_frequency_info_t *fi = &info->tdd.freqinfo;
+      const f1ap_transmission_bandwidth_t *tb = &info->tdd.tbw;
+      fprintf(f, "    TDD: band %d ARFCN %d SCS %d (kHz) PRB %d\n", fi->band, fi->arfcn, 15 * (1 << tb->scs), tb->nrb);
+    } else {
+      const f1ap_nr_frequency_info_t *dfi = &info->fdd.dl_freqinfo;
+      const f1ap_transmission_bandwidth_t *dtb = &info->fdd.dl_tbw;
+      fprintf(f, "    FDD: DL band %d ARFCN %d SCS %d (kHz) PRB %d\n", dfi->band, dfi->arfcn, 15 * (1 << dtb->scs), dtb->nrb);
+      const f1ap_nr_frequency_info_t *ufi = &info->fdd.ul_freqinfo;
+      const f1ap_transmission_bandwidth_t *utb = &info->fdd.ul_tbw;
+      fprintf(f, "         UL band %d ARFCN %d SCS %d (kHz) PRB %d\n", ufi->band, ufi->arfcn, 15 * (1 << utb->scs), utb->nrb);
+    }
   }
 }

@@ -174,6 +174,9 @@ void *F1AP_CU_task(void *arg) {
                                             &F1AP_GNB_CU_CONFIGURATION_UPDATE(received_msg));
         break;
 
+      case F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE:
+        CU_send_gNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(assoc_id, &F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(received_msg));
+        break;
       case F1AP_DL_RRC_MESSAGE: // from rrc
         CU_send_DL_RRC_MESSAGE_TRANSFER(assoc_id,
                                         &F1AP_DL_RRC_MESSAGE(received_msg));

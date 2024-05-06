@@ -39,6 +39,10 @@
 #define F1AP_GNB_CU_CONFIGURATION_UPDATE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_gnb_cu_configuration_update
 #define F1AP_GNB_CU_CONFIGURATION_UPDATE_ACKNOWLEDGE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_gnb_cu_configuration_update_acknowledge
 #define F1AP_GNB_CU_CONFIGURATION_UPDATE_FAILURE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_gnb_cu_configuration_update_failure
+#define F1AP_GNB_DU_CONFIGURATION_UPDATE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_gnb_du_configuration_update
+#define F1AP_GNB_DU_CONFIGURATION_UPDATE_ACKNOWLEDGE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_gnb_du_configuration_update_acknowledge
+#define F1AP_GNB_DU_CONFIGURATION_UPDATE_FAILURE(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_gnb_du_configuration_update_failure
+
 #define F1AP_SETUP_FAILURE(mSGpTR)                 (mSGpTR)->ittiMsg.f1ap_setup_failure
 
 #define F1AP_LOST_CONNECTION(mSGpTR)   (mSGpTR)->ittiMsg.f1ap_lost_connection
@@ -125,10 +129,9 @@ typedef struct f1ap_served_cell_info_t {
   /* Tracking area code */
   uint32_t *tac;
 
-  // Number of slide support items (max 16, could be increased to as much as 1024)
+  // Number of slice support items (max 16, could be increased to as much as 1024)
   uint16_t num_ssi;
-  uint8_t sst;
-  uint8_t sd;
+  nssai_t nssai[16];
 
   f1ap_mode_t mode;
   union {
@@ -136,7 +139,8 @@ typedef struct f1ap_served_cell_info_t {
     f1ap_tdd_info_t tdd;
   };
 
-  char *measurement_timing_information;
+  uint8_t *measurement_timing_config;
+  int measurement_timing_config_len;
 } f1ap_served_cell_info_t;
 
 typedef struct f1ap_gnb_du_system_info_t {
@@ -246,6 +250,57 @@ typedef struct f1ap_gnb_cu_configuration_update_failure_s {
   uint16_t time_to_wait;
   uint16_t criticality_diagnostics; 
 } f1ap_gnb_cu_configuration_update_failure_t;
+
+/*DU configuration messages*/
+typedef struct f1ap_gnb_du_configuration_update_s {
+  /*TODO UPDATE TO SUPPORT DU CONFIG*/
+
+  /* Transaction ID */
+  uint64_t transaction_id;
+  /// int cells_to_add
+  uint16_t num_cells_to_add;
+  struct {
+    f1ap_served_cell_info_t info;
+    f1ap_gnb_du_system_info_t *sys_info;
+  } cell_to_add[F1AP_MAX_NB_CELLS];
+
+  /// int cells_to_modify
+  uint16_t num_cells_to_modify;
+  struct {
+    f1ap_plmn_t old_plmn;
+    uint64_t old_nr_cellid; // NR Global Cell Id
+    f1ap_served_cell_info_t info;
+    f1ap_gnb_du_system_info_t *sys_info;
+  } cell_to_modify[F1AP_MAX_NB_CELLS];
+
+  /// int cells_to_delete
+  uint16_t num_cells_to_delete;
+  struct {
+    // NR CGI
+    f1ap_plmn_t plmn;
+    uint64_t nr_cellid; // NR Global Cell Id
+  } cell_to_delete[F1AP_MAX_NB_CELLS];
+
+  /// string holding gNB_CU_name
+  uint64_t *gNB_DU_ID;
+} f1ap_gnb_du_configuration_update_t;
+
+typedef struct f1ap_gnb_du_configuration_update_acknowledge_s {
+  /// ulong transaction id
+  uint64_t transaction_id;
+  /// string holding gNB_CU_name
+  char *gNB_CU_name;
+  /// number of DU cells to activate
+  uint16_t num_cells_to_activate; // 0< num_cells_to_activate <= 512;
+  served_cells_to_activate_t cells_to_activate[F1AP_MAX_NB_CELLS];
+} f1ap_gnb_du_configuration_update_acknowledge_t;
+
+typedef struct f1ap_gnb_du_configuration_update_failure_s {
+  /*TODO UPDATE TO SUPPORT DU CONFIG*/
+  uint16_t cause;
+  uint16_t time_to_wait;
+  uint16_t criticality_diagnostics;
+} f1ap_gnb_du_configuration_update_failure_t;
 
 typedef struct f1ap_dl_rrc_message_s {
 

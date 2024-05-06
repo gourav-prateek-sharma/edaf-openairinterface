@@ -62,6 +62,7 @@
 #include "NR_CellGroupConfig.h"
 #include "NR_ServingCellConfigCommon.h"
 #include "NR_EstablishmentCause.h"
+#include "NR_MeasurementTimingConfiguration.h"
 
 //-------------------
 
@@ -240,7 +241,6 @@ typedef enum {
   RRC_SETUP_FOR_REESTABLISHMENT,
   RRC_REESTABLISH,
   RRC_REESTABLISH_COMPLETE,
-  RRC_DEFAULT_RECONF,
   RRC_DEDICATED_RECONF,
   RRC_PDUSESSION_ESTABLISH,
   RRC_PDUSESSION_MODIFY,
@@ -260,6 +260,7 @@ typedef struct gNB_RRC_UE_s {
   NR_MeasResults_t                  *measResults;
 
   bool as_security_active;
+  bool f1_ue_context_active;
 
   byte_array_t ue_cap_buffer;
   NR_UE_NR_Capability_t*             UE_Capability_nr;
@@ -318,11 +319,13 @@ typedef struct gNB_RRC_UE_s {
   uint32_t                           ue_reconfiguration_counter;
   struct NR_SpCellConfig                                *spCellConfig;
 
+  /* NGUEContextSetup might come with PDU sessions, but setup needs to be
+   * delayed after security (and capability); PDU sessions are stored here */
+  int n_initial_pdu;
+  pdusession_t *initial_pdus;
+
   /* Nas Pdu */
   ngap_pdu_t nas_pdu;
-
-  /* hack, see rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ() for more info */
-  int max_delays_pdu_session;
 
 } gNB_RRC_UE_t;
 
@@ -359,6 +362,7 @@ typedef struct {
 typedef struct nr_mac_rrc_dl_if_s {
   f1_setup_response_func_t f1_setup_response;
   f1_setup_failure_func_t f1_setup_failure;
+  gnb_du_configuration_update_ack_func_t gnb_du_configuration_update_acknowledge;
   ue_context_setup_request_func_t ue_context_setup_request;
   ue_context_modification_request_func_t ue_context_modification_request;
   ue_context_modification_confirm_func_t ue_context_modification_confirm;
@@ -381,6 +385,7 @@ typedef struct nr_rrc_du_container_t {
   f1ap_setup_req_t *setup_req;
   NR_MIB_t *mib;
   NR_SIB1_t *sib1;
+  NR_MeasurementTimingConfiguration_t *mtc;
 } nr_rrc_du_container_t;
 
 typedef struct nr_rrc_cuup_container_t {
