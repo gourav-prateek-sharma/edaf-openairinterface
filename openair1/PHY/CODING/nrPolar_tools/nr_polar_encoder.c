@@ -488,12 +488,12 @@ void build_polar_tables(t_nrPolar_params *polarParams) {
 
 void polar_encoder_fast(uint64_t *A,
                         void *out,
-                        int32_t crcmask, 
-                        uint8_t ones_flag,  
-                        int8_t messageType, 
-                        uint16_t messageLength, 
-                        uint8_t aggregation_level) {
-                        
+                        int32_t crcmask,
+                        uint8_t ones_flag,
+                        int8_t messageType,
+                        uint16_t messageLength,
+                        uint8_t aggregation_level)
+{
   t_nrPolar_params *polarParams=nr_polar_params(messageType, messageLength, aggregation_level, false);
 
 #ifdef POLAR_CODING_DEBUG

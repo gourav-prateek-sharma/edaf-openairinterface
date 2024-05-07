@@ -362,7 +362,7 @@ static int decodePDUSessionResourceSetup(pdusession_t *session)
   return 0;
 }
 
-static void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession_t *sessions, uint64_t ueAggMaxBitRateDownlink)
+void trigger_bearer_setup(gNB_RRC_INST *rrc, gNB_RRC_UE_t *UE, int n, pdusession_t *sessions, uint64_t ueAggMaxBitRateDownlink)
 {
   e1ap_bearer_setup_req_t bearer_req = {0};
 
@@ -493,18 +493,15 @@ int rrc_gNB_process_NGAP_INITIAL_CONTEXT_SETUP_REQ(MessageDef *msg_p, instance_t
   /* configure only integrity, ciphering comes after receiving SecurityModeComplete */
   nr_rrc_pdcp_config_security(&ctxt, ue_context_p, 0);
 
-  uint8_t nb_pdusessions_tosetup = req->nb_of_pdusessions;
-  /* if there are PDU sessions to setup, first send them to the CU-UP, then
-   * send the UE Context setup with Security commend. Else go to the security
-   * command directly. */
-  if (nb_pdusessions_tosetup > 0) {
-    trigger_bearer_setup(RC.nrrrc[instance],
-                         UE,
-                         req->nb_of_pdusessions,
-                         req->pdusession_param,
-                         /*req->ueAggMaxBitRateDownlink*/ 0);
-  } else {
-    rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p, 0, NULL);
+  rrc_gNB_generate_SecurityModeCommand(&ctxt, ue_context_p);
+  if (req->nb_of_pdusessions > 0) {
+    /* if there are PDU sessions to setup, store them to be created once
+     * security (and UE capabilities) are received */
+    UE->n_initial_pdu = req->nb_of_pdusessions;
+    UE->initial_pdus = calloc(UE->n_initial_pdu, sizeof(*UE->initial_pdus));
+    AssertFatal(UE->initial_pdus != NULL, "out of memory\n");
+    for (int i = 0; i < UE->n_initial_pdu; ++i)
+      UE->initial_pdus[i] = req->pdusession_param[i];
   }
 
   return 0;
@@ -814,28 +811,6 @@ rrc_gNB_send_NGAP_PDUSESSION_SETUP_RESP(
   return;
 }
 
-/* \brief checks if any transaction is ongoing for any xid of this UE */
-static bool transaction_ongoing(const gNB_RRC_UE_t *UE)
-{
-  for (int xid = 0; xid < 4; ++xid)
-    if (UE->xids[xid] != RRC_ACTION_NONE)
-      return true;
-  return false;
-}
-
-/* \brief delays the ongoing transaction (in msg_p) by setting a timer to wait
- * 10ms; upon expiry, delivers to RRC, which sends the message to itself */
-static void delay_transaction(MessageDef *msg_p, int wait_us)
-{
-  MessageDef *new = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_PDUSESSION_SETUP_REQ);
-  ngap_pdusession_setup_req_t *n = &NGAP_PDUSESSION_SETUP_REQ(new);
-  *n = NGAP_PDUSESSION_SETUP_REQ(msg_p);
-
-  int instance = msg_p->ittiMsgHeader.originInstance;
-  long timer_id;
-  timer_setup(0, wait_us, TASK_RRC_GNB, instance, TIMER_ONE_SHOT, new, &timer_id);
-}
-
 //------------------------------------------------------------------------------
 void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t instance)
 //------------------------------------------------------------------------------
@@ -861,24 +836,6 @@ void rrc_gNB_process_NGAP_PDUSESSION_SETUP_REQ(MessageDef *msg_p, instance_t ins
 
   AssertFatal(UE->rrc_ue_id == msg->gNB_ue_ngap_id, "logic bug\n");
   UE->amf_ue_ngap_id = msg->amf_ue_ngap_id;
-
-  /* This is a hack. We observed that with some UEs, PDU session requests might
-   * come in quick succession, faster than the RRC reconfiguration for the PDU
-   * session requests can be carried out (UE is doing reconfig, and second PDU
-   * session request arrives). We don't have currently the means to "queue up"
-   * these transactions, which would probably involve some rework of the RRC.
-   * To still allow these requests to come in and succeed, we below check and delay transactions
-   * for 10ms. However, to not accidentally end up in infinite loops, the
-   * maximum number is capped on a per-UE basis as indicated in variable
-   * max_delays_pdu_session. */
-  if (UE->max_delays_pdu_session > 0 && transaction_ongoing(UE)) {
-    int wait_us = 10000;
-    LOG_D(RRC, "UE %d: delay PDU session setup by %d us, pending %d retries\n", UE->rrc_ue_id, wait_us, UE->max_delays_pdu_session);
-    delay_transaction(msg_p, wait_us);
-    UE->max_delays_pdu_session--;
-    return;
-  }
-
   trigger_bearer_setup(rrc, UE, msg->nb_pdusessions_tosetup, msg->pdusession_setup_params, msg->ueAggMaxBitRateDownlink);
   return;
 }
@@ -1207,13 +1164,10 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
 
   if (ue_context_p == NULL) {
     /* Can not associate this message to an UE index */
-    MessageDef *msg_complete_p = NULL;
     LOG_W(NR_RRC, "[gNB %ld] In NGAP_UE_CONTEXT_RELEASE_COMMAND: unknown UE from gNB_ue_ngap_id (%u)\n",
           instance,
           gNB_ue_ngap_id);
-    msg_complete_p = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
-    NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg_complete_p).gNB_ue_ngap_id = gNB_ue_ngap_id;
-    itti_send_msg_to_task(TASK_NGAP, instance, msg_complete_p);
+    rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(instance, gNB_ue_ngap_id, 0, NULL);
     return -1;
   }
 
@@ -1249,11 +1203,17 @@ int rrc_gNB_process_NGAP_UE_CONTEXT_RELEASE_COMMAND(MessageDef *msg_p, instance_
   return 0;
 }
 
-void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(
-  instance_t instance,
-  uint32_t   gNB_ue_ngap_id) {
+void rrc_gNB_send_NGAP_UE_CONTEXT_RELEASE_COMPLETE(instance_t instance,
+                                                   uint32_t gNB_ue_ngap_id,
+                                                   int num_pdu,
+                                                   uint32_t pdu_session_id[256])
+{
   MessageDef *msg = itti_alloc_new_message(TASK_RRC_GNB, 0, NGAP_UE_CONTEXT_RELEASE_COMPLETE);
   NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).gNB_ue_ngap_id = gNB_ue_ngap_id;
+  NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).num_pdu_sessions = num_pdu;
+  for (int i = 0; i < num_pdu; ++i)
+    NGAP_UE_CONTEXT_RELEASE_COMPLETE(msg).pdu_session_id[i] = pdu_session_id[i];
+  LOG_W(RRC, "trigger release with %d pdu\n", num_pdu);
   itti_send_msg_to_task(TASK_NGAP, instance, msg);
 }
 

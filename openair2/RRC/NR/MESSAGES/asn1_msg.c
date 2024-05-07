@@ -1093,8 +1093,12 @@ int do_RRCReestablishmentComplete(uint8_t *buffer, size_t buffer_size, int64_t r
   return((enc_rval.encoded+7)/8);
 }
 
-NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
+NR_MeasConfig_t *get_defaultMeasConfig(const NR_MeasTiming_t *mt, int band, int scs)
 {
+  DevAssert(mt != NULL && mt->frequencyAndTiming != NULL);
+  const struct NR_MeasTiming__frequencyAndTiming *ft = mt->frequencyAndTiming;
+  const NR_SSB_MTC_t *ssb_mtc = &ft->ssb_MeasurementTimingConfiguration;
+
   NR_MeasConfig_t *mc = calloc(1, sizeof(*mc));
   mc->measObjectToAddModList = calloc(1, sizeof(*mc->measObjectToAddModList));
   mc->reportConfigToAddModList = calloc(1, sizeof(*mc->reportConfigToAddModList));
@@ -1105,17 +1109,16 @@ NR_MeasConfig_t *get_defaultMeasConfig(uint32_t ssb_arfcn, int band, int scs)
   mo1->measObjectId = 1;
   mo1->measObject.present = NR_MeasObjectToAddMod__measObject_PR_measObjectNR;
   NR_MeasObjectNR_t *monr1 = calloc(1, sizeof(*monr1));
-  asn1cCallocOne(monr1->ssbFrequency, ssb_arfcn);
-  asn1cCallocOne(monr1->ssbSubcarrierSpacing, scs);
+  asn1cCallocOne(monr1->ssbFrequency, ft->carrierFreq);
+  asn1cCallocOne(monr1->ssbSubcarrierSpacing, ft->ssbSubcarrierSpacing);
   monr1->referenceSignalConfig.ssb_ConfigMobility = calloc(1, sizeof(*monr1->referenceSignalConfig.ssb_ConfigMobility));
   monr1->referenceSignalConfig.ssb_ConfigMobility->deriveSSB_IndexFromCell = true;
   monr1->absThreshSS_BlocksConsolidation = calloc(1, sizeof(*monr1->absThreshSS_BlocksConsolidation));
   asn1cCallocOne(monr1->absThreshSS_BlocksConsolidation->thresholdRSRP, 36);
   asn1cCallocOne(monr1->nrofSS_BlocksToAverage, 8);
   monr1->smtc1 = calloc(1, sizeof(*monr1->smtc1));
-  monr1->smtc1->periodicityAndOffset.present = NR_SSB_MTC__periodicityAndOffset_PR_sf20;
-  monr1->smtc1->periodicityAndOffset.choice.sf20 = 2;
-  monr1->smtc1->duration = NR_SSB_MTC__duration_sf2;
+  monr1->smtc1->periodicityAndOffset = ssb_mtc->periodicityAndOffset;
+  monr1->smtc1->duration = ssb_mtc->duration;
   monr1->quantityConfigIndex = 1;
   monr1->ext1 = calloc(1, sizeof(*monr1->ext1));
   asn1cCallocOne(monr1->ext1->freqBandIndicatorNR, band);

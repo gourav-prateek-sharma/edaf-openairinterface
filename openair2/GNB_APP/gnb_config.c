@@ -82,6 +82,7 @@
 #include "NR_RateMatchPatternLTE-CRS.h"
 #include "NR_SearchSpace.h"
 #include "NR_ControlResourceSet.h"
+#include "NR_MeasurementTimingConfiguration.h"
 #include "NR_EUTRA-MBSFN-SubframeConfig.h"
 #include "uper_decoder.h"
 #include "uper_encoder.h"
@@ -108,20 +109,35 @@ const sync_raster_t sync_raster[] = {
   {7, 0, 6554, 1, 6718},
   {8, 0, 2318, 1, 2395},
   {12, 0, 1828, 1, 1858},
+  {13, 0, 1871, 1, 1885},
+  {14, 0, 1901, 1, 1915},
+  {18, 0, 2156, 1, 2182},
   {20, 0, 1982, 1, 2047},
+  {24, 0, 3818, 1, 3892},
+  {24, 1, 3824, 1, 3886},
   {25, 0, 4829, 1, 4981},
+  {26, 0, 2153, 1, 2230},
   {28, 0, 1901, 1, 2002},
+  {29, 0, 1798, 1, 1813},
+  {30, 0, 5879, 1, 5893},
   {34, 0, 5030, 1, 5056},
+  {34, 1, 5036, 1, 5050},
   {38, 0, 6431, 1, 6544},
+  {38, 1, 6437, 1, 6538},
   {39, 0, 4706, 1, 4795},
+  {39, 1, 4712, 1, 4789},
   {40, 1, 5762, 1, 5989},
   {41, 0, 6246, 3, 6717},
   {41, 1, 6252, 3, 6714},
   {48, 1, 7884, 1, 7982},
   {50, 0, 3584, 1, 3787},
   {51, 0, 3572, 1, 3574},
+  {53, 0, 6215, 1, 6232},
+  {53, 1, 6221, 1, 6226},
+  {65, 0, 5279, 1, 5494},
   {66, 0, 5279, 1, 5494},
   {66, 1, 5285, 1, 5488},
+  {67, 0, 1850, 1, 1888},
   {70, 0, 4993, 1, 5044},
   {71, 0, 1547, 1, 1624},
   {74, 0, 3692, 1, 3790},
@@ -130,6 +146,12 @@ const sync_raster_t sync_raster[] = {
   {77, 1, 7711, 1, 8329},
   {78, 1, 7711, 1, 8051},
   {79, 1, 8480, 16, 8880},
+  {85, 0, 1826, 1, 1858},
+  {90, 1, 6252, 1, 6714},
+  {91, 0, 3572, 1, 3574},
+  {92, 0, 3584, 1, 3787},
+  {93, 0, 3572, 1, 3574},
+  {94, 0, 3584, 1, 3587},
   {257, 3, 22388, 1, 22558},
   {257, 4, 22390, 2, 22556},
   {258, 3, 22257, 1, 22443},
@@ -1074,6 +1096,8 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
     PLMNParams[I].chkPptr = &(config_check_PLMNParams[I]);
   paramlist_def_t PLMNParamList = {GNB_CONFIG_STRING_PLMN_LIST, NULL, 0};
   config_getlist(cfg, &PLMNParamList, PLMNParams, sizeof(PLMNParams) / sizeof(paramdef_t), aprefix);
+  AssertFatal(PLMNParamList.numelt > 0, "need to have a PLMN in PLMN section\n");
+  AssertFatal(PLMNParamList.numelt == 1, "cannot have more than one PLMN\n");
 
   // if fronthaul is F1, require gNB_DU_ID, else use gNB_ID
   if (separate_du) {
@@ -1098,10 +1122,51 @@ static int read_du_cell_info(configmodule_interface_t *cfg,
               info->plmn.mnc_digit_length);
   info->nr_cellid = (uint64_t) * (GNBParamList.paramarray[0][GNB_NRCELLID_IDX].u64ptr);
 
-  LOG_W(GNB_APP, "no slices transported via F1 Setup Request!\n");
-  info->num_ssi = 0;
+  paramdef_t SNSSAIParams[] = GNBSNSSAIPARAMS_DESC;
+  paramlist_def_t SNSSAIParamList = {GNB_CONFIG_STRING_SNSSAI_LIST, NULL, 0};
+  checkedparam_t config_check_SNSSAIParams[] = SNSSAIPARAMS_CHECK;
+  for (int J = 0; J < sizeofArray(SNSSAIParams); ++J)
+    SNSSAIParams[J].chkPptr = &(config_check_SNSSAIParams[J]);
+  char snssaistr[MAX_OPTNAME_SIZE * 2 + 8];
+  sprintf(snssaistr, "%s.[0].%s.[0]", GNB_CONFIG_STRING_GNB_LIST, GNB_CONFIG_STRING_PLMN_LIST);
+  config_getlist(config_get_if(), &SNSSAIParamList, SNSSAIParams, sizeofArray(SNSSAIParams), snssaistr);
+  info->num_ssi = SNSSAIParamList.numelt;
+  for (int s = 0; s < info->num_ssi; ++s) {
+    info->nssai[s].sst = *SNSSAIParamList.paramarray[s][GNB_SLICE_SERVICE_TYPE_IDX].uptr;
+    info->nssai[s].sd = *SNSSAIParamList.paramarray[s][GNB_SLICE_DIFFERENTIATOR_IDX].uptr;
+    AssertFatal(info->nssai[s].sd <= 0xffffff, "SD cannot be bigger than 0xffffff, but is %d\n", info->nssai[s].sd);
+  }
 
   return 1;
+}
+
+static f1ap_tdd_info_t read_tdd_config(const NR_ServingCellConfigCommon_t *scc)
+{
+  const NR_FrequencyInfoDL_t *dl = scc->downlinkConfigCommon->frequencyInfoDL;
+  f1ap_tdd_info_t tdd = {
+      .freqinfo.arfcn = dl->absoluteFrequencyPointA,
+      .freqinfo.band = *dl->frequencyBandList.list.array[0],
+      .tbw.scs = dl->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+      .tbw.nrb = dl->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
+  };
+  return tdd;
+}
+
+static f1ap_fdd_info_t read_fdd_config(const NR_ServingCellConfigCommon_t *scc)
+{
+  const NR_FrequencyInfoDL_t *dl = scc->downlinkConfigCommon->frequencyInfoDL;
+  const NR_FrequencyInfoUL_t *ul = scc->uplinkConfigCommon->frequencyInfoUL;
+  f1ap_fdd_info_t fdd = {
+      .dl_freqinfo.arfcn = dl->absoluteFrequencyPointA,
+      .ul_freqinfo.arfcn = *ul->absoluteFrequencyPointA,
+      .dl_tbw.scs = dl->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+      .ul_tbw.scs = ul->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing,
+      .dl_tbw.nrb = dl->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
+      .ul_tbw.nrb = ul->scs_SpecificCarrierList.list.array[0]->carrierBandwidth,
+      .dl_freqinfo.band = *dl->frequencyBandList.list.array[0],
+      .ul_freqinfo.band = *ul->frequencyBandList->list.array[0],
+  };
+  return fdd;
 }
 
 static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
@@ -1129,30 +1194,26 @@ static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
         req->cell[0].info.nr_cellid);
 
   req->cell[0].info.nr_pci = *scc->physCellId;
-  struct NR_FrequencyInfoDL *frequencyInfoDL = scc->downlinkConfigCommon->frequencyInfoDL;
   if (scc->tdd_UL_DL_ConfigurationCommon) {
     LOG_I(GNB_APP, "ngran_DU: Configuring Cell %d for TDD\n", 0);
     req->cell[0].info.mode = F1AP_MODE_TDD;
-    f1ap_tdd_info_t *tdd = &req->cell[0].info.tdd;
-    tdd->freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
-    tdd->tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-    tdd->tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-    tdd->freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
+    req->cell[0].info.tdd = read_tdd_config(scc);
   } else {
     LOG_I(GNB_APP, "ngran_DU: Configuring Cell %d for FDD\n", 0);
     req->cell[0].info.mode = F1AP_MODE_FDD;
-    f1ap_fdd_info_t *fdd = &req->cell[0].info.fdd;
-    fdd->dl_freqinfo.arfcn = frequencyInfoDL->absoluteFrequencyPointA;
-    fdd->ul_freqinfo.arfcn = *scc->uplinkConfigCommon->frequencyInfoUL->absoluteFrequencyPointA;
-    fdd->dl_tbw.scs = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-    fdd->ul_tbw.scs = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->subcarrierSpacing;
-    fdd->dl_tbw.nrb = frequencyInfoDL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-    fdd->ul_tbw.nrb = scc->uplinkConfigCommon->frequencyInfoUL->scs_SpecificCarrierList.list.array[0]->carrierBandwidth;
-    fdd->dl_freqinfo.band = *frequencyInfoDL->frequencyBandList.list.array[0];
-    fdd->ul_freqinfo.band = *scc->uplinkConfigCommon->frequencyInfoUL->frequencyBandList->list.array[0];
+    req->cell[0].info.fdd = read_fdd_config(scc);
   }
 
-  req->cell[0].info.measurement_timing_information = "0";
+  NR_MeasurementTimingConfiguration_t *mtc = get_new_MeasurementTimingConfiguration(scc);
+  uint8_t buf[1024];
+  int len = encode_MeasurementTimingConfiguration(mtc, buf, sizeof(buf));
+  DevAssert(len <= sizeof(buf));
+  free_MeasurementTimingConfiguration(mtc);
+  uint8_t *mtc_buf = calloc(len, sizeof(*mtc_buf));
+  AssertFatal(mtc_buf != NULL, "out of memory\n");
+  memcpy(mtc_buf, buf, len);
+  req->cell[0].info.measurement_timing_config = mtc_buf;
+  req->cell[0].info.measurement_timing_config_len = len;
 
   if (get_softmodem_params()->sa) {
     // in NSA we don't transmit SIB1, so cannot fill DU system information
@@ -1165,7 +1226,8 @@ static f1ap_setup_req_t *RC_read_F1Setup(uint64_t id,
     sys_info->mib = calloc(buf_len, sizeof(*sys_info->mib));
     DevAssert(sys_info->mib != NULL);
     DevAssert(mib != NULL);
-    sys_info->mib_length = encode_MIB_NR(mib, 0, sys_info->mib, buf_len);
+    // encode only the mib message itself
+    sys_info->mib_length = encode_MIB_NR_setup(mib->message.choice.mib, 0, sys_info->mib, buf_len);
     DevAssert(sys_info->mib_length == buf_len);
 
     DevAssert(sib1 != NULL);

@@ -372,8 +372,11 @@ extern uint16_t sl_ahead;
 extern uint16_t sf_ahead;
 extern int oai_exit;
 
-void rx_func(void *param);
 void ru_tx_func(void *param);
+void configure_ru(void *, void *arg);
+void configure_rru(void *, void *arg);
+struct timespec timespec_add(struct timespec lhs, struct timespec rhs);
+struct timespec timespec_sub(struct timespec lhs, struct timespec rhs);
 extern uint8_t nfapi_mode;
 extern int16_t vnf_pnf_sfnslot_delta;
 #ifdef __cplusplus

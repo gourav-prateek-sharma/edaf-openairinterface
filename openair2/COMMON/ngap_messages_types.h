@@ -583,6 +583,8 @@ typedef struct ngap_ue_ctxt_modification_resp_s {
 
 typedef struct ngap_ue_release_complete_s {
   uint32_t gNB_ue_ngap_id;
+  int num_pdu_sessions;
+  uint32_t pdu_session_id[256];
 } ngap_ue_release_complete_t;
 
 //-------------------------------------------------------------------------------------------//

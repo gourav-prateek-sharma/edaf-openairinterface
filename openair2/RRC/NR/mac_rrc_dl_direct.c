@@ -36,6 +36,12 @@ static void f1_setup_failure_direct(sctp_assoc_t assoc_id, const f1ap_setup_fail
   f1_setup_failure(fail);
 }
 
+static void gnb_du_configuration_update_ack_direct(sctp_assoc_t assoc_id, const f1ap_gnb_du_configuration_update_acknowledge_t *ack)
+{
+  AssertFatal(assoc_id == -1, "illegal assoc_id %d\n", assoc_id);
+  gnb_du_configuration_update_acknowledge(ack);
+}
+
 static void ue_context_setup_request_direct(sctp_assoc_t assoc_id, const f1ap_ue_context_setup_t *req)
 {
   AssertFatal(assoc_id == -1, "illegal assoc_id %d\n", assoc_id);
@@ -76,6 +82,7 @@ void mac_rrc_dl_direct_init(nr_mac_rrc_dl_if_t *mac_rrc)
 {
   mac_rrc->f1_setup_response = f1_setup_response_direct;
   mac_rrc->f1_setup_failure = f1_setup_failure_direct;
+  mac_rrc->gnb_du_configuration_update_acknowledge = gnb_du_configuration_update_ack_direct;
   mac_rrc->ue_context_setup_request = ue_context_setup_request_direct;
   mac_rrc->ue_context_modification_request = ue_context_modification_request_direct;
   mac_rrc->ue_context_modification_confirm = ue_context_modification_confirm_direct;

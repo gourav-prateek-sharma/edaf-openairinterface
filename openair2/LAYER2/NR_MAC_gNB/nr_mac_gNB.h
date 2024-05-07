@@ -660,6 +660,7 @@ typedef struct NR_bler_options {
 
 typedef struct nr_mac_rrc_ul_if_s {
   f1_setup_request_func_t f1_setup_request;
+  gnb_du_configuration_update_t gnb_du_configuration_update;
   ue_context_setup_response_func_t ue_context_setup_response;
   ue_context_modification_response_func_t ue_context_modification_response;
   ue_context_modification_required_func_t ue_context_modification_required;
@@ -836,9 +837,7 @@ typedef struct gNB_MAC_INST_s {
 
   nr_mac_rrc_ul_if_t mac_rrc;
   f1_config_t f1_config;
-
   int16_t frame;
-  int16_t slot;
 
   pthread_mutex_t sched_lock;
 

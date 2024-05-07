@@ -567,11 +567,10 @@ struct openair0_device_t {
    * \param idx RU index
    * \param arg pointer to capabilities or configuration
    */
-  void (*configure_rru)(int idx, void *arg);
+  void (*configure_rru)(void *, void *arg);
 
-/*! \brief Pointer to generic RRU private information
+  /*! \brief Pointer to generic RRU private information
    */
-
 
   void *thirdparty_priv;
 
