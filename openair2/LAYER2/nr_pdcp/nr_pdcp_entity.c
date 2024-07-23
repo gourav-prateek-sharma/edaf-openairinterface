@@ -477,7 +477,7 @@ static void deliver_all_sdus(nr_pdcp_entity_t *entity)
     //                     &cur->msg_integrity);
     // added a zero for sn_latseqin deliver_sdu
     entity->deliver_sdu(entity->deliver_sdu_data, entity,
-                         cur->buffer, cur->size, 
+                         cur->buffer, cur->size, 0,
                          &cur->msg_integrity);
     entity->rx_list = cur->next;
     entity->rx_size -= cur->size;
