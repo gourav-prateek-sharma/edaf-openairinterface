@@ -472,9 +472,13 @@ static void deliver_all_sdus(nr_pdcp_entity_t *entity)
   // deliver the PDCP SDUs stored in the receiving PDCP entity to upper layers
   while (entity->rx_list != NULL) {
     nr_pdcp_sdu_t *cur = entity->rx_list;
+    // entity->deliver_sdu(entity->deliver_sdu_data, entity,
+    //                     cur->buffer, cur->size,
+    //                     &cur->msg_integrity);
+    // added a zero for sn_latseqin deliver_sdu
     entity->deliver_sdu(entity->deliver_sdu_data, entity,
-                        cur->buffer, cur->size,
-                        &cur->msg_integrity);
+                         cur->buffer, cur->size, 
+                         &cur->msg_integrity);
     entity->rx_list = cur->next;
     entity->rx_size -= cur->size;
     entity->stats.txsdu_pkts++;
