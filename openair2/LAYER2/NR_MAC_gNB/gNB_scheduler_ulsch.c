@@ -1670,7 +1670,7 @@ static void pf_ul(module_id_t module_id,
   gNB_MAC_INST *nrmac = RC.nrmac[module_id];
   NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
   
-  const int min_rb = 5;
+  //const int min_rb = 5;
   // PPDAF 
   //const int min_rb = 5;
   const int min_rb = nrmac->min_grant_prb;
