@@ -695,7 +695,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
                     ue->ue_id,
                     buf,
                     size,
-                    sn_latseq,);
+                    sn_latseq);
     }
   }
 }
