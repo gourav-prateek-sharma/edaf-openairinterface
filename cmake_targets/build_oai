@@ -160,6 +160,8 @@ Options:
   CC=/usr/bin/clang CXX=/usr/bin/clang++ ./build_oai ... --sanitize-memory
 --sanitize-thread | -fsanitize=thread
   Enable the thread sanitizer on all targets
+--enable-latseq
+  enables Latency Sequence tool, https://github.com/Orange-OpenSource/LatSeq
 -h | --help
    Print this help"
 }
@@ -427,6 +429,10 @@ function main() {
         --sanitize-thread | -fthread=address)
             CMAKE_CMD="$CMAKE_CMD -DSANITIZE_THREAD=True"
             shift;;
+        --enable-latseq)
+            CMAKE_CMD="$CMAKE_CMD -DLATSEQ=ON"
+            echo_info "Enabling Latency Sequence measurement, https://github.com/Orange-OpenSource/LatSeq"
+            shift 1;;
         -h | --help)
             print_help
             exit 1;;

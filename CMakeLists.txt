@@ -538,6 +538,13 @@ add_boolean_option(ENABLE_USE_CPU_EXECUTION_TIME False "Add data in vcd traces: 
 add_boolean_option(ENABLE_VCD              False  "always true now, time measurements of proc calls and var displays" ON)
 add_boolean_option(ENABLE_VCD_FIFO         False  "time measurements of proc calls and var displays sent to FIFO (one more thread)" ON)
 
+
+##########################
+# PRECISE LATENCY MEASUREMENT LATSEQ options
+##########################
+add_boolean_option(LATSEQ                  False "Activate Latency Sequence tool (LatSeq)" ON)
+
+
 ##########################
 # PHY options
 ##########################
