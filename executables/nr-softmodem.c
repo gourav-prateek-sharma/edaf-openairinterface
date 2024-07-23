@@ -691,7 +691,14 @@ int main( int argc, char **argv ) {
     pthread_mutex_init(&sync_mutex, NULL);
   }
 
-  init_latseq("/tmp/latseq", (uint64_t)(cpuf*1000000000LL));
+  //("/tmp/latseq", (uint64_t)(cpuf*1000000000LL));
+  // initialize latseq
+  /* get latseq address from conf file */
+  paramdef_t gnb_params[] = GNBSPARAMS_DESC;
+  config_get(uniqCfg, gnb_params, sizeof(gnb_params)/sizeof(paramdef_t), NULL);
+  char** latseq_addr = gnb_params[GNB_LASTSEQ_ADDR_IDX].strptr;
+  init_latseq(*latseq_addr, (uint64_t)(cpuf*1000000000LL));
+
   printf("START MAIN THREADS\n");
   // start the main threads
   number_of_cards = 1;

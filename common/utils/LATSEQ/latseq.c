@@ -28,6 +28,71 @@ extern volatile int oai_exit; //oai is ended. Close latseq
 
 /*--- UTILS FUNCTIONS --------------------------------------------------------*/
 
+int get_log_address(const char* appname, char** ip, int* port) {
+    // Case 1: Check if appname is empty or ""
+    if (appname == NULL || appname[0] == '\0') {
+        printf("[LATSEQ] address is empty, disabling it.\n");
+        return 0;
+    }
+
+    // Case 2: Check if appname is in ip:port format
+    const char* colon = strchr(appname, ':');
+    if (colon != NULL) {
+        // Extract IP and Port
+        size_t colonIndex = colon - appname;
+        *ip = (char*)malloc(colonIndex + 1);
+        strncpy(*ip, appname, colonIndex);
+        (*ip)[colonIndex] = '\0';
+        *port = atoi(colon + 1);
+
+        printf("[LATSEQ] network logging connecting to IP: %s, Port: %d\n", *ip, *port);
+        return 2;
+    } else {
+        // Case 3: Just give the char*
+        printf("[LATSEQ] logging to file name: %s\n", appname);
+        return 1;
+    }
+}
+
+size_t write_log(const char* data) {
+    size_t ret;
+
+    if (data == NULL) {
+        printf("[LATSEQ] Error: Input string is NULL\n");
+        return -1;
+    }
+
+    if (g_latseq.mode == 1) {
+      if (g_latseq.outstream == NULL) {
+        return 0;
+      }
+
+      // Writing to log file
+      ret = fwrite(data, sizeof(char), strlen(data), g_latseq.outstream);
+      if (ret < 0) {
+          printf("[LATSEQ] Error at writing to log file\n");
+          g_latseq.is_running = 0;
+          return -1;
+      }
+    } else if (g_latseq.mode == 2) {
+      if (g_latseq.outsocket == 0) {
+        return 0;
+      }
+      // Sending log to socket
+      ret = send(g_latseq.outsocket, data, strlen(data), 0);
+      if (ret < 0) {
+          printf("[LATSEQ] Error at sending log to socket\n");
+          g_latseq.is_running = 0;
+          return -1;
+      }
+    } else {
+        printf("[LATSEQ] Logging mode not defined\n");
+        g_latseq.is_running = 0;
+        return -1;
+    }
+    return ret;
+}
+
 uint64_t get_cpu_freq_cycles(void)
 {
   uint64_t ts = l_rdtsc();
@@ -41,6 +106,9 @@ int init_latseq(const char * appname, uint64_t cpufreq)
 { 
   // init members
   g_latseq.is_running = 0;
+  g_latseq.mode = 0;
+  g_latseq.is_disabled = 1;
+
   //synchronise time and rdtsc
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
@@ -52,28 +120,83 @@ int init_latseq(const char * appname, uint64_t cpufreq)
     g_latseq.cpu_freq = cpufreq;
   }
 
-  // Open traces
-  char time_string[16];
-  strftime(time_string, sizeof (time_string), "%d%m%Y_%H%M%S", localtime(&ts.tv_sec));
-  g_latseq.filelog_name = (char *)malloc(LATSEQ_MAX_STR_SIZE);
-  sprintf(g_latseq.filelog_name, "%s.%s.lseq", appname, time_string);
-  //open logfile
-  g_latseq.outstream = fopen(g_latseq.filelog_name, "w");
-  if (g_latseq.outstream == NULL) {
-    g_latseq.is_running = 0;
-    printf("[LATSEQ] Error at opening log file\n");
-    return -1;
+  int appname_parse_result;
+  char* server_ip = NULL;
+  int server_port;
+  appname_parse_result = get_log_address(appname, &server_ip, &server_port);
+  g_latseq.outsocket = 0;
+  g_latseq.server_ip = NULL;
+  g_latseq.filelog_name = NULL;
+
+  if(appname_parse_result == 2) { // net logging 
+    // Create a log socket
+    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket == -1) {
+      printf("[LASTEQ] Error creating net log socket");
+      return -1;
+    }
+    g_latseq.outsocket = clientSocket;
+
+    // Set up the server address
+    struct sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(server_port);
+    if (inet_pton(AF_INET, server_ip, &serverAddress.sin_addr) <= 0) {
+      printf("[LASTEQ] Error setting up server address");
+      close(clientSocket);
+      return -1;
+    }
+    g_latseq.server_ip = server_ip;
+    g_latseq.server_port = server_port;
+
+    // Connect to the server
+    if (connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1) {
+      printf("[LASTEQ] Error connecting to server");
+      close(clientSocket);
+      return -1;
+    }
+    g_latseq.mode = 2;
+    g_latseq.is_disabled = 0;
+  } else if (appname_parse_result == 1) { // file loggging 
+
+    // Open trace
+    char time_string[16];
+    strftime(time_string, sizeof (time_string), "%d%m%Y_%H%M%S", localtime(&ts.tv_sec));
+    g_latseq.filelog_name = (char *)malloc(LATSEQ_MAX_STR_SIZE);
+    sprintf(g_latseq.filelog_name, "%s.%s.lseq", appname, time_string);
+
+    //open logfile
+    g_latseq.outstream = fopen(g_latseq.filelog_name, "w");
+    if (g_latseq.outstream == NULL) {
+      printf("[LATSEQ] Error at opening log file\n");
+      return -1;
+    }
+    g_latseq.mode = 1;
+    g_latseq.is_disabled = 0;
+  } else { // disable latseq appname_parse_result=0
+    return 0;
   }
-  //write header
+
+  // write header
   char hdr[] = "# LatSeq packet fingerprints\n# By Alexandre Ferrieux and Flavien Ronteix Jacquet\n# timestamp\tU/D\tsrc--dest\tlen:ctxtId:localId\n";
-  size_t ret = fwrite(hdr, sizeof(char), sizeof(hdr) - 1, g_latseq.outstream);
-  if (ret < 0) {
-    printf("[LATSEQ] Error at opening log file\n");
-    g_latseq.is_running = 0;
+  size_t ret = write_log(hdr);
+  if( ret < 0 ) {
     return -1;
   }
-  fprintf(g_latseq.outstream, "%ld S rdtsc--gettimeofday %ld.%09ld\n", g_latseq.rdtsc_zero, ts.tv_sec, ts.tv_nsec);
-  fflush(g_latseq.outstream);
+  
+  // write first rdtsc timestamp
+  char* data;
+  data = calloc(LATSEQ_MAX_STR_SIZE, sizeof(char));
+  sprintf(data, "%ld S rdtsc--gettimeofday %ld.%09ld\n", g_latseq.rdtsc_zero, ts.tv_sec, ts.tv_nsec);
+  ret = write_log(data);
+  if( ret < 0 ) {
+    free(data);
+    return -1;
+  }
+  if(appname_parse_result == 1) { //log to file needs to get flushed for this
+    fflush(g_latseq.outstream);
+  }
+  free(data);
   
   // init registry
   g_latseq.local_log_buffers.read_ith_thread = 0;
@@ -114,16 +237,61 @@ void latseq_print_stats(void)
   //printf("[LATSEQ] heads positions : %d (Write) : %d (Read)\n", g_latseq.i_write_head, g_latseq.i_read_head);
 }
 
+int close_latseq_low(void)
+{
+  g_latseq.is_running = 0;
+  //At this point, data_ids and points should be freed by the logger thread
+  if( g_latseq.mode == 1 ) { // file close
+    if(g_latseq.outstream != NULL) {
+      fclose(g_latseq.outstream);
+      g_latseq.outstream = NULL;
+    }
+    if (g_latseq.filelog_name != NULL) {
+      free((char*) g_latseq.filelog_name);
+      g_latseq.filelog_name = NULL;
+    }
+  } else if (g_latseq.mode == 2) { // net close
+    if (g_latseq.outsocket != 0) {
+      close(g_latseq.outsocket);
+      g_latseq.outsocket = 0;
+    }
+    if (g_latseq.server_ip != NULL) {
+      free((char*) g_latseq.server_ip);
+      g_latseq.server_ip = NULL;
+    }
+  }
+  return 0;
+}
+
 int close_latseq(void)
 {
   g_latseq.is_running = 0;
-  //Wait logger finish to write data
-  pthread_join(logger_thread, NULL);
+
+  if(!g_latseq.is_disabled) {
+    //Wait logger finish to write data
+    pthread_join(logger_thread, NULL);
+    pthread_join(fflusher_thread, NULL);
+  }
+
   //At this point, data_ids and points should be freed by the logger thread
-  free((char*) g_latseq.filelog_name);
-  if (fclose(g_latseq.outstream)){
-    fprintf(stderr, "[LATSEQ] error on closing %s\n", g_latseq.filelog_name);
-    exit(EXIT_FAILURE);
+  if( g_latseq.mode == 1 ) { // file close
+    if(g_latseq.outstream != NULL) {
+      fclose(g_latseq.outstream);
+      g_latseq.outstream = NULL;
+    }
+    if (g_latseq.filelog_name != NULL) {
+      free((char*) g_latseq.filelog_name);
+      g_latseq.filelog_name = NULL;
+    }
+  } else if (g_latseq.mode == 2) { // net close
+    if (g_latseq.outsocket != 0) {
+      close(g_latseq.outsocket);
+      g_latseq.outsocket = 0;
+    }
+    if (g_latseq.server_ip != NULL) {
+      free((char*) g_latseq.server_ip);
+      g_latseq.server_ip = NULL;
+    }
   }
   return 1;
 }
@@ -132,7 +300,9 @@ int close_latseq(void)
 
 int init_thread_for_latseq(void)
 {
-
+  if (g_latseq.is_disabled) {
+    return -1;
+  }
   //Init tls_latseq for local thread
   tls_latseq.i_write_head = 0; //local thread tls_latseq
   //memset(tls_latseq.log_buffer, 0, sizeof(tls_latseq.log_buffer));
@@ -142,7 +312,7 @@ int init_thread_for_latseq(void)
   //Check if space left in registry
   if (reg->nb_th >= MAX_NB_THREAD) {
     g_latseq.is_running = 0;
-    fprintf(g_latseq.outstream, "Max instrumented thread MAX_NB_THREAD reached\n");
+    printf("Max instrumented thread MAX_NB_THREAD reached\n");
     return -1;
   }
   reg->tls[reg->nb_th] = &tls_latseq;
@@ -185,16 +355,16 @@ static int write_latseq_entry(void)
     e->data_id[8],
     e->data_id[9]);
 
-  // Write into file
-  int ret = fprintf(g_latseq.outstream, "%ld %s %s\n",
+  // Write log
+  char* data;
+  data = calloc(LATSEQ_MAX_STR_SIZE, sizeof(char));
+  sprintf(data, "%ld %s %s\n",
     e->ts,
     e->point,
     tmps);
-
+  size_t ret = write_log(data);
   if (ret < 0) {
-    g_latseq.is_running = 0;
-    fclose(g_latseq.outstream);
-    fprintf(stderr, "[LATSEQ] output log file cannot be written\n");
+    close_latseq_low();
     exit(EXIT_FAILURE);
   }
 #ifdef LATSEQ_DEBUG
@@ -203,6 +373,7 @@ static int write_latseq_entry(void)
 #endif
 
   free(tmps);
+  free(data);
   // cleanup buffer element
   e->ts = 0;
   memset(e->data_id, 0, (sizeof(uint32_t) * e->len_id));
@@ -242,7 +413,7 @@ void latseq_log_to_file(void)
 
     //If max occupancy reached for a local buffer
     if (reg->tls[reg->read_ith_thread]->i_write_head < reg->i_read_heads[reg->read_ith_thread]) {
-      fprintf(g_latseq.outstream, "# Error\tring buffer of thread (%d) reach max occupancy of %d\n", reg->read_ith_thread, RING_BUFFER_SIZE);
+      printf("# Error\tring buffer of thread (%d) reach max occupancy of %d\n", reg->read_ith_thread, RING_BUFFER_SIZE);
     }
 
     items_to_read = CHUNK_SIZE_ITEMS;
@@ -274,11 +445,27 @@ void latseq_log_to_file(void)
 void fflush_latseq_periodically(void)
 {
   struct timespec ts;
-  while(1){
+  while(true){
     sleep(1);
-    fflush(g_latseq.outstream);
-    clock_gettime(CLOCK_REALTIME, &ts);
-    fprintf(g_latseq.outstream, "%ld S rdtsc--gettimeofday %ld.%09ld\n", l_rdtsc(), ts.tv_sec, ts.tv_nsec);
+    if (g_latseq.mode == 1) {
+      if(g_latseq.outstream != NULL) {
+        fflush(g_latseq.outstream);
+        clock_gettime(CLOCK_REALTIME, &ts);
+        fprintf(g_latseq.outstream, "%ld S rdtsc--gettimeofday %ld.%09ld\n", l_rdtsc(), ts.tv_sec, ts.tv_nsec);
+      }
+    } else if (g_latseq.mode == 2) {
+      char* data;
+      data = calloc(LATSEQ_MAX_STR_SIZE, sizeof(char));
+      clock_gettime(CLOCK_REALTIME, &ts);
+      sprintf(data, "%ld S rdtsc--gettimeofday %ld.%09ld\n", l_rdtsc(), ts.tv_sec, ts.tv_nsec);
+      ssize_t ret = write_log(data);
+      free(data);
+      if (ret < 0) {
+        close_latseq_low();
+        return -1;
+      }
+    }
+    if(g_latseq.is_running) { break; }
   }
   pthread_exit(NULL);
 }

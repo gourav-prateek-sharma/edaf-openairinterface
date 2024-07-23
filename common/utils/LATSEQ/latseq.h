@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
+#include <stdbool.h>
 #include <syslog.h>
 #include <assert.h>
 #include <sys/types.h>
@@ -96,8 +98,13 @@ typedef struct latseq_registry_t {
 
 // Global structure of LatSeq module
 typedef struct latseq_t {
-  int                 is_running; //1 is running, 0 not running
+  int                 is_disabled;
+  int                 is_running; //1 is running, 0 is not running
+  int                 mode;  // 1 is file logging, 2 is net logging, 0 is not known
   char *              filelog_name;
+  char *              server_ip;
+  int                 server_port;
+  int                 outsocket;
   FILE *              outstream; //Output descriptor
   uint64_t            time_zero; // time zero
   uint64_t            rdtsc_zero; //rdtsc zero

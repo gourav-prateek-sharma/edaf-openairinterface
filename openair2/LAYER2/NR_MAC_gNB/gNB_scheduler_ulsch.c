@@ -1671,6 +1671,10 @@ static void pf_ul(module_id_t module_id,
   NR_ServingCellConfigCommon_t *scc = nrmac->common_channels[CC_id].ServingCellConfigCommon;
   
   const int min_rb = 5;
+  // PPDAF 
+  //const int min_rb = 5;
+  const int min_rb = nrmac->min_grant_prb;
+
   // UEs that could be scheduled
   UEsched_t UE_sched[MAX_MOBILES_PER_GNB] = {0};
   int remainUEs = max_num_ue;
@@ -1996,6 +2000,11 @@ static bool nr_fr1_ulsch_preprocessor(module_id_t module_id, frame_t frame, sub_
 
   if (!is_xlsch_in_slot(nr_mac->ulsch_slot_bitmap[sched_slot / 64], sched_slot))
     return false;
+
+  // PPDAF ExPECA, avoid slots 7 and 19
+  if (sched_slot == 7 || sched_slot == 19)
+    return false;
+
 
   sched_ctrl->sched_pusch.slot = sched_slot;
   sched_ctrl->sched_pusch.frame = sched_frame;

@@ -26,6 +26,7 @@
 
 #include "nr_rlc_pdu.h"
 #include "common/utils/time_stat.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 #include "LOG/log.h"
 

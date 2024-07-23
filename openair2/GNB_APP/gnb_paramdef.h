@@ -83,17 +83,22 @@ typedef enum {
 /* global parameters, not under a specific section   */
 #define GNB_CONFIG_STRING_ASN1_VERBOSITY                   "Asn1_verbosity"
 #define GNB_CONFIG_STRING_ACTIVE_GNBS                      "Active_gNBs"
+#define GNB_CONFIG_STRING_LATSEQ_ADDR                      "latseq_addr"
+#define CONFIG_HLP_LATSEQ_ADDR   "LATSEQ output stream address, either file \"/tmp/latseq\" or ip:port \"192.168.2.2:50010\" "
+
 /*--------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 /*                                            global configuration parameters                                                                                   */
 /*   optname                                   helpstr   paramflags    XXXptr        defXXXval                                        type           numelt     */
 /*--------------------------------------------------------------------------------------------------------------------------------------------------------------*/
 #define GNBSPARAMS_DESC {                                                                                             \
 {GNB_CONFIG_STRING_ASN1_VERBOSITY,             NULL,     0,       .uptr=NULL,   .defstrval=GNB_CONFIG_STRING_ASN1_VERBOSITY_NONE,   TYPE_STRING,      0},   \
-{GNB_CONFIG_STRING_ACTIVE_GNBS,                NULL,     0,       .uptr=NULL,   .defstrval=NULL, 				   TYPE_STRINGLIST,  0}    \
+{GNB_CONFIG_STRING_ACTIVE_GNBS,                NULL,     0,       .uptr=NULL,   .defstrval=NULL, 				   TYPE_STRINGLIST,  0},    \
+{GNB_CONFIG_STRING_LATSEQ_ADDR,   CONFIG_HLP_LATSEQ_ADDR,     0,        strptr:NULL,   defstrval:NULL,    TYPE_STRING,      0}    \
 }
 
 #define GNB_ASN1_VERBOSITY_IDX                     0
 #define GNB_ACTIVE_GNBS_IDX                        1
+#define GNB_LASTSEQ_ADDR_IDX                       2
 
 /*------------------------------------------------------------------------------------------------------------------------------------------*/
 /*------------------------------------------------------------------------------------------------------------------------------------------*/

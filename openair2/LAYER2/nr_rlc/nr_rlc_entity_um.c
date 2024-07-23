@@ -28,6 +28,7 @@
 
 #include "LOG/log.h"
 #include "common/utils/time_stat.h"
+#include "common/utils/LATSEQ/latseq.h"
 
 /* for a given SDU/SDU segment, computes the corresponding PDU header size */
 static int compute_pdu_header_size(nr_rlc_entity_um_t *entity,
@@ -177,6 +178,8 @@ static void reassemble_and_deliver(nr_rlc_entity_um_t *entity, int sn)
     return;
 
   /* deliver */
+  LATSEQ_P("U rlc.reassembled--pdcp.decoded", "len%u::sn%u", so, sn);
+
   entity->common.deliver_sdu(entity->common.deliver_sdu_data,
                              (nr_rlc_entity_t *)entity,
                              sdu, so);
@@ -279,6 +282,7 @@ void nr_rlc_entity_um_recv_pdu(nr_rlc_entity_t *_entity,
   nr_rlc_pdu_decoder_t decoder;
   nr_rlc_pdu_t *pdu;
   int si;
+  int p = 0;
   int sn;
   int so = 0;
   int data_size;
@@ -289,6 +293,7 @@ void nr_rlc_entity_um_recv_pdu(nr_rlc_entity_t *_entity,
   entity->common.stats.rxpdu_bytes += size;
 
   nr_rlc_pdu_decoder_init(&decoder, buffer, size);
+  p  = nr_rlc_pdu_decoder_get_bits(&decoder, 1); R(decoder);
 
   si = nr_rlc_pdu_decoder_get_bits(&decoder, 2); R(decoder);
 
@@ -330,7 +335,7 @@ void nr_rlc_entity_um_recv_pdu(nr_rlc_entity_t *_entity,
   }
 
   data_size = size - decoder.byte;
-
+  LATSEQ_P("U rlc.decoded--rlc.reassembled", "len%u::MRbuf%u.p%u.si%u.sn%u.so%u", data_size, buffer, p, si, sn, so);
   /* dicard PDU if no data */
   if (data_size <= 0) {
     LOG_W(RLC, "%s:%d:%s: warning: discard PDU, no data\n",
