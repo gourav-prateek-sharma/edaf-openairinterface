@@ -1093,6 +1093,21 @@ extern "C" {
       args += ",num_send_frames=256,num_recv_frames=256, send_frame_size=7680, recv_frame_size=7680" ;
     }
 
+    // E320 identification block
+    // added by Samie Mostafavi
+    bool device_e3xx = false;
+    if (device_adds[0].get("type") == "e3xx") {
+	  device->type = USRP_B200_DEV;
+	  device_e3xx = true;
+	  usrp_master_clock = 46.08e6;
+	  args += boost::str(boost::format(",master_clock_rate=%f") % usrp_master_clock);
+	  args += ",num_send_frames=256,num_recv_frames=256, send_frame_size=7680, recv_frame_size=7680";
+
+	  if ( 0 != system("sysctl -w net.core.rmem_max=62500000 net.core.wmem_max=62500000") )
+	    LOG_W(HW,"Can't set kernel parameters for e3x0\n");
+    }
+    // E320 identification block
+
     if (device_adds[0].get(type_str) == "n3xx") {
       const std::string product = device_adds[0].get(product_str);
       printf("Found USRP %s\n", product.c_str());
@@ -1321,60 +1336,85 @@ extern "C" {
       std::cerr << "-- Using calibration table: calib_table_b210_38" << std::endl; // Bell Labs info
     }
 
+
     switch ((int)openair0_cfg[0].sample_rate) {
-      case 46080000:
-        s->usrp->set_master_clock_rate(46.08e6);
-        //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 164;
-        openair0_cfg[0].tx_bw                 = 40e6;
-        openair0_cfg[0].rx_bw                 = 40e6;
-        break;
+	  case 46080000:
+	    s->usrp->set_master_clock_rate(46.08e6);
+	    //openair0_cfg[0].samples_per_packet    = 1024;
+	    if (device_e3xx) {
+	      openair0_cfg[0].tx_sample_advance     = 15;
+	    } else {
+	      openair0_cfg[0].tx_sample_advance     = 115;
+	    }
+	    openair0_cfg[0].tx_bw                 = 40e6;
+	    openair0_cfg[0].rx_bw                 = 40e6;
+	    break;
 
-      case 30720000:
-        s->usrp->set_master_clock_rate(30.72e6);
-        //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 115;
-        openair0_cfg[0].tx_bw                 = 20e6;
-        openair0_cfg[0].rx_bw                 = 20e6;
-        break;
+	  case 30720000:
+	    s->usrp->set_master_clock_rate(30.72e6);
+	    //openair0_cfg[0].samples_per_packet    = 1024;
+	    if (device_e3xx) {
+	      openair0_cfg[0].tx_sample_advance     = 15;
+	    } else {
+	      openair0_cfg[0].tx_sample_advance     = 115;
+	    }
+	    openair0_cfg[0].tx_bw                 = 20e6;
+	    openair0_cfg[0].rx_bw                 = 20e6;
+	    break;
 
-      case 23040000:
-        s->usrp->set_master_clock_rate(23.04e6); //to be checked
-        //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 113;
-        openair0_cfg[0].tx_bw                 = 20e6;
-        openair0_cfg[0].rx_bw                 = 20e6;
-        break;
+	  case 23040000:
+	    s->usrp->set_master_clock_rate(23.04e6); //to be checked
+	    //openair0_cfg[0].samples_per_packet    = 1024;
+	    if (device_e3xx) {
+	      openair0_cfg[0].tx_sample_advance     = 15;
+	    } else {
+	      openair0_cfg[0].tx_sample_advance     = 113;
+	    }
+	    openair0_cfg[0].tx_bw                 = 20e6;
+	    openair0_cfg[0].rx_bw                 = 20e6;
+	    break;
 
-      case 15360000:
-        s->usrp->set_master_clock_rate(30.72e06);
-        //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 103;
-        openair0_cfg[0].tx_bw                 = 20e6;
-        openair0_cfg[0].rx_bw                 = 20e6;
-        break;
+	  case 15360000:
+	    s->usrp->set_master_clock_rate(30.72e06);
+	    //openair0_cfg[0].samples_per_packet    = 1024;
+	    if (device_e3xx) {
+	      openair0_cfg[0].tx_sample_advance     = 45;
+	    } else {
+	      openair0_cfg[0].tx_sample_advance     = 103;
+	    }
+	    openair0_cfg[0].tx_bw                 = 20e6;
+	    openair0_cfg[0].rx_bw                 = 20e6;
+	    break;
 
-      case 7680000:
-        s->usrp->set_master_clock_rate(30.72e6);
-        //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 80;
-        openair0_cfg[0].tx_bw                 = 20e6;
-        openair0_cfg[0].rx_bw                 = 20e6;
-        break;
+	  case 7680000:
+	    s->usrp->set_master_clock_rate(30.72e6);
+	    //openair0_cfg[0].samples_per_packet    = 1024;
+	    if (device_e3xx) {
+	      openair0_cfg[0].tx_sample_advance     = 50;
+	    } else {
+	      openair0_cfg[0].tx_sample_advance     = 80;
+	    }
+	    openair0_cfg[0].tx_bw                 = 20e6;
+	    openair0_cfg[0].rx_bw                 = 20e6;
+	    break;
 
-      case 1920000:
-        s->usrp->set_master_clock_rate(30.72e6);
-        //openair0_cfg[0].samples_per_packet    = 1024;
-        openair0_cfg[0].tx_sample_advance     = 40;
-        openair0_cfg[0].tx_bw                 = 20e6;
-        openair0_cfg[0].rx_bw                 = 20e6;
-        break;
+	  case 1920000:
+	    s->usrp->set_master_clock_rate(30.72e6);
+	    //openair0_cfg[0].samples_per_packet    = 1024;
+	    if (device_e3xx) {
+	      openair0_cfg[0].tx_sample_advance     = 50;
+	    } else {
+	      openair0_cfg[0].tx_sample_advance     = 40;
+	    }
+	    openair0_cfg[0].tx_bw                 = 20e6;
+	    openair0_cfg[0].rx_bw                 = 20e6;
+	    break;
 
-      default:
-        LOG_E(HW,"Error: unknown sampling rate %f\n",openair0_cfg[0].sample_rate);
-        exit(-1);
-        break;
-    }
+	  default:
+	    LOG_E(HW,"Error: unknown sampling rate %f\n",openair0_cfg[0].sample_rate);
+	    exit(-1);
+	    break;
+	}
   }
 
   /* device specific */
