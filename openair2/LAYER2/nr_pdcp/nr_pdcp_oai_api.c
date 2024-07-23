@@ -44,6 +44,9 @@
 #include "executables/softmodem-common.h"
 #include "cuup_cucp_if.h"
 
+#include "common/utils/LATSEQ/latseq.h"
+
+
 #define TODO do { \
     printf("%s:%d:%s: todo\n", __FILE__, __LINE__, __FUNCTION__); \
     exit(1); \
@@ -658,7 +661,7 @@ uint64_t nr_pdcp_module_init(uint64_t _pdcp_optmask, int id)
 }
 
 static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
-                            char *buf, int size,
+                            char *buf, int size, int sn_latseq,
                             const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue = _ue;
@@ -669,7 +672,7 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
     LOG_D(PDCP, "IP packet received with size %d, to be sent to SDAP interface, UE ID/RNTI: %ld\n", size, ue->ue_id);
     // in NoS1 mode: the SDAP should write() packets to an FD (TUN interface),
     // so below, set is_gnb == 0 to do that
-    sdap_data_ind(entity->rb_id, 0, entity->has_sdap_rx, entity->pdusession_id, ue->ue_id, buf, size);
+    sdap_data_ind(entity->rb_id, 0, entity->has_sdap_rx, entity->pdusession_id, ue->ue_id, buf, size, sn_latseq);
   }
   else{
     for (i = 0; i < MAX_DRBS_PER_UE; i++) {
@@ -691,7 +694,8 @@ static void deliver_sdu_drb(void *_ue, nr_pdcp_entity_t *entity,
                     ue->drb[rb_id - 1]->pdusession_id,
                     ue->ue_id,
                     buf,
-                    size);
+                    size,
+                    sn_latseq,);
     }
   }
 }
@@ -742,7 +746,7 @@ static void deliver_pdu_drb_gnb(void *deliver_pdu_data, ue_id_t ue_id, int rb_id
 }
 
 static void deliver_sdu_srb(void *_ue, nr_pdcp_entity_t *entity,
-                            char *buf, int size,
+                            char *buf, int size, int sn_latseq,
                             const nr_pdcp_integrity_data_t *msg_integrity)
 {
   nr_pdcp_ue_t *ue = _ue;
