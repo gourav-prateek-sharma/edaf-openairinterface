@@ -378,12 +378,12 @@ static void nr_postDecode(PHY_VARS_gNB *gNB, notifiedFIFO_elt_t *req)
 
         }
     */
-    if (ulsch_harq->round == 3) {
-      LATSEQ_P("U mac.decoded--mac.retxdrop","::fm%u.sl%u.hqpid%u", ulsch->frame, ulsch->slot, rdata->harq_pid);
-    } else {
-      LATSEQ_P("U mac.decoded--mac.retx.decodefailed","::fm%u.sl%u.fmrtx%u.slrtx%u.hqpid%u", ulsch->frame, ulsch->slot, ulsch->frame, ulsch->slot, rdata->harq_pid);
-      LATSEQ_P("U mac.retx.decodefailed--phy.demodulatestart","::fmrtx%u.slrtx%u.hqpid%u.hqround%u", ulsch->frame, ulsch->slot, rdata->harq_pid, ulsch_harq->round+1);
-    }
+    // if (ulsch_harq->round == 3) {
+    //   LATSEQ_P("U mac.decoded--mac.retxdrop","::fm%u.sl%u.hqpid%u", ulsch->frame, ulsch->slot, rdata->harq_pid);
+    // } else {
+    //   LATSEQ_P("U mac.decoded--mac.retx.decodefailed","::fm%u.sl%u.fmrtx%u.slrtx%u.hqpid%u", ulsch->frame, ulsch->slot, ulsch->frame, ulsch->slot, rdata->harq_pid);
+    //   LATSEQ_P("U mac.retx.decodefailed--phy.demodulatestart","::fmrtx%u.slrtx%u.hqpid%u.hqround%u", ulsch->frame, ulsch->slot, rdata->harq_pid, ulsch_harq->round+1);
+    // }
     ulsch->last_iteration_cnt = rdata->decodeIterations;
     VCD_SIGNAL_DUMPER_DUMP_FUNCTION_BY_NAME(VCD_SIGNAL_DUMPER_FUNCTIONS_PHY_gNB_ULSCH_DECODING,0);
   }
